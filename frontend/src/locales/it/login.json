@@ -9,7 +9,9 @@
         "error_email_required": "L'email è obbligatoria",
         "error_email_invalid": "Inserisci un'email valida",
         "error_password_required": "La password è obbligatoria",
-        "error_success": "Accesso effettuato con successo"
+        "error_success": "Accesso effettuato con successo",
+        "ssoRequired": "Questo utente può accedere solo tramite SSO. Utilizza l'autenticazione Single Sign-On.",
+        "ssoRequiredTitle": "Login SSO Richiesto"
     },
     "fields": {
         "fullName": "Nome completo",

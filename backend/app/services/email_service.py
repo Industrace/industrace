@@ -34,7 +34,7 @@ class EmailConfig(BaseModel):
 
 class EmailService(ABC):
     @abstractmethod
-    def send_email(self, to_email: str, subject: str, content: str) -> bool:
+    def send_email(self, to_email: str, subject: str, content: str, html_content: Optional[str] = None) -> bool:
         pass
 
 
@@ -43,16 +43,21 @@ class SendGridService(EmailService):
         self.api_key = config.api_key
         self.from_email = config.from_email
         
-    def send_email(self, to_email: str, subject: str, content: str) -> bool:
+    def send_email(self, to_email: str, subject: str, content: str, html_content: Optional[str] = None) -> bool:
         try:
             import sendgrid
             from sendgrid.helpers.mail import Mail, Email, To, Content
             
             sg = sendgrid.SendGridAPIClient(api_key=self.api_key)
             from_email = Email(self.from_email)
-            to_email = To(to_email)
-            content = Content("text/plain", content)
-            mail = Mail(from_email, to_email, subject, content)
+            to_email_obj = To(to_email)
+            
+            if html_content:
+                mail = Mail(from_email, to_email_obj, subject, Content("text/plain", content))
+                mail.add_content(Content("text/html", html_content))
+            else:
+                mail = Mail(from_email, to_email_obj, subject, Content("text/plain", content))
+            
             response = sg.send(mail)
             return response.status_code == 202
         except Exception as e:
@@ -66,7 +71,7 @@ class MailgunService(EmailService):
         self.domain = config.domain
         self.from_email = config.from_email
         
-    def send_email(self, to_email: str, subject: str, content: str) -> bool:
+    def send_email(self, to_email: str, subject: str, content: str, html_content: Optional[str] = None) -> bool:
         try:
             import requests
             
@@ -78,6 +83,8 @@ class MailgunService(EmailService):
                 "subject": subject,
                 "text": content
             }
+            if html_content:
+                data["html"] = html_content
             response = requests.post(url, auth=auth, data=data)
             return response.status_code == 200
         except Exception as e:
@@ -90,18 +97,22 @@ class AWSSESService(EmailService):
         self.region = config.region or 'us-east-1'
         self.from_email = config.from_email
         
-    def send_email(self, to_email: str, subject: str, content: str) -> bool:
+    def send_email(self, to_email: str, subject: str, content: str, html_content: Optional[str] = None) -> bool:
         try:
             import boto3
             from botocore.exceptions import ClientError
             
             ses = boto3.client('ses', region_name=self.region)
+            message_body = {'Text': {'Data': content}}
+            if html_content:
+                message_body['Html'] = {'Data': html_content}
+            
             response = ses.send_email(
                 Source=self.from_email,
                 Destination={'ToAddresses': [to_email]},
                 Message={
                     'Subject': {'Data': subject},
-                    'Body': {'Text': {'Data': content}}
+                    'Body': message_body
                 }
             )
             return True
@@ -115,12 +126,13 @@ class GmailOAuth2Service(EmailService):
         self.credentials = config.credentials
         self.from_email = config.from_email
         
-    def send_email(self, to_email: str, subject: str, content: str) -> bool:
+    def send_email(self, to_email: str, subject: str, content: str, html_content: Optional[str] = None) -> bool:
         try:
             from google.oauth2.credentials import Credentials
             from google.auth.transport.requests import Request
             import base64
             from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
             from googleapiclient.discovery import build
             
             creds = Credentials(**self.credentials)
@@ -128,9 +140,18 @@ class GmailOAuth2Service(EmailService):
                 creds.refresh(Request())
                 
             service = build('gmail', 'v1', credentials=creds)
-            message = MIMEText(content)
-            message['to'] = to_email
-            message['subject'] = subject
+            
+            if html_content:
+                message = MIMEMultipart('alternative')
+                message['to'] = to_email
+                message['subject'] = subject
+                message.attach(MIMEText(content, 'plain'))
+                message.attach(MIMEText(html_content, 'html'))
+            else:
+                message = MIMEText(content)
+                message['to'] = to_email
+                message['subject'] = subject
+            
             raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
             service.users().messages().send(userId='me', body={'raw': raw}).execute()
             return True
@@ -148,16 +169,24 @@ class SMTPFallbackService(EmailService):
         self.use_tls = config.smtp_use_tls
         self.from_email = config.from_email
         
-    def send_email(self, to_email: str, subject: str, content: str) -> bool:
+    def send_email(self, to_email: str, subject: str, content: str, html_content: Optional[str] = None) -> bool:
         try:
             import smtplib
-            from email.message import EmailMessage
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
             
-            msg = EmailMessage()
-            msg["Subject"] = subject
-            msg["From"] = self.from_email
-            msg["To"] = to_email
-            msg.set_content(content)
+            if html_content:
+                msg = MIMEMultipart('alternative')
+                msg["Subject"] = subject
+                msg["From"] = self.from_email
+                msg["To"] = to_email
+                msg.attach(MIMEText(content, 'plain'))
+                msg.attach(MIMEText(html_content, 'html'))
+            else:
+                msg = MIMEText(content)
+                msg["Subject"] = subject
+                msg["From"] = self.from_email
+                msg["To"] = to_email
             
             with smtplib.SMTP(self.host, self.port) as server:
                 if self.use_tls:
@@ -188,13 +217,13 @@ class EmailServiceFactory:
 
 
 # Funzione di utilità per inviare email
-def send_email(to_email: str, subject: str, content: str, config: EmailConfig) -> bool:
+def send_email(to_email: str, subject: str, content: str, config: EmailConfig, html_content: Optional[str] = None) -> bool:
     """
     Invia email usando il provider configurato
     """
     try:
         service = EmailServiceFactory.create_service(config)
-        return service.send_email(to_email, subject, content)
+        return service.send_email(to_email, subject, content, html_content)
     except Exception as e:
         logger.error(f"Email service error: {e}")
         return False

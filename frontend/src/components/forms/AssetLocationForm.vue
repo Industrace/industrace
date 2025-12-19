@@ -62,6 +62,8 @@
             <small v-if="errors.location_id" class="p-error">{{ errors.location_id }}</small>
           </div>
         </div>
+
+        <!-- DEPRECATED: security_zone_id field removed. Use IEC 62443 tab in Asset Detail to manage zone memberships with roles -->
       </div>
     </template>
   </Card>
@@ -78,7 +80,8 @@ const props = defineProps({
   errors: { type: Object, default: () => ({}) },
   sites: { type: Array, required: true },
   allLocations: { type: Array, default: () => [] },
-  allAreas: { type: Array, default: () => [] }
+  allAreas: { type: Array, default: () => [] },
+  securityZones: { type: Array, default: () => [] }
 })
 
 const emit = defineEmits(['site-change', 'area-change'])
@@ -98,6 +101,16 @@ const filteredLocations = computed(() => {
   }
   
   return locations
+})
+
+const filteredSecurityZones = computed(() => {
+  // Filtra le security zones per il sito selezionato
+  if (props.form.site_id && props.securityZones) {
+    return props.securityZones.filter(zone => 
+      !zone.site_id || zone.site_id === props.form.site_id
+    )
+  }
+  return props.securityZones || []
 })
 
 function onSiteChange() {

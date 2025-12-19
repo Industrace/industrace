@@ -9,6 +9,8 @@ from app.init_print_template import init_default_templates
 from app.init_manufacturers import seed_manufacturers
 from app.init_asset_statuses import setup_asset_statuses
 from app.init_asset_types import setup_asset_types
+from app.init_data.init_notification_templates import init_notification_templates
+from app.init_data.init_security_requirements import init_security_requirements
 import uuid
 
 router = APIRouter(prefix="/setup", tags=["setup"])
@@ -81,6 +83,8 @@ def initialize_system(setup_data: SetupRequest, db: Session = Depends(get_db)):
         
         # 4. Inizializza i dati di base
         init_default_templates(tenant_id=tenant.id)
+        init_notification_templates(db)  # System-wide notification templates
+        init_security_requirements(db)  # ISA/IEC 62443 Security Requirements (system-wide)
         seed_manufacturers()
         setup_asset_statuses()
         setup_asset_types()

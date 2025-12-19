@@ -8,6 +8,7 @@
     <AssetDetailHeader
       :asset="asset"
       :riskBreakdown="riskTabRef?.riskBreakdown"
+      :totalRiskScore="riskTabRef?.getTotalRiskScore ? riskTabRef.getTotalRiskScore() : null"
       :canWrite="canWrite"
       @edit="showEditDialog = true"
       @print="openPrintDialog"
@@ -35,7 +36,7 @@
     <TabView class="modern-tabs">
       <TabPanel>
         <template #header>
-          <span :title="t('assets.tabRiskTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+          <span :title="t('assets.tabs.riskTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-exclamation-triangle"></i> {{ t('assets.tabs.risk') }}
           </span>
         </template>
@@ -43,7 +44,7 @@
       </TabPanel>
       <TabPanel>
         <template #header>
-          <span :title="t('assets.tabDocumentsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+          <span :title="t('assets.tabs.documentsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-file"></i> {{ t('assets.tabs.documents') }}
           </span>
         </template>
@@ -51,7 +52,7 @@
       </TabPanel>
       <TabPanel>
         <template #header>
-          <span :title="t('assets.tabContactsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+          <span :title="t('assets.tabs.contactsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-users"></i> {{ t('assets.tabs.contacts') }}
           </span>
         </template>
@@ -62,7 +63,7 @@
       </TabPanel>
       <TabPanel>
         <template #header>
-          <span :title="t('assets.tabNotesTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+          <span :title="t('assets.tabs.notesTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-sticky-note"></i> {{ t('assets.tabs.notes') }}
           </span>
         </template>
@@ -82,7 +83,7 @@
       <!-- NUOVA TAB CONNESSIONI -->
       <TabPanel>
         <template #header>
-          <span :title="t('assets.tabConnectionsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+          <span :title="t('assets.tabs.connectionsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-link"></i> {{ t('assets.tabs.connections') }}
           </span>
         </template>
@@ -91,7 +92,7 @@
       <!-- NUOVA TAB COMUNICAZIONI -->
       <TabPanel>
         <template #header>
-          <span :title="t('assets.tabCommunicationsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+          <span :title="t('assets.tabs.communicationsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-share-alt"></i> {{ t('assets.tabs.communications') }}
           </span>
         </template>
@@ -99,7 +100,7 @@
       </TabPanel>
       <TabPanel>
         <template #header>
-          <span :title="t('assets.tabSuppliersTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+          <span :title="t('assets.tabs.suppliersTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-briefcase"></i> {{ t('assets.tabs.suppliers') }}
           </span>
         </template>
@@ -107,7 +108,7 @@
       </TabPanel>
       <TabPanel>
         <template #header>
-          <span :title="t('assets.tabCustomFieldsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+          <span :title="t('assets.tabs.customFieldsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-list"></i> {{ t('assets.tabs.customFields') }}
           </span>
         </template>
@@ -115,17 +116,54 @@
       </TabPanel>
       <TabPanel>
         <template #header>
-          <span :title="t('assets.tabTimelineTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+          <span :title="t('assets.tabs.reviewTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+            <i class="pi pi-calendar-check"></i> {{ t('assets.tabs.review') }}
+          </span>
+        </template>
+        <AssetDetailReviewTab :assetId="asset.id" :canWrite="canWrite('assets')" @updated="fetchAsset" />
+      </TabPanel>
+      <TabPanel>
+        <template #header>
+          <span :title="t('assets.tabs.dependenciesTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+            <i class="pi pi-sitemap"></i> {{ t('assets.tabs.dependencies') }}
+          </span>
+        </template>
+        <AssetDetailDependenciesTab :assetId="asset.id" :canWrite="canWrite('assets')" @updated="fetchAsset" />
+      </TabPanel>
+      <TabPanel>
+        <template #header>
+          <span :title="t('assets.tabs.vulnerabilitiesTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+            <i class="pi pi-shield"></i> {{ t('assets.tabs.vulnerabilities') }}
+          </span>
+        </template>
+        <AssetDetailVulnerabilitiesTab :assetId="asset.id" :canWrite="canWrite('assets')" @updated="fetchAsset" />
+      </TabPanel>
+      <TabPanel>
+        <template #header>
+          <span :title="t('assets.tabs.timelineTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-clock"></i> {{ t('assets.tabs.timeline') }}
           </span>
         </template>
         <AssetDetailTimelineTab :assetId="asset.id" />
       </TabPanel>
+      <TabPanel>
+        <template #header>
+          <span :title="t('assets.tabs.iec62443Tooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+            <i class="pi pi-shield"></i> {{ t('assets.tabs.iec62443') }}
+          </span>
+        </template>
+        <AssetDetailIEC62443Tab 
+          :assetId="asset.id" 
+          :asset="asset"
+          :canWrite="canWrite('assets')"
+          @updated="fetchAsset"
+        />
+      </TabPanel>
     </TabView>
 
     <!-- Dialogs -->
     <Dialog v-model:visible="showEditDialog" :header="t('common.actions.edit') + ' ' + asset?.name" modal style="width: 60vw; max-width: 700px" :closable="true" :dismissableMask="true">
-      <AssetForm v-if="asset" :asset="asset" :sites="sites" :assetTypes="assetTypes" :allLocations="allLocations" :allAreas="allAreas" :manufacturers="manufacturers" :assetStatusOptions="assetStatusOptions" @submit="onAssetEditSubmit" @cancel="showEditDialog = false" />
+      <AssetForm v-if="asset" :asset="asset" :sites="sites" :assetTypes="assetTypes" :allLocations="allLocations" :allAreas="allAreas" :manufacturers="manufacturers" :assetStatusOptions="assetStatusOptions" :securityZones="securityZones" @submit="onAssetEditSubmit" @cancel="showEditDialog = false" />
     </Dialog>
     <PrintDialog v-model:visible="showPrintDialog" :data="asset" />
 
@@ -161,9 +199,13 @@ import AssetDetailTechnicalInfo from '../components/features/assets/AssetDetailT
 import AssetDetailRiskTab from '../components/features/assets/tabs/AssetDetailRiskTab.vue'
 import AssetDetailDocumentsTab from '../components/features/assets/tabs/AssetDetailDocumentsTab.vue'
 import AssetDetailContactsTab from '../components/features/assets/tabs/AssetDetailContactsTab.vue'
+import AssetDetailReviewTab from '../components/features/assets/tabs/AssetDetailReviewTab.vue'
+import AssetDetailDependenciesTab from '../components/features/assets/tabs/AssetDetailDependenciesTab.vue'
+import AssetDetailVulnerabilitiesTab from '../components/features/assets/tabs/AssetDetailVulnerabilitiesTab.vue'
 import AssetDetailTimelineTab from '../components/features/assets/tabs/AssetDetailTimelineTab.vue'
 import AssetDetailConnectionsTab from '../components/features/assets/tabs/AssetDetailConnectionsTab.vue'
 import AssetDetailCommunicationsTab from '../components/features/assets/tabs/AssetDetailCommunicationsTab.vue'
+import AssetDetailIEC62443Tab from '../components/features/assets/tabs/AssetDetailIEC62443Tab.vue'
 import DOMPurify from 'dompurify'
 const { loadTemplates } = usePrint()
 
@@ -193,6 +235,7 @@ const allLocations = ref([])
 const allAreas = ref([])
 const manufacturers = ref([])
 const assetStatusOptions = ref([])
+const securityZones = ref([])
 
 async function fetchAssetStatuses() {
   try {
@@ -253,6 +296,16 @@ async function fetchManufacturers() {
   }
 }
 
+async function fetchSecurityZones() {
+  try {
+    const response = await api.getSecurityZones()
+    securityZones.value = response.data || []
+  } catch (e) {
+    console.error('Error fetching security zones:', e)
+    securityZones.value = []
+  }
+}
+
 
 // Lifecycle
 onMounted(() => {
@@ -270,6 +323,7 @@ async function initializeAsset() {
     await fetchLocations()
     await fetchAreas()
     await fetchSites()
+    await fetchSecurityZones()
   } finally {
     loading.value = false
   }

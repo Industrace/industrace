@@ -102,7 +102,7 @@ const bulkValue = ref(null)
 
 const bulkFieldOptions = [
   { label: t('common.fields.status'), value: 'status_id' },
-  { label: t(' common.fields.site'), value: 'site_id' },
+  { label: t('common.fields.site'), value: 'site_id' },
   { label: t('common.fields.area'), value: 'area_id' },
   { label: t('common.fields.location'), value: 'location_id' },
   { label: t('common.fields.type'), value: 'asset_type_id' },

@@ -34,12 +34,13 @@
     "selectSuppliers": "Select Suppliers",
     "saveSuppliers": "Save Suppliers"
   },
-  "manufacturerImport": {
+  "supplierImport": {
     "title": "Import Suppliers",
     "downloadTemplate": "Download Template",
     "importantInfo": "Important Information",
     "requiredFields": "Required Fields",
     "nameRequired": "Name is required",
+    "vatRequired": "VAT Number is required",
     "vatNumberRequired": "VAT Number is required",
     "taxCodeRequired": "Tax Code is required",
     "addressRequired": "Address is required",
@@ -48,8 +49,13 @@
     "provinceRequired": "Province is required",
     "countryRequired": "Country is required",
     "validFormats": "Valid Formats",
+    "vatFormat": "VAT Number must be valid",
     "emailFormat": "Email must be in email format",
+    "websiteFormat": "Website must be a valid URL",
     "phoneFormat": "Phone must be in phone format",
+    "tip": "Tip",
+    "tipText": "You can import multiple suppliers at once. Existing suppliers will be updated if they have the same VAT Number.",
+    "differences": "Differences",
     "toCreate": "To Create",
     "toUpdate": "To Update",
     "errors": "Errors",

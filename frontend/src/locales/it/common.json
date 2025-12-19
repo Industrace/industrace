@@ -9,9 +9,11 @@
     "linkedSuppliers": "Fornitori collegati",
     "select": "Seleziona",
     "yes": "Si",
-    "no": "No"
+    "no": "No",
+    "search": "Cerca"
   },
   "actions": {
+    "actions": "Azioni",
     "create": "Crea",
     "edit": "Modifica",
     "delete": "Elimina",
@@ -40,7 +42,7 @@
     "showActive": "Mostra Attivi",
     "showTrash": "Mostra Cestino",
     "bulkEdit": "Modifica in Batch",
-    "bulkEditInfo": "Modifica in Batch {{count}} contatti",
+    "bulkEditInfo": "Modifica in Batch {count} contatti",
     "emptyTrash": "Svuota Cestino",
     "advancedFilters": "Filtri Avanzati",
     "moveToTrash": "Sposta nel cestino",
@@ -78,6 +80,9 @@
     "riskScore": "Punteggio di Rischio",
     "businessCriticality": "Criticità Aziendale"
   },
+  "accessibility": {
+    "skipToContent": "Salta al contenuto principale"
+  },
   "messages": {
     "loading": "Caricamento...",
     "saving": "Salvataggio...",
@@ -97,6 +102,7 @@
     "bulkError": "Errore nella modifica batch",
     "hardDeleted": "Eliminato definitivamente",
     "hardDeleteError": "Errore nell'eliminazione definitiva",
+    "fetchError": "Errore nel caricamento dei dati",
     "restored": "Ripristinato",
     "createError": "Errore in fase di creazione",
     "updateError": "Errore in fase di modifica",

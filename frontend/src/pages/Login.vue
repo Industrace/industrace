@@ -175,7 +175,22 @@ const handleSubmit = async () => {
     router.push('/')
   } catch (error) {
     const errorCode = error.response?.data?.error_code
+    const errorDetail = error.response?.data?.detail
     let message = t('login.messages.error')
+
+    // Gestione specifica per SSO_REQUIRED
+    if (errorCode === 'SSO_REQUIRED') {
+      message = errorDetail || t('login.messages.ssoRequired')
+      toast.add({
+        severity: 'warn',
+        summary: t('login.messages.ssoRequiredTitle'),
+        detail: message,
+        life: 7000
+      })
+      // Opzionalmente, potresti reindirizzare al login SSO qui
+      // router.push('/auth/sso/azure_ad/authorize')
+      return
+    }
 
     // Prova a ottenere la traduzione specifica per il codice di errore
     if (errorCode) {
@@ -183,6 +198,8 @@ const handleSubmit = async () => {
       // Se la traduzione esiste e non è uguale alla chiave, usala
       if (translatedError && translatedError !== `errors.${errorCode}`) {
         message = translatedError
+      } else if (errorDetail) {
+        message = errorDetail
       }
     }
 

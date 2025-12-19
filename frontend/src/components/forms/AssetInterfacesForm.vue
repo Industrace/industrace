@@ -342,7 +342,25 @@ export default {
         }
       }
       this.dialogData.details = details;
-      this.dialogData.type = this.dialogData.type === 'other' ? this.dialogData.type_custom : this.dialogData.type;
+      // Normalizza il tipo: se è un tipo standard, capitalizza la prima lettera per consistenza
+      let typeToSave = this.dialogData.type === 'other' ? this.dialogData.type_custom : this.dialogData.type;
+      // Normalizza i tipi standard (ethernet -> Ethernet, wifi -> Wi-Fi, etc.)
+      const typeMap = {
+        'ethernet': 'Ethernet',
+        'fiber': 'Fiber',
+        'fibra': 'Fiber',
+        'serial': 'Serial',
+        'seriale': 'Serial',
+        'wifi': 'Wi-Fi',
+        'wi-fi': 'Wi-Fi'
+      };
+      if (typeMap[typeToSave?.toLowerCase()]) {
+        typeToSave = typeMap[typeToSave.toLowerCase()];
+      } else if (typeToSave && typeToSave !== 'other') {
+        // Capitalizza la prima lettera per tipi custom
+        typeToSave = typeToSave.charAt(0).toUpperCase() + typeToSave.slice(1).toLowerCase();
+      }
+      this.dialogData.type = typeToSave;
       // Add asset_id and tenant_id
       this.dialogData.asset_id = this.assetId;
       this.dialogData.tenant_id = this.tenantId;
@@ -395,7 +413,23 @@ export default {
         this.$toast?.add({ severity: 'error', summary: 'Error', detail: 'Unable to determine asset_id or tenant_id', life: 3000 });
         return;
       }
-      const typeToUse = this.bulkType === 'other' ? this.bulkTypeCustom : this.bulkType;
+      let typeToUse = this.bulkType === 'other' ? this.bulkTypeCustom : this.bulkType;
+      // Normalizza il tipo: capitalizza la prima lettera per consistenza
+      const typeMap = {
+        'ethernet': 'Ethernet',
+        'fiber': 'Fiber',
+        'fibra': 'Fiber',
+        'serial': 'Serial',
+        'seriale': 'Serial',
+        'wifi': 'Wi-Fi',
+        'wi-fi': 'Wi-Fi'
+      };
+      if (typeMap[typeToUse?.toLowerCase()]) {
+        typeToUse = typeMap[typeToUse.toLowerCase()];
+      } else if (typeToUse && typeToUse !== 'other') {
+        // Capitalizza la prima lettera per tipi custom
+        typeToUse = typeToUse.charAt(0).toUpperCase() + typeToUse.slice(1).toLowerCase();
+      }
       const interfaces = [];
       for (let i = 1; i <= this.bulkCount; i++) {
         interfaces.push({

@@ -2,7 +2,12 @@
   <div>
     <h2>{{ t('assets.connections.title') }}</h2>
     <Button :label="t('assets.connections.addConnection')" icon="pi pi-plus" class="mb-3" @click="showAddConnectionDialog = true" />
-    <AssetConnectionsTable :connections="mappedConnections" @edit-connection="onEditConnection" @delete-connection="onDeleteConnection" />
+    <AssetConnectionsTable 
+      :connections="mappedConnections" 
+      @edit-connection="onEditConnection" 
+      @delete-connection="onDeleteConnection"
+      @create-dependency="onCreateDependency"
+    />
     <AssetConnectionGraph :connections="mappedConnections" />
     
     <!-- Dialog per aggiungere connessione -->
@@ -22,6 +27,24 @@
         </div>
         <Button :label="t('common.actions.save')" icon="pi pi-check" class="mt-3" @click="addConnection" :disabled="!selectedLocalInterface || !selectedRemoteAsset || !selectedRemoteInterface" />
       </div>
+    </Dialog>
+
+    <!-- Dialog per creare dipendenza da connessione -->
+    <Dialog 
+      v-model:visible="showCreateDependencyDialog" 
+      :header="t('assetDependencies.createDependencyFromConnection')" 
+      modal 
+      style="width: 600px" 
+      :closable="true" 
+      :dismissableMask="true"
+    >
+      <AssetDependencyForm 
+        v-if="suggestedDependencyData"
+        :assetId="assetId"
+        :suggestedData="suggestedDependencyData"
+        @submit="handleCreateDependency"
+        @cancel="showCreateDependencyDialog = false"
+      />
     </Dialog>
 
     <!-- Dialog per modificare connessione -->
@@ -55,6 +78,7 @@ import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 import AssetConnectionsTable from '@/components/tables/AssetConnectionsTable.vue'
 import AssetConnectionGraph from '../components/AssetConnectionGraph.vue'
+import AssetDependencyForm from './components/AssetDependencyForm.vue'
 import api from '@/api/api'
 
 const props = defineProps({
@@ -82,6 +106,8 @@ const editConnectionData = ref({
   interfaceB: { id: null },
   id: null
 })
+const showCreateDependencyDialog = ref(false)
+const suggestedDependencyData = ref(null)
 
 // Computed
 const localInterfaces = computed(() => props.assetInterfaces || [])
@@ -90,38 +116,55 @@ const remoteInterfaces = computed(() => {
   if (!selectedRemoteAsset.value) return []
   const assetObj = remoteAssets.value.find(a => a.id === selectedRemoteAsset.value)
   if (!assetObj) return []
-  if (!selectedLocalInterface.value) return assetObj.interfaces
+  if (!selectedLocalInterface.value) return assetObj.interfaces || []
   const localType = localInterfaces.value.find(i => i.id === selectedLocalInterface.value)?.type
-  return assetObj.interfaces.filter(i => i.type === localType)
+  if (!localType) return assetObj.interfaces || []
+  // Matching case-insensitive per gestire "Ethernet" vs "ethernet"
+  const localTypeLower = String(localType).toLowerCase()
+  return (assetObj.interfaces || []).filter(i => {
+    if (!i || !i.type) return false
+    return String(i.type).toLowerCase() === localTypeLower
+  })
 })
 
 const editRemoteInterfaces = computed(() => {
   if (!editConnectionData.value?.assetB?.id) return []
   const assetObj = remoteAssets.value.find(a => a.id === editConnectionData.value.assetB.id)
   if (!assetObj) return []
-  if (!editConnectionData.value.interfaceA?.id) return assetObj.interfaces
+  if (!editConnectionData.value.interfaceA?.id) return assetObj.interfaces || []
   const localType = localInterfaces.value.find(i => i.id === editConnectionData.value.interfaceA.id)?.type
-  return assetObj.interfaces.filter(i => i.type === localType)
+  if (!localType) return assetObj.interfaces || []
+  // Matching case-insensitive per gestire "Ethernet" vs "ethernet"
+  const localTypeLower = String(localType).toLowerCase()
+  return (assetObj.interfaces || []).filter(i => {
+    if (!i || !i.type) return false
+    return String(i.type).toLowerCase() === localTypeLower
+  })
 })
 
 const mappedConnections = computed(() =>
   connections.value
     .map(conn => {
+      const mapped = {
+        id: conn.id,
+        dependency_status: conn.dependency_status
+      }
+      
       if (conn.parent_asset_id === props.assetId) {
         return {
+          ...mapped,
           interfaceA: conn.local_interface,
           assetA: conn.parent_asset,
           interfaceB: conn.remote_interface,
-          assetB: conn.child_asset,
-          id: conn.id
+          assetB: conn.child_asset
         }
       } else {
         return {
+          ...mapped,
           interfaceA: conn.remote_interface,
           assetA: conn.child_asset,
           interfaceB: conn.local_interface,
-          assetB: conn.parent_asset,
-          id: conn.id
+          assetB: conn.parent_asset
         }
       }
     })
@@ -136,21 +179,34 @@ const mappedConnections = computed(() =>
 async function fetchConnections() {
   if (!props.assetId) return
   try {
-    const res = await api.getAssetConnections(props.assetId)
-    connections.value = res.data
+    // Carica connessioni con dependency_status incluso
+    const res = await api.get(`/assets/${props.assetId}/connections`, {
+      params: { include_dependency_status: true }
+    })
+    connections.value = res.data || []
     // Popola nodi e archi per il grafo
     const nodesSet = new Set()
     const edgesArr = []
     res.data.forEach(conn => {
+      // Gestisci entrambi i formati (con o senza dependency_status)
+      const parentAsset = conn.parent_asset || conn.local_asset
+      const childAsset = conn.child_asset || conn.remote_asset
+      const localInterface = conn.local_interface
+      const remoteInterface = conn.remote_interface
+      
       // Aggiungi nodi
-      if (conn.local_asset) nodesSet.add(JSON.stringify({ id: conn.local_asset.id, label: conn.local_asset.name }))
-      if (conn.remote_asset) nodesSet.add(JSON.stringify({ id: conn.remote_asset.id, label: conn.remote_asset.name }))
+      if (parentAsset) {
+        nodesSet.add(JSON.stringify({ id: parentAsset.id, label: parentAsset.name }))
+      }
+      if (childAsset) {
+        nodesSet.add(JSON.stringify({ id: childAsset.id, label: childAsset.name }))
+      }
       // Aggiungi edge
-      if (conn.local_asset && conn.remote_asset && conn.local_interface && conn.remote_interface) {
+      if (parentAsset && childAsset && localInterface && remoteInterface) {
         edgesArr.push({
-          from: conn.local_asset.id,
-          to: conn.remote_asset.id,
-          label: `${conn.local_interface.name} ↔ ${conn.remote_interface.name}`,
+          from: parentAsset.id,
+          to: childAsset.id,
+          label: `${localInterface.name} ↔ ${remoteInterface.name}`,
           color: '#2196f3'
         })
       }
@@ -158,16 +214,48 @@ async function fetchConnections() {
     connectionsNodes.value = Array.from(nodesSet).map(s => JSON.parse(s))
     connectionsEdges.value = edgesArr
   } catch (e) {
-    toast.add({ severity: 'error', summary: t('common.strings.error'), detail: t('assets.connections.fetchError') })
+    console.error('Error fetching connections:', e)
+    console.error('Error response:', e.response?.data)
+    toast.add({ 
+      severity: 'error', 
+      summary: t('common.strings.error'), 
+      detail: e.response?.data?.detail || e.message || t('assets.connections.fetchError') 
+    })
   }
 }
 
 async function fetchRemoteAssets() {
   try {
-    const res = await api.getAssets({ include_interfaces: true })
-    remoteAssets.value = res.data.filter(a => a.id !== props.assetId)
+    // Carica tutti gli asset con interfacce (aumenta il limite per assicurarsi di avere tutti gli asset)
+    const res = await api.getAssets({ include_interfaces: true, limit: 1000 })
+    
+    // La risposta è paginata: { data: [...], total: ..., skip: ..., limit: ... }
+    const assetsArray = res.data?.data || res.data || []
+    
+    if (!Array.isArray(assetsArray)) {
+      console.error('fetchRemoteAssets - Invalid response format:', res)
+      remoteAssets.value = []
+      return
+    }
+    
+    // Normalizza gli ID per il confronto (gestisce sia stringhe che UUID)
+    const currentAssetId = String(props.assetId)
+    const filtered = assetsArray.filter(a => {
+      if (!a || !a.id) return false
+      const assetId = String(a.id)
+      return assetId !== currentAssetId
+    })
+    
+    remoteAssets.value = filtered
   } catch (e) {
+    console.error('Error fetching remote assets:', e)
+    console.error('Error response:', e.response?.data)
     remoteAssets.value = []
+    toast.add({ 
+      severity: 'error', 
+      summary: t('common.strings.error'), 
+      detail: e.response?.data?.detail || e.message || 'Errore nel caricamento degli asset remoti' 
+    })
   }
 }
 
@@ -243,6 +331,26 @@ async function saveEditConnection() {
   }
 }
 
+async function onCreateDependency(connectionRow) {
+  try {
+    // Trova la connessione originale
+    const connection = connections.value.find(c => c.id === connectionRow.id)
+    if (!connection) return
+    
+    // Ottieni suggerimento dal backend
+    const res = await api.get(`/assets/${props.assetId}/connections/${connection.id}/suggest-dependency`)
+    suggestedDependencyData.value = res.data
+    showCreateDependencyDialog.value = true
+  } catch (e) {
+    console.error('Error getting dependency suggestion:', e)
+    toast.add({ 
+      severity: 'error', 
+      summary: t('common.messages.error'), 
+      detail: t('assetDependencies.errorLoading') 
+    })
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   await fetchConnections()
@@ -259,4 +367,24 @@ watch(() => props.assetId, async (newId, oldId) => {
 watch(showAddConnectionDialog, val => {
   if (val) fetchRemoteAssets()
 })
+
+async function handleCreateDependency(dependencyData) {
+  try {
+    await api.createAssetDependency(dependencyData)
+    toast.add({ 
+      severity: 'success', 
+      summary: t('common.messages.success'), 
+      detail: t('assetDependencies.dependencyAdded') 
+    })
+    showCreateDependencyDialog.value = false
+    suggestedDependencyData.value = null
+    await fetchConnections() // Ricarica per aggiornare i badge
+  } catch (e) {
+    toast.add({ 
+      severity: 'error', 
+      summary: t('common.messages.error'), 
+      detail: e.response?.data?.detail || t('assetDependencies.errorAdding') 
+    })
+  }
+}
 </script> 

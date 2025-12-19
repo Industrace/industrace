@@ -4,6 +4,7 @@ import Login from './pages/Login.vue'
 import Dashboard from './pages/Dashboard.vue'
 import Assets from './pages/Assets.vue'
 import AssetDetail from './pages/AssetDetail.vue'
+import AssetDetailNew from './pages/AssetDetailNew.vue'
 import SiteDetail from './pages/SiteDetail.vue'
 import Suppliers from './pages/Suppliers.vue'
 import SupplierDetail from './pages/SupplierDetail.vue'
@@ -26,6 +27,7 @@ import Setup from './pages/Setup.vue'
 import SetupWizard from './pages/SetupWizard.vue'
 import Profile from './pages/Profile.vue'
 import NetworkMap from './pages/NetworkMap.vue'
+import AssetReviews from './pages/AssetReviews.vue'
 import api from './api/api'
 import { useAuthStore } from './store/auth'
 
@@ -34,6 +36,14 @@ const routes = [
   { path: '/', name: 'Dashboard', component: Dashboard, meta: { requiresAuth: true } },
   { path: '/assets', name: 'Assets', component: Assets, meta: { requiresAuth: true } },
   { path: '/assets/:id', name: 'AssetDetail', component: AssetDetail, meta: { requiresAuth: true } },
+  { path: '/assets-new/:id', name: 'AssetDetailNew', component: AssetDetailNew, meta: { requiresAuth: true } },
+  { path: '/asset-reviews', name: 'AssetReviews', component: AssetReviews, meta: { requiresAuth: true } },
+  { path: '/notifications', name: 'Notifications', component: () => import('./pages/Notifications.vue'), meta: { requiresAuth: true } },
+  { path: '/security-zones', name: 'SecurityZones', component: () => import('./pages/SecurityZones.vue'), meta: { requiresAuth: true } },
+  { path: '/security-zones/:id', name: 'SecurityZoneDetail', component: () => import('./pages/SecurityZoneDetail.vue'), meta: { requiresAuth: true } },
+  { path: '/conduits', name: 'Conduits', component: () => import('./pages/Conduits.vue'), meta: { requiresAuth: true } },
+  { path: '/compliance', name: 'Compliance', component: () => import('./pages/Compliance.vue'), meta: { requiresAuth: true } },
+  { path: '/sso-config', name: 'SSOConfig', component: () => import('./pages/SSOConfig.vue'), meta: { requiresAuth: true } },
   { path: '/sites', name: 'Sites', component: Sites, meta: { requiresAuth: true } },
   { path: '/sites/:id', name: 'SiteDetail', component: SiteDetail, meta: { requiresAuth: true } },
   { path: '/areas', name: 'Areas', component: Areas, meta: { requiresAuth: true } },
@@ -55,6 +65,9 @@ const routes = [
   { path: '/roles/:id', name: 'RoleDetails', component: RoleDetails, meta: { requiresAuth: true } },
   { path: '/setup', name: 'Setup', component: Setup, meta: { requiresAuth: true } },
   { path: '/setup-wizard', name: 'SetupWizard', component: SetupWizard, meta: { requiresAuth: true } },
+  { path: '/vulnerability-feeds', name: 'VulnerabilityFeeds', component: () => import('./pages/VulnerabilityFeeds.vue'), meta: { requiresAuth: true } },
+  { path: '/vulnerabilities', name: 'Vulnerabilities', component: () => import('./pages/Vulnerabilities.vue'), meta: { requiresAuth: true } },
+  { path: '/vulnerabilities/:id', name: 'VulnerabilityDetail', component: () => import('./pages/VulnerabilityDetail.vue'), meta: { requiresAuth: true } },
   { path: '/profile', name: 'Profile', component: Profile, meta: { requiresAuth: true } },
   { path: '/network-map', name: 'NetworkMap', component: NetworkMap, meta: { requiresAuth: true } },
   { path: '/logout', name: 'Logout', beforeEnter: (to, from, next) => {

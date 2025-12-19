@@ -9,9 +9,11 @@
     "linkedSuppliers": "Linked suppliers",
     "select": "Select",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "search": "Search"
   },
   "actions": {
+    "actions": "Actions",
     "create": "Create",
     "edit": "Edit",
     "delete": "Delete",
@@ -40,7 +42,7 @@
     "showActive": "Show Active",
     "showTrash": "Show Trash",
     "bulkEdit": "Bulk Edit",
-    "bulkEditInfo": "Bulk edit {{count}} contacts",
+    "bulkEditInfo": "Bulk edit {count} contacts",
     "emptyTrash": "Empty Trash",
     "emptyTrashConfirm": "Are you sure you want to empty the trash?",
     "emptyTrashWarning": "This action cannot be undone",
@@ -82,6 +84,9 @@
     "filename": "Filename",
     "uploadedAt": "Uploaded at"
   },
+  "accessibility": {
+    "skipToContent": "Skip to main content"
+  },
   "messages": {
     "loading": "Loading...",
     "saving": "Saving...",
@@ -101,6 +106,7 @@
     "bulkError": "Error in batch update",
     "hardDeleted": "Hard deleted successfully",
     "hardDeleteError": "Error in hard deletion",
+    "fetchError": "Error loading data",
     "restored": "Restored",
     "createError": "Error in creation",
     "updateError": "Error in update",

@@ -2,6 +2,10 @@
   "navigation": {
     "dashboard": "Dashboard",
     "assets": "Assets",
+    "assetReviews": "Asset Reviews",
+    "securityZones": "Security Zones",
+    "conduits": "Conduits",
+    "compliance": "ISA/IEC 62443 Compliance",
     "assettypes": "Asset Types",
     "assetstatuses": "Asset Statuses",
     "sites": "Sites",
@@ -12,10 +16,13 @@
     "contacts": "Contacts",
     "users": "Users",
     "roles": "Roles",
+    "notifications": "Notifications",
+    "ssoConfig": "SSO Configuration",
     "networkMap": "Network Map",
     "profile": "Profile",
     "pcap": "PCAP",
     "auditLogs": "Audit Logs",
+    "vulnerabilities": "Vulnerabilities",
     "setup": "Setup",
     "settings": "Settings",
     "logout": "Logout",
@@ -24,6 +31,7 @@
   "section": {
     "management": "Management",
     "registry": "Registry",
-    "utility": "Utility"
+    "utility": "Utility",
+    "isa62443": "ISA/IEC 62443"
   }
 }

@@ -20,10 +20,33 @@
   "alerts": "Alerts",
   "actions": {
     "viewAllAssets": "View All Assets",
-    "recalculateRiskScores": "Recalculate Risk Scores"
+    "recalculateRiskScores": "Recalculate Risk Scores",
+    "viewAll": "View All"
   },
   "tables": {
     "topRiskyAssets": "Top Risky Assets",
     "latestAssets": "Latest Assets"
+  },
+  "widgets": {
+    "assetReviews": "Asset Reviews",
+    "overdueReviews": "Overdue Reviews",
+    "dueReviews": "Due Reviews",
+    "recentOverdue": "Recent Overdue",
+    "missingDependencies": "Missing Dependencies",
+    "missingDeps": "Missing Dependencies",
+    "criticalMissing": "Critical Missing",
+    "totalConnections": "Total Connections",
+    "vulnerabilities": "Vulnerabilities",
+    "criticalUnpatched": "Critical Unpatched",
+    "highUnpatched": "High Unpatched",
+    "totalUnpatched": "Total Unpatched",
+    "compliance": "ISA/IEC 62443 Compliance",
+    "nonCompliantZones": "Non-Compliant Zones",
+    "partialCompliantZones": "Partially Compliant Zones",
+    "compliantZones": "Compliant Zones",
+    "totalZones": "Total Zones"
+  },
+  "messages": {
+    "allSystemsOperational": "All systems operational"
   }
 }

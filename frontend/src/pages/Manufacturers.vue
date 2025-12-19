@@ -319,7 +319,7 @@ async function fetchManufacturers() {
     manufacturers.value = response.data
     return response
   }, {
-    errorContext: t('common.fetchError'),
+    errorContext: t('common.messages.fetchError'),
     showToast: false
   })
 }
@@ -329,7 +329,7 @@ function openCreateDialog() {
 }
 
 function openEditDialog(manufacturer) {
-  openEdit(t('common.edit'), manufacturer)
+  openEdit(t('common.actions.edit'), manufacturer)
 }
 
 function openBulkEditDialog() {

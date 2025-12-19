@@ -1,6 +1,6 @@
 {
     "powered_by": "Powered by",
-    "copyright": "Copyright {{year}} BeSafe",
+    "copyright": "Copyright {year} BeSafe",
     "license": "License",
     "github": "GitHub",
     "report_bug": "Report Bug"

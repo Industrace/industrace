@@ -2,6 +2,10 @@
 "navigation": {
     "dashboard": "Dashboard",
     "assets": "Dispositivi",
+    "assetReviews": "Review Asset",
+    "securityZones": "Security Zones",
+    "conduits": "Conduits",
+    "compliance": "Compliance ISA/IEC 62443",
     "assettypes": "Tipi di Dispositivi",
     "assetstatuses": "Stati di Dispositivi",
     "sites": "Siti",
@@ -12,10 +16,13 @@
     "contacts": "Contatti",
     "users": "Utenti",
     "roles": "Ruoli",
+    "notifications": "Notifiche",
+    "ssoConfig": "Configurazione SSO",
     "networkMap": "Mappa di Rete",
     "profile": "Profilo",
     "pcap": "PCAP",
     "auditLogs": "Log di Audit",
+    "vulnerabilities": "Vulnerabilità",
     "setup": "Setup",
     "settings": "Impostazioni",
     "logout": "Esci",
@@ -24,6 +31,7 @@
 "section": {
     "management": "Gestione",
     "registry": "Inventario",
-    "utility": "Utility"
+    "utility": "Utility",
+    "isa62443": "ISA/IEC 62443"
     }
 }

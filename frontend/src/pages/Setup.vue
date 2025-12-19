@@ -8,6 +8,62 @@
     </div>
 
     <div class="setup-tiles">
+      <!-- SSO Configuration Tile -->
+      <div class="setup-tile" @click="goToSSO">
+        <div class="tile-icon">
+          <i class="pi pi-lock"></i>
+        </div>
+        <div class="tile-content">
+          <h3>{{ $t('setup.strings.sso.title') }}</h3>
+          <p>{{ $t('setup.strings.sso.description') }}</p>
+        </div>
+        <div class="tile-status">
+          <i class="pi pi-arrow-right"></i>
+        </div>
+      </div>
+
+      <!-- Users Management Tile -->
+      <div class="setup-tile" @click="goToUsers">
+        <div class="tile-icon">
+          <i class="pi pi-users"></i>
+        </div>
+        <div class="tile-content">
+          <h3>{{ $t('setup.strings.users.title') }}</h3>
+          <p>{{ $t('setup.strings.users.description') }}</p>
+        </div>
+        <div class="tile-status">
+          <i class="pi pi-arrow-right"></i>
+        </div>
+      </div>
+
+      <!-- Roles Management Tile -->
+      <div class="setup-tile" @click="goToRoles">
+        <div class="tile-icon">
+          <i class="pi pi-key"></i>
+        </div>
+        <div class="tile-content">
+          <h3>{{ $t('setup.strings.roles.title') }}</h3>
+          <p>{{ $t('setup.strings.roles.description') }}</p>
+        </div>
+        <div class="tile-status">
+          <i class="pi pi-arrow-right"></i>
+        </div>
+      </div>
+
+      <!-- Notifications Management Tile -->
+      <div class="setup-tile" @click="goToNotifications">
+        <div class="tile-icon">
+          <i class="pi pi-bell"></i>
+        </div>
+        <div class="tile-content">
+          <h3>{{ $t('setup.strings.notifications.title') }}</h3>
+          <p>{{ $t('setup.strings.notifications.description') }}</p>
+        </div>
+        <div class="tile-status">
+          <i class="pi pi-arrow-right"></i>
+        </div>
+      </div>
+
       <!-- SMTP Configuration Tile -->
       <div class="setup-tile" @click="openSmtpDialog">
         <div class="tile-icon">
@@ -22,7 +78,7 @@
         </div>
       </div>
 
-      <!-- Print Templates Tile - Semplificato -->
+      <!-- Print Templates Tile -->
       <div class="setup-tile" @click="openTemplatesDialog">
         <div class="tile-icon">
           <i class="pi pi-print"></i>
@@ -36,7 +92,7 @@
         </div>
       </div>
 
-      <!-- Printed Kit Tile - Nuovo -->
+      <!-- Printed Kit Tile -->
       <div class="setup-tile" @click="openPrintedKitDialog">
         <div class="tile-icon">
           <i class="pi pi-book"></i>
@@ -47,6 +103,20 @@
         </div>
         <div class="tile-status">
           <i class="pi pi-download"></i>
+        </div>
+      </div>
+
+      <!-- Vulnerability Feeds Tile -->
+      <div class="setup-tile" @click="goToVulnerabilityFeeds">
+        <div class="tile-icon">
+          <i class="pi pi-shield"></i>
+        </div>
+        <div class="tile-content">
+          <h3>{{ $t('setup.strings.vulnerabilityFeeds.title') }}</h3>
+          <p>{{ $t('setup.strings.vulnerabilityFeeds.description') }}</p>
+        </div>
+        <div class="tile-status">
+          <i class="pi pi-arrow-right"></i>
         </div>
       </div>
 
@@ -215,6 +285,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import api from '@/api/api'
 
@@ -228,6 +299,7 @@ import Checkbox from 'primevue/checkbox'
 
 const { t, locale } = useI18n()
 const toast = useToast()
+const router = useRouter()
 
 // Computed properties for arrays
 const printedKitItems = computed(() => {
@@ -257,7 +329,8 @@ const smtpConfig = ref({
   username: '',
   password: '',
   from_email: '',
-  use_tls: true
+  use_tls: true,
+  provider: 'smtp'
 })
 
 const kitOptions = ref({
@@ -270,7 +343,7 @@ const kitOptions = ref({
 // Methods
 const loadSmtpConfig = async () => {
   try {
-    const response = await api.get('/smtp-config')
+    const response = await api.getSMTPConfig()
     if (response.data) {
       smtpConfig.value = response.data
       smtpConfigured.value = true
@@ -292,21 +365,34 @@ const checkTemplatesStatus = async () => {
 const saveSmtpConfig = async () => {
   try {
     savingSmtp.value = true
-    await api.post('/smtp-config', smtpConfig.value)
+    // Validazione base
+    if (!smtpConfig.value.host || !smtpConfig.value.port || !smtpConfig.value.from_email) {
+      toast.add({
+        severity: 'warn',
+        summary: t('common.messages.warning'),
+        detail: 'Compila tutti i campi obbligatori (Host, Porta, From Email)',
+        life: 3000
+      })
+      savingSmtp.value = false
+      return
+    }
+    await api.setSMTPConfig(smtpConfig.value)
     smtpConfigured.value = true
     toast.add({
       severity: 'success',
       summary: t('common.messages.success'),
-      detail: t('setup.strings.smtp.smtpSaved'),
+      detail: t('setup.messages.smtpSaved'),
       life: 3000
     })
     smtpDialogVisible.value = false
   } catch (error) {
+    console.error('Error saving SMTP config:', error)
+    const errorMessage = error.response?.data?.detail || t('setup.messages.smtpSaveError')
     toast.add({
       severity: 'error',
       summary: t('common.messages.error'),
-      detail: t('setup.strings.smtp.smtpSaveError'),
-      life: 3000
+      detail: errorMessage,
+      life: 5000
     })
   } finally {
     savingSmtp.value = false
@@ -316,19 +402,21 @@ const saveSmtpConfig = async () => {
 const testSmtpConnection = async () => {
   try {
     testingConnection.value = true
-    await api.post('/smtp-config/test', smtpConfig.value)
+    await api.testSMTPConfig(smtpConfig.value)
     toast.add({
       severity: 'success',
       summary: t('common.messages.success'),
-      detail: t('setup.strings.smtp.smtpTestSuccess'),
+      detail: t('setup.messages.smtpTestSuccess'),
       life: 3000
     })
   } catch (error) {
+    console.error('Error testing SMTP connection:', error)
+    const errorMessage = error.response?.data?.detail || t('setup.messages.smtpTestError')
     toast.add({
       severity: 'error',
       summary: t('common.messages.error'),
-      detail: t('setup.strings.smtp.smtpTestError'),
-      life: 3000
+      detail: errorMessage,
+      life: 5000
     })
   } finally {
     testingConnection.value = false
@@ -418,6 +506,26 @@ const generatePrintedKit = async () => {
   } finally {
     generatingKit.value = false
   }
+}
+
+const goToSSO = () => {
+  router.push('/sso-config')
+}
+
+const goToUsers = () => {
+  router.push('/users')
+}
+
+const goToRoles = () => {
+  router.push('/roles')
+}
+
+const goToNotifications = () => {
+  router.push('/notifications')
+}
+
+const goToVulnerabilityFeeds = () => {
+  router.push('/vulnerability-feeds')
 }
 
 const openSmtpDialog = () => {

@@ -25,11 +25,11 @@ def setup_asset_statuses(tenant_id=None):
             return
 
         stati = [
-            {"name": "Active", "description": "Operational asset"},
-            {"name": "Disposed", "description": "Asset no longer in use"},
-            {"name": "In stock", "description": "Asset in stock"},
-            {"name": "Faulty", "description": "Faulty asset"},
-            {"name": "In maintenance", "description": "Asset in maintenance"},
+            {"name": "Active", "description": "Operational asset", "color": "#10b981"},  # Green
+            {"name": "Disposed", "description": "Asset no longer in use", "color": "#6b7280"},  # Gray
+            {"name": "In stock", "description": "Asset in stock", "color": "#3b82f6"},  # Blue
+            {"name": "Faulty", "description": "Faulty asset", "color": "#ef4444"},  # Red
+            {"name": "In maintenance", "description": "Asset in maintenance", "color": "#f59e0b"},  # Amber/Orange
         ]
         
         created_statuses = []

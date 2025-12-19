@@ -33,6 +33,9 @@ help:
 	@echo "  make list-tenants - List all available tenants"
 	@echo "  make list-admins TENANT_SLUG=\"my-company\" - List admin users in tenant"
 	@echo ""
+	@echo "🔒 Security & Compliance:"
+	@echo "  make reset-security-requirements - Reset ISA/IEC 62443 Security Requirements"
+	@echo ""
 
 
 # Add demo data to existing system
@@ -325,3 +328,8 @@ list-admins:
 		exit 1; \
 	fi
 	docker-compose -f docker-compose.prod.yml exec backend python app/reset_password.py list-admins "$(TENANT_SLUG)"
+
+# Reset Security Requirements
+reset-security-requirements:
+	@echo "🔄 Resetting ISA/IEC 62443 Security Requirements..."
+	docker-compose -f docker-compose.prod.yml exec backend python app/reset_security_requirements.py

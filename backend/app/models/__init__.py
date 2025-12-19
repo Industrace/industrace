@@ -19,6 +19,36 @@ from .print_template import PrintTemplate
 from .print_history import PrintHistory
 from .api_key import ApiKey
 
+# Notification models
+from .notification_template import NotificationTemplate
+from .notification_preference import NotificationPreference
+from .notification_queue import NotificationQueue
+from .notification_log import NotificationLog
+
+# ISA/IEC 62443 Capability-based models
+from .security_capability import SecurityCapability
+from .sr_capability import SRCapability
+from .asset_capability import AssetCapability
+from .sr_assessment import SRAssessment
+from .sr_assessment_evidence import SRAssessmentEvidence
+from .conduit_asset import ConduitAsset
+
+# ISA/IEC 62443 models
+from .security_requirement import SecurityRequirement
+from .security_zone import SecurityZone
+from .conduit import Conduit
+from .security_requirement_compliance import SecurityRequirementCompliance
+from .asset_zone_membership import AssetZoneMembership
+
+# Asset Dependencies
+from .asset_dependency import AssetDependency
+
+# Vulnerability Intelligence
+from .vulnerability import Vulnerability, AssetVulnerability, VulnerabilityFeedSource
+
+# Enterprise Authentication
+from .tenant_sso_config import TenantSSOConfig
+
 # Questi modelli dipendono dagli altri (devono venire dopo)
 from .supplier import Supplier, SupplierDocument
 from .asset import Asset

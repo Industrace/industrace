@@ -35,6 +35,12 @@ asset_contacts = Table(
         ForeignKey("contacts.id", ondelete="CASCADE"),
         primary_key=True,
     ),
+    Column(
+        "role",
+        String(50),
+        nullable=False,
+        server_default="other",
+    ),
 )
 
 asset_suppliers = Table(
@@ -102,6 +108,21 @@ class Asset(Base):
     update_status = Column(String(50), default="manual")  # manual/imported/auto
     risk_score = Column(Float, default=0.0)  # calculated field 0-100
     last_risk_assessment = Column(DateTime, default=func.now())
+    
+    # ISA/IEC 62443
+    security_zone_id = Column(UUID(as_uuid=True), ForeignKey("security_zones.id"), nullable=True, index=True)
+    security_level_target = Column(Integer, nullable=True)  # Target SL (1-4)
+    security_level_achieved = Column(Integer, nullable=True)  # Achieved SL (1-4)
+    isa62443_compliance_status = Column(String(20), nullable=True)  # 'compliant', 'non_compliant', 'partial', 'not_assessed'
+    isa62443_last_assessment = Column(DateTime, nullable=True)
+    
+    # Review and Maintenance
+    last_review_date = Column(DateTime, nullable=True)  # Data ultima verifica/conferma
+    next_review_date = Column(DateTime, nullable=True, index=True)  # Prossima review calcolata
+    review_status = Column(String(20), default="pending", index=True)  # pending/reviewed/overdue/skipped
+    review_notes = Column(Text, nullable=True)  # Note della review
+    review_interval_months = Column(Integer, default=6)  # Intervallo in mesi (default: 6)
+    
     status = relationship("AssetStatus", back_populates="assets")
     site = relationship("Site", back_populates="assets")
     asset_type = relationship("AssetType", back_populates="assets")
@@ -117,3 +138,11 @@ class Asset(Base):
     interfaces = relationship(
         "AssetInterface", back_populates="asset", cascade="all, delete-orphan"
     )
+    security_zone = relationship("SecurityZone", back_populates="assets", foreign_keys=[security_zone_id])
+    # DEPRECATED: security_zone_id è mantenuto per retrocompatibilità
+    # Usare zone_memberships per supportare multiple zone con ruoli diversi
+    zone_memberships = relationship("AssetZoneMembership", back_populates="asset", cascade="all, delete-orphan")
+    compliance_records = relationship("SecurityRequirementCompliance", back_populates="asset")
+    vulnerabilities = relationship("AssetVulnerability", back_populates="asset", cascade="all, delete-orphan")
+    capabilities = relationship("AssetCapability", back_populates="asset", cascade="all, delete-orphan")
+    conduit_assets = relationship("ConduitAsset", back_populates="asset", cascade="all, delete-orphan")

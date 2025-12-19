@@ -190,6 +190,140 @@
       </div>
     </div>
 
+    <!-- Widget Feature Integrate -->
+    <div class="feature-widgets-section">
+      <div class="widget-row">
+        <!-- Asset Reviews Widget -->
+        <div class="simple-card">
+          <div class="card-title">
+            <i class="pi pi-calendar-check"></i>
+            {{ t('dashboard.widgets.assetReviews') }}
+            <Button 
+              v-if="reviewsSummary.overdue_count > 0 || reviewsSummary.due_count > 0"
+              :label="t('dashboard.actions.viewAll')" 
+              icon="pi pi-external-link" 
+              class="p-button-text p-button-sm ml-auto"
+              @click="$router.push('/asset-reviews')"
+            />
+          </div>
+          <div class="widget-content" v-if="!loadingSummaries">
+            <div class="widget-metrics">
+              <div class="widget-metric" :class="{ 'has-issues': reviewsSummary.overdue_count > 0 }">
+                <div class="widget-metric-value">{{ reviewsSummary.overdue_count || 0 }}</div>
+                <div class="widget-metric-label">{{ t('dashboard.widgets.overdueReviews') }}</div>
+              </div>
+              <div class="widget-metric" :class="{ 'has-issues': reviewsSummary.due_count > 0 }">
+                <div class="widget-metric-value">{{ reviewsSummary.due_count || 0 }}</div>
+                <div class="widget-metric-label">{{ t('dashboard.widgets.dueReviews') }}</div>
+              </div>
+            </div>
+            <div v-if="reviewsSummary.overdue_assets && reviewsSummary.overdue_assets.length > 0" class="widget-list">
+              <div class="widget-list-title">{{ t('dashboard.widgets.recentOverdue') }}</div>
+              <div v-for="asset in reviewsSummary.overdue_assets.slice(0, 3)" :key="asset.id" class="widget-list-item">
+                <router-link :to="`/assets/${asset.id}`" class="asset-link">{{ asset.name }}</router-link>
+              </div>
+            </div>
+          </div>
+          <div v-else class="widget-loading">
+            <i class="pi pi-spin pi-spinner"></i>
+          </div>
+        </div>
+
+        <!-- Missing Dependencies Widget -->
+        <div class="simple-card">
+          <div class="card-title">
+            <i class="pi pi-sitemap"></i>
+            {{ t('dashboard.widgets.missingDependencies') }}
+          </div>
+          <div class="widget-content" v-if="!loadingSummaries">
+            <div class="widget-metrics">
+              <div class="widget-metric" :class="{ 'has-issues': dependenciesSummary.missing_dependencies_count > 0 }">
+                <div class="widget-metric-value">{{ dependenciesSummary.missing_dependencies_count || 0 }}</div>
+                <div class="widget-metric-label">{{ t('dashboard.widgets.missingDeps') }}</div>
+              </div>
+              <div class="widget-metric" :class="{ 'has-issues': dependenciesSummary.critical_missing_count > 0 }">
+                <div class="widget-metric-value">{{ dependenciesSummary.critical_missing_count || 0 }}</div>
+                <div class="widget-metric-label">{{ t('dashboard.widgets.criticalMissing') }}</div>
+              </div>
+            </div>
+            <div class="widget-info">
+              <small>{{ t('dashboard.widgets.totalConnections') }}: {{ dependenciesSummary.total_connections || 0 }}</small>
+            </div>
+          </div>
+          <div v-else class="widget-loading">
+            <i class="pi pi-spin pi-spinner"></i>
+          </div>
+        </div>
+
+        <!-- Vulnerabilities Widget -->
+        <div class="simple-card">
+          <div class="card-title">
+            <i class="pi pi-shield"></i>
+            {{ t('dashboard.widgets.vulnerabilities') }}
+            <Button 
+              v-if="vulnerabilitiesSummary.critical_unpatched > 0 || vulnerabilitiesSummary.high_unpatched > 0"
+              :label="t('dashboard.actions.viewAll')" 
+              icon="pi pi-external-link" 
+              class="p-button-text p-button-sm ml-auto"
+              @click="$router.push('/vulnerabilities')"
+            />
+          </div>
+          <div class="widget-content" v-if="!loadingSummaries">
+            <div class="widget-metrics">
+              <div class="widget-metric critical" :class="{ 'has-issues': vulnerabilitiesSummary.critical_unpatched > 0 }">
+                <div class="widget-metric-value">{{ vulnerabilitiesSummary.critical_unpatched || 0 }}</div>
+                <div class="widget-metric-label">{{ t('dashboard.widgets.criticalUnpatched') }}</div>
+              </div>
+              <div class="widget-metric warning" :class="{ 'has-issues': vulnerabilitiesSummary.high_unpatched > 0 }">
+                <div class="widget-metric-value">{{ vulnerabilitiesSummary.high_unpatched || 0 }}</div>
+                <div class="widget-metric-label">{{ t('dashboard.widgets.highUnpatched') }}</div>
+              </div>
+            </div>
+            <div class="widget-info">
+              <small>{{ t('dashboard.widgets.totalUnpatched') }}: {{ vulnerabilitiesSummary.total_unpatched || 0 }}</small>
+            </div>
+          </div>
+          <div v-else class="widget-loading">
+            <i class="pi pi-spin pi-spinner"></i>
+          </div>
+        </div>
+
+        <!-- Compliance Widget -->
+        <div class="simple-card">
+          <div class="card-title">
+            <i class="pi pi-check-circle"></i>
+            {{ t('dashboard.widgets.compliance') }}
+            <Button 
+              v-if="complianceSummary.non_compliant_zones > 0 || complianceSummary.partial_compliant_zones > 0"
+              :label="t('dashboard.actions.viewAll')" 
+              icon="pi pi-external-link" 
+              class="p-button-text p-button-sm ml-auto"
+              @click="$router.push('/compliance')"
+            />
+          </div>
+          <div class="widget-content" v-if="!loadingSummaries">
+            <div class="widget-metrics">
+              <div class="widget-metric" :class="{ 'has-issues': complianceSummary.non_compliant_zones > 0 }">
+                <div class="widget-metric-value">{{ complianceSummary.non_compliant_zones || 0 }}</div>
+                <div class="widget-metric-label">{{ t('dashboard.widgets.nonCompliantZones') }}</div>
+              </div>
+              <div class="widget-metric" :class="{ 'has-issues': complianceSummary.partial_compliant_zones > 0 }">
+                <div class="widget-metric-value">{{ complianceSummary.partial_compliant_zones || 0 }}</div>
+                <div class="widget-metric-label">{{ t('dashboard.widgets.partialCompliantZones') }}</div>
+              </div>
+            </div>
+            <div class="widget-info">
+              <small>{{ t('dashboard.widgets.totalZones') }}: {{ complianceSummary.total_zones || 0 }} | 
+              {{ t('dashboard.widgets.compliantZones') }}: {{ complianceSummary.compliant_zones || 0 }}</small>
+            </div>
+          </div>
+          <div v-else class="widget-loading">
+            <i class="pi pi-spin pi-spinner"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Sezione avvisi e notifiche -->
     <div class="alerts-section">
       <div class="simple-card">
@@ -206,7 +340,15 @@
             <i class="pi pi-exclamation-circle"></i>
             <span>{{ stats.critical_assets }} {{ t('dashboard.stats.criticalAssets') }}</span>
           </div>
-          <div v-if="stats.assets_at_risk === 0 && stats.critical_assets === 0" class="alert-item success">
+          <div v-if="reviewsSummary.overdue_count > 0" class="alert-item warning">
+            <i class="pi pi-calendar-times"></i>
+            <span>{{ reviewsSummary.overdue_count }} {{ t('dashboard.widgets.overdueReviews') }}</span>
+          </div>
+          <div v-if="vulnerabilitiesSummary.critical_unpatched > 0" class="alert-item critical">
+            <i class="pi pi-shield"></i>
+            <span>{{ vulnerabilitiesSummary.critical_unpatched }} {{ t('dashboard.widgets.criticalUnpatched') }}</span>
+          </div>
+          <div v-if="stats.assets_at_risk === 0 && stats.critical_assets === 0 && reviewsSummary.overdue_count === 0 && vulnerabilitiesSummary.critical_unpatched === 0" class="alert-item success">
             <i class="pi pi-check-circle"></i>
             <span>{{ t('dashboard.messages.allSystemsOperational') }}</span>
           </div>
@@ -244,6 +386,11 @@ const assetTypes = ref([])
 const recentAssets = ref([])
 const riskyAssets = ref([])
 const recalculatingRiskScores = ref(false)
+const reviewsSummary = ref({ overdue_count: 0, due_count: 0, overdue_assets: [], due_assets: [] })
+const dependenciesSummary = ref({ total_connections: 0, missing_dependencies_count: 0, critical_missing_count: 0 })
+const vulnerabilitiesSummary = ref({ critical_unpatched: 0, high_unpatched: 0, total_unpatched: 0 })
+const complianceSummary = ref({ total_zones: 0, non_compliant_zones: 0, partial_compliant_zones: 0, compliant_zones: 0 })
+const loadingSummaries = ref(false)
 
 // Chart data
 const assetTypeChartData = ref({ labels: [], datasets: [] })
@@ -347,8 +494,33 @@ const loadDashboardData = async () => {
 
     // Prepara dati per i grafici
     prepareChartData()
+    
+    // Carica summary per nuove feature
+    await loadSummaries()
   } catch (error) {
     console.error('Error loading dashboard data:', error.response?.data || error  )
+  }
+}
+
+// Funzione per caricare i summary
+const loadSummaries = async () => {
+  loadingSummaries.value = true
+  try {
+    const [reviewsRes, depsRes, vulnsRes, complianceRes] = await Promise.all([
+      api.getReviewsSummary().catch(() => ({ data: { overdue_count: 0, due_count: 0, overdue_assets: [], due_assets: [] } })),
+      api.getDependenciesSummary().catch(() => ({ data: { total_connections: 0, missing_dependencies_count: 0, critical_missing_count: 0 } })),
+      api.getVulnerabilitiesSummary().catch(() => ({ data: { critical_unpatched: 0, high_unpatched: 0, total_unpatched: 0 } })),
+      api.getComplianceSummary().catch(() => ({ data: { total_zones: 0, non_compliant_zones: 0, partial_compliant_zones: 0, compliant_zones: 0 } }))
+    ])
+    
+    reviewsSummary.value = reviewsRes.data
+    dependenciesSummary.value = depsRes.data
+    vulnerabilitiesSummary.value = vulnsRes.data
+    complianceSummary.value = complianceRes.data
+  } catch (error) {
+    console.error('Error loading summaries:', error)
+  } finally {
+    loadingSummaries.value = false
   }
 }
 
@@ -639,6 +811,119 @@ const prepareChartData = () => {
 
 .alert-item i {
   font-size: 1.2rem;
+}
+
+/* Feature Widgets Section */
+.feature-widgets-section {
+  margin-bottom: 2rem;
+}
+
+.widget-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.widget-content {
+  padding: 1.5rem;
+}
+
+.widget-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.widget-metric {
+  text-align: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.widget-metric.has-issues {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+}
+
+.widget-metric.critical.has-issues {
+  background: #f8d7da;
+  border: 1px solid #dc3545;
+}
+
+.widget-metric.warning.has-issues {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+}
+
+.widget-metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2c3e50;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.widget-metric.has-issues .widget-metric-value {
+  color: #856404;
+}
+
+.widget-metric.critical.has-issues .widget-metric-value {
+  color: #721c24;
+}
+
+.widget-metric-label {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.widget-list {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f0f0;
+}
+
+.widget-list-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.widget-list-item {
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.widget-info {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f0f0;
+  text-align: center;
+  color: #6c757d;
+}
+
+.widget-loading {
+  padding: 2rem;
+  text-align: center;
+  color: #6c757d;
+}
+
+.widget-loading i {
+  font-size: 2rem;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ml-auto {
+  margin-left: auto;
 }
 
 /* Responsive design */

@@ -47,11 +47,39 @@ function renderNetwork() {
         springLength: 120
       }
     },
-    interaction: { hover: true, tooltipDelay: 200, zoomView: true, dragView: true },
+    interaction: { hover: true, tooltipDelay: 200, zoomView: false, dragView: true },
     manipulation: { enabled: false }
   }
-  if (networkInstance) networkInstance.destroy()
+  if (networkInstance) {
+    // Rimuovi il listener passivo precedente se esiste
+    if (networkContainer.value && networkInstance._passiveWheelHandler) {
+      networkContainer.value.removeEventListener('wheel', networkInstance._passiveWheelHandler)
+    }
+    networkInstance.destroy()
+  }
   networkInstance = new Network(networkContainer.value, data, options)
+  
+  // Aggiungi listener passivo per gestire lo zoom con la rotella
+  // Nota: vis-network aggiunge internamente un listener non-passivo, ma disabilitando
+  // zoomView: false evitiamo che gestisca lo zoom, e lo gestiamo noi manualmente
+  if (networkContainer.value) {
+    const handleWheel = (e) => {
+      if (networkInstance && networkInstance.getScale) {
+        // Non chiamiamo preventDefault per mantenere il listener passivo
+        // Lo zoom viene gestito solo quando il mouse è sopra il container
+        const scale = networkInstance.getScale()
+        const delta = e.deltaY > 0 ? 0.9 : 1.1
+        networkInstance.moveTo({ scale: scale * delta })
+      }
+    }
+    
+    // Aggiungi listener passivo (senza preventDefault)
+    networkContainer.value.addEventListener('wheel', handleWheel, { passive: true })
+    
+    // Salva il riferimento per poterlo rimuovere in cleanup
+    networkInstance._passiveWheelHandler = handleWheel
+  }
+  
   setTimeout(() => { if (networkInstance) networkInstance.fit() }, 200)
 }
 
@@ -85,7 +113,13 @@ onMounted(() => {
   renderNetwork()
 })
 onBeforeUnmount(() => {
-  if (networkInstance) networkInstance.destroy()
+  if (networkInstance) {
+    // Rimuovi il listener passivo prima di distruggere l'istanza
+    if (networkContainer.value && networkInstance._passiveWheelHandler) {
+      networkContainer.value.removeEventListener('wheel', networkInstance._passiveWheelHandler)
+    }
+    networkInstance.destroy()
+  }
 })
 </script>
 

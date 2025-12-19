@@ -20,8 +20,11 @@
     "serialNumber": "Serial Number",
     "model": "Model",
     "firmwareVersion": "Firmware Version",
+    "firmware": "Firmware",
     "manufacturer": "Manufacturer",
     "assetType": "Asset Type",
+    "type": "Type",
+    "status": "Status",
     "site": "Site",
     "area": "Area",
     "location": "Location",
@@ -34,11 +37,16 @@
     "remoteAccess": "Remote Access",
     "remoteAccessType": "Remote Access Type",
     "physicalAccessEase": "Physical Access Ease",
+    "accessEase": "Access Ease",
     "networkConnection": "Network Connection",
     "networkInterfaces": "Network Interfaces",
     "networkInfo": "Network Information",
     "physicalPlugLabel": "Physical Plug Label",
-    "physicalConnections": "Physical Connections"
+    "physicalConnections": "Physical Connections",
+    "purdueLevel": "Purdue Level",
+    "impactValue": "Impact Value",
+    "exposureLevel": "Exposure Level",
+    "updateStatus": "Update Status"
   },
   "messages": {
     "created": "Asset created successfully",
@@ -57,7 +65,9 @@
     "customFieldsSaveError": "Error saving custom fields",
     "customFieldsAllKeysMustBeFilled": "All keys must be filled",
     "customFieldsAllKeysMustBeUnique": "All keys must be unique",
-    "customFieldsNoCustomFields": "No custom fields"
+    "customFieldsNoCustomFields": "No custom fields",
+    "fetchSitesError": "Error loading sites",
+    "noInterfaces": "No network interfaces configured"
   },
   "actions": {
     "addProtocol": "Add Protocol"
@@ -135,6 +145,69 @@
     "riskScoreMin": "Risk Score Min",
     "riskScoreMax": "Risk Score Max"
   },
+  "detail": {
+    "navigation": "Navigation",
+    "overview": "Overview",
+    "network": "Network & Connections",
+    "networkDescription": "Network connections and communications for this asset",
+    "relationships": "Relationships",
+    "relationshipsDescription": "Dependencies and vulnerabilities for this asset",
+    "documentation": "Documentation",
+    "documentationDescription": "Documents, notes and custom fields",
+    "management": "Management",
+    "managementDescription": "Contacts, suppliers and reviews for this asset",
+    "mainInfo": "Main Information",
+    "technicalInfo": "Technical Information",
+    "quickActions": "Quick Actions"
+  },
+  "macroSections": {
+    "overview": "Overview",
+    "relationships": "Relationships",
+    "security": "Security & Risks",
+    "management": "Management"
+  },
+  "alerts": {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "allOk": "All OK",
+    "noIssues": "No issues detected for this asset",
+    "criticalTitle": "Critical Risk",
+    "criticalMessage": "This asset has a critical risk ({{score}}). Immediate attention required.",
+    "highTitle": "High Risk",
+    "highMessage": "This asset has a high risk ({{score}}). Review recommended.",
+    "mediumTitle": "Medium Risk",
+    "mediumMessage": "This asset has a medium risk ({{score}}). Monitor regularly."
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "maintenance": "In Maintenance",
+    "decommissioned": "Decommissioned"
+  },
+  "relations": {
+    "graphTitle": "Relationships Graph",
+    "graphPlaceholder": "Visual graph of asset relationships",
+    "graphComingSoon": "Graph visualization coming soon",
+    "dependsOn": "Depends On",
+    "dependents": "Dependents",
+    "networkConnections": "Network Connections",
+    "communications": "Communications"
+  },
+  "management": {
+    "documents": "Documents",
+    "contacts": "Contacts",
+    "suppliers": "Suppliers",
+    "nextReview": "Next Review",
+    "notesAndCustomFields": "Notes & Custom Fields",
+    "reviewOverdue": "Overdue",
+    "reviewDue": "Due Soon",
+    "noReviewScheduled": "Not Scheduled"
+  },
+  "compliance": {
+    "iec62443": "IEC 62443 Compliance",
+    "comingSoon": "Compliance dashboard coming soon"
+  },
   "tabs": {
     "risk": "Risk",
     "documents": "Documents",
@@ -144,7 +217,24 @@
     "suppliers": "Suppliers",
     "customFields": "Custom Fields",
     "timeline": "Timeline",
-    "notes": "Notes"
+    "iec62443": "IEC 62443",
+    "notes": "Notes",
+    "review": "Review",
+    "dependencies": "Dependencies",
+    "vulnerabilities": "Vulnerabilities",
+    "riskTooltip": "Risk analysis and risk score breakdown",
+    "documentsTooltip": "Documents and documentation for this asset",
+    "contactsTooltip": "Contacts and points of contact for this asset",
+    "notesTooltip": "Notes and additional information for this asset",
+    "connectionsTooltip": "Network connections between devices",
+    "communicationsTooltip": "Communications and data flows between devices",
+    "suppliersTooltip": "Suppliers and service providers",
+    "customFieldsTooltip": "Custom fields for this asset",
+    "reviewTooltip": "Review status and periodic review management",
+    "dependenciesTooltip": "Logical dependencies and risk propagation",
+    "vulnerabilitiesTooltip": "Known vulnerabilities and patching status",
+    "timelineTooltip": "Event history and changes timeline",
+    "iec62443Tooltip": "ISA/IEC 62443 Compliance, Security Zones and Compliance"
   },
   "riskBreakdown": {
     "title": "Risk Analysis",
@@ -164,7 +254,30 @@
     "business": "Business",
     "technical": "Technical",
     "environmental": "Environmental",
-    "compliance": "Compliance"
+    "compliance": "Compliance",
+    "riskFromDependencies": "Risk from Dependencies",
+    "riskFromDependenciesExplanation": "Shows how much of this asset's risk comes from dependencies on other assets.",
+    "riskFromDependenciesDescription": "This asset depends on other assets. If those assets have vulnerabilities or issues, the risk propagates to this asset. The risk increase is calculated based on the dependency asset's risk, the dependency's criticality, and the relationship type.",
+    "loadingRiskData": "Loading risk data...",
+    "loadingRiskFromDeps": "Loading risk from dependencies...",
+    "noRiskFromDepsData": "No data available",
+    "baseRiskScore": "Base Risk Score",
+    "baseRiskCalculation": "Base Risk Calculation",
+    "totalRiskScore": "Total Risk Score",
+    "dependenciesBreakdown": "Dependencies Breakdown",
+    "dependencyAssetRisk": "Dependency Asset Risk",
+    "riskContribution": "Risk Contribution",
+    "noDependencies": "This asset does not depend on other assets",
+    "dependencyRiskPropagation": "Risk Propagation from Dependencies",
+    "dependencyRiskExplanation": "Risk is propagated to assets that depend on this asset, based on criticality and dependency type.",
+    "howItWorks": "How it works:",
+    "dependencyRiskDescription": "This asset's risk propagates to assets that depend on it. Risk adjustment is calculated by multiplying the source risk by dependency criticality (low: 0.25, medium: 0.50, high: 0.75, critical: 1.0) and dependency type (logical: 0.3, functional: 0.5, data_flow: 0.7, control_flow: 0.9), applying decay based on depth in the dependency chain.",
+    "loadingPropagation": "Loading risk propagation...",
+    "noPropagationData": "No risk propagation data available",
+    "riskLevelUndefined": "Undefined",
+    "riskLevelLow": "Low",
+    "riskLevelMedium": "Medium",
+    "riskLevelHigh": "High"
   },
   "photoUpload": {
     "title": "Photo Upload",
@@ -317,9 +430,35 @@
   "contacts": {
     "title": "Contacts",
     "addContacts": "Add contacts",
+    "addContact": "Add contact",
     "noContacts": "No contacts associated",
     "removeContact": "Remove contact",
-    "newContact": "New contact"
+    "newContact": "New contact",
+    "allContacts": "All contacts",
+    "owners": "Owners",
+    "pointsOfContact": "Points of contact",
+    "role": "Role",
+    "selectContact": "Select contact",
+    "selectContactPlaceholder": "Search contact...",
+    "selectRole": "Select role",
+    "selectContactAndRole": "Select a contact and a role",
+    "contactAdded": "Contact added successfully",
+    "contactRemoved": "Contact removed successfully",
+    "contactCreated": "Contact created successfully",
+    "roleUpdated": "Role updated successfully",
+    "errorLoading": "Error loading contacts",
+    "errorAdding": "Error adding contact",
+    "errorRemoving": "Error removing contact",
+    "errorUpdatingRole": "Error updating role",
+    "errorCreating": "Error creating contact",
+    "createNewContact": "Create new contact",
+    "roles": {
+      "owner": "Owner",
+      "pointOfContact": "Point of contact",
+      "technical": "Technical",
+      "administrative": "Administrative",
+      "other": "Other"
+    }
   },
   "notes": {
     "title": "Note",

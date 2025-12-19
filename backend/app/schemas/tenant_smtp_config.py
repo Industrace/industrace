@@ -4,16 +4,22 @@ from uuid import UUID
 
 
 class TenantSMTPConfigBase(BaseModel):
+    host: Optional[str] = None
+    port: Optional[int] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    from_email: Optional[EmailStr] = None
+    use_tls: bool = True
+    provider: Optional[str] = "smtp"
+
+
+class TenantSMTPConfigCreate(TenantSMTPConfigBase):
+    # I campi principali sono obbligatori per la creazione
     host: str
     port: int
     username: str
     password: str
     from_email: EmailStr
-    use_tls: bool = True
-
-
-class TenantSMTPConfigCreate(TenantSMTPConfigBase):
-    pass
 
 
 class TenantSMTPConfigUpdate(TenantSMTPConfigBase):

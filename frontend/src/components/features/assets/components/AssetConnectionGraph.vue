@@ -130,7 +130,7 @@ function renderNetwork() {
     interaction: {
       hover: true,
       tooltipDelay: 200,
-      zoomView: true,
+      zoomView: false, // Disabilitato per usare listener passivo personalizzato
       dragView: true
     },
     manipulation: {
@@ -138,9 +138,34 @@ function renderNetwork() {
     }
   }
   if (network) {
+    // Rimuovi il listener passivo precedente se esiste
+    if (networkContainer.value && network._passiveWheelHandler) {
+      networkContainer.value.removeEventListener('wheel', network._passiveWheelHandler)
+    }
     network.destroy()
   }
   network = new Network(networkContainer.value, data, options)
+  
+  // Aggiungi listener passivo per gestire lo zoom con la rotella
+  // Nota: vis-network aggiunge internamente un listener non-passivo, ma disabilitando
+  // zoomView: false evitiamo che gestisca lo zoom, e lo gestiamo noi manualmente
+  if (networkContainer.value) {
+    const handleWheel = (e) => {
+      if (network && network.getScale) {
+        // Non chiamiamo preventDefault per mantenere il listener passivo
+        // Lo zoom viene gestito solo quando il mouse è sopra il container
+        const scale = network.getScale()
+        const delta = e.deltaY > 0 ? 0.9 : 1.1
+        network.moveTo({ scale: scale * delta })
+      }
+    }
+    
+    // Aggiungi listener passivo (senza preventDefault)
+    networkContainer.value.addEventListener('wheel', handleWheel, { passive: true })
+    
+    // Salva il riferimento per poterlo rimuovere in cleanup
+    network._passiveWheelHandler = handleWheel
+  }
 }
 
 function zoomIn() {
@@ -178,7 +203,13 @@ watch(() => props.connections, () => {
 }, { deep: true })
 
 onBeforeUnmount(() => {
-  if (network) network.destroy()
+  if (network) {
+    // Rimuovi il listener passivo se esiste
+    if (networkContainer.value && network._passiveWheelHandler) {
+      networkContainer.value.removeEventListener('wheel', network._passiveWheelHandler)
+    }
+    network.destroy()
+  }
 })
 </script>
 

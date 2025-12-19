@@ -7,6 +7,10 @@ from app.init_print_template import init_default_templates
 from app.init_manufacturers import seed_manufacturers
 from app.init_asset_statuses import setup_asset_statuses
 from app.init_asset_types import setup_asset_types
+from app.init_data.init_notification_templates import init_notification_templates
+from app.init_data.init_security_requirements import init_security_requirements
+from app.init_data.init_security_capabilities import init_security_capabilities
+from app.init_data.init_sr_capability_mappings import init_sr_capability_mappings
 
 ADMIN_EMAIL = "admin@example.com"
 EDITOR_EMAIL = "editor@example.com"
@@ -82,12 +86,46 @@ def setup_system():
     # 4. Print templates
     init_default_templates(tenant_id=tenant_id)
 
-    # 5. Manufacturers ICS/OT
+    # 5. Notification templates (system-wide)
+    try:
+        init_notification_templates(db)
+        print("✅ Notification templates initialized")
+    except Exception as e:
+        print(f"⚠️  Notification templates initialization failed: {e}")
+
+    # 6. Manufacturers ICS/OT
     seed_manufacturers(tenant_id=tenant_id)
 
-    # 6. Asset types and statuses
+    # 7. Asset types and statuses
     setup_asset_statuses(tenant_id=tenant_id)
     setup_asset_types(tenant_id=tenant_id)
+    
+    # 8. ISA/IEC 62443 Security Requirements (system-wide)
+    try:
+        init_security_requirements(db)
+        print("✅ ISA/IEC 62443 Security Requirements initialized")
+    except Exception as e:
+        print(f"⚠️  Security Requirements initialization failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+    # 9. ISA/IEC 62443 Security Capabilities (system-wide)
+    try:
+        init_security_capabilities(db)
+        print("✅ ISA/IEC 62443 Security Capabilities initialized")
+    except Exception as e:
+        print(f"⚠️  Security Capabilities initialization failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+    # 10. ISA/IEC 62443 SR-Capability Mappings (system-wide)
+    try:
+        init_sr_capability_mappings(db)
+        print("✅ ISA/IEC 62443 SR-Capability mappings initialized")
+    except Exception as e:
+        print(f"⚠️  SR-Capability mappings initialization failed: {e}")
+        import traceback
+        traceback.print_exc()
 
     # Add demo data if in development environment
     from app.config import settings

@@ -86,6 +86,15 @@ from app.routers import print as print_router
 from app.routers import api_keys
 from app.routers import external_api
 from app.routers import setup
+from app.routers import asset_reviews
+from app.routers import notifications
+from app.routers import security_zones
+from app.routers import conduits
+from app.routers import compliance
+from app.routers import asset_dependencies
+from app.routers import vulnerabilities
+from app.routers import sso
+from app.crud import sso as crud_sso
 from app.setup_system import setup_system
 from app.database import SessionLocal
 from app.models import Tenant, User, Role
@@ -122,6 +131,14 @@ app.include_router(manufacturers.router, tags=["manufacturers"])
 app.include_router(locations.router, tags=["locations"])
 app.include_router(areas.router, tags=["areas"])
 app.include_router(assets.router, tags=["assets"])
+app.include_router(asset_reviews.router, tags=["asset_reviews"])
+app.include_router(notifications.router, tags=["notifications"])
+app.include_router(security_zones.router, tags=["security_zones"])
+app.include_router(conduits.router, tags=["conduits"])
+app.include_router(compliance.router, tags=["compliance"])
+app.include_router(asset_dependencies.router, tags=["asset_dependencies"])
+app.include_router(vulnerabilities.router, tags=["vulnerabilities"])
+app.include_router(sso.router, tags=["sso"])
 app.include_router(asset_photos.router, tags=["asset_photo"])
 app.include_router(asset_documents.router, tags=["asset_document"])
 app.include_router(asset_types.router, tags=["asset_type"])
@@ -159,30 +176,27 @@ async def startup_event():
         
         print("Checking database migrations...")
         try:
-            # Check current revision
-            result = subprocess.run(["alembic", "current"], check=True, capture_output=True, text=True)
-            current_revision = result.stdout.strip().split()[0] if result.stdout.strip() else "None"
-            
-            # Check if we're at the latest revision
-            result = subprocess.run(["alembic", "heads"], check=True, capture_output=True, text=True)
-            latest_revision = result.stdout.strip().split()[0] if result.stdout.strip() else "None"
-            
-            if current_revision == latest_revision:
-                print(f"Database is up to date (revision: {current_revision})")
-            else:
-                print(f"Applying migrations from {current_revision} to {latest_revision}...")
-                subprocess.run(["alembic", "upgrade", "head"], check=True, capture_output=True)
-                print("Database migrations applied successfully!")
+            # Always try to upgrade to head (handles multiple heads with 'heads' command)
+            print("Applying database migrations...")
+            result = subprocess.run(["alembic", "upgrade", "heads"], check=True, capture_output=True, text=True)
+            if result.stdout:
+                print(result.stdout)
+            print("Database migrations applied successfully!")
         except subprocess.CalledProcessError as e:
-            print(f"Error checking/applying database migrations: {e}")
-            # Try to apply migrations anyway as fallback
+            print(f"Error applying database migrations: {e}")
+            if e.stderr:
+                print(f"Error details: {e.stderr}")
+            # Try with single head as fallback (for backward compatibility)
             try:
-                print("Attempting to apply migrations as fallback...")
-                subprocess.run(["alembic", "upgrade", "head"], check=True, capture_output=True)
+                print("Attempting to apply migrations with 'head' (single) as fallback...")
+                subprocess.run(["alembic", "upgrade", "head"], check=True, capture_output=True, text=True)
                 print("Database migrations applied successfully!")
             except subprocess.CalledProcessError as e2:
                 print(f"Fallback migration failed: {e2}")
+                if e2.stderr:
+                    print(f"Error details: {e2.stderr}")
                 # Continue anyway, it might be that the migrations are already applied
+                print("Continuing startup despite migration errors (migrations may already be applied)")
         
         db = SessionLocal()
         # Controlla se esistono tenant, utenti e ruoli
@@ -208,6 +222,18 @@ async def startup_event():
             print("  Viewer: viewer@example.com / viewer123")
         else:
             print(f"Database already configured (tenant: {tenant_count}, users: {user_count}, roles: {role_count})")
+            # Initialize notification templates if not present (system-wide)
+            try:
+                from app.models import NotificationTemplate
+                from app.init_data.init_notification_templates import init_notification_templates
+                template_count = db.query(NotificationTemplate).count()
+                if template_count == 0:
+                    print("📧 Initializing notification templates...")
+                    init_notification_templates(db)
+                    print("✅ Notification templates initialized")
+            except Exception as e:
+                print(f"⚠️  Notification templates initialization failed: {e}")
+            
             # Check if demo data exists and seed only if needed in development environment
             from app.config import settings
             if settings.ENVIRONMENT == "development":
@@ -407,7 +433,27 @@ async def login(
     request: Request = None,
 ):
     user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(password, user.password_hash):
+    if not user:
+        raise ErrorCodeException(status_code=401, error_code="INVALID_CREDENTIALS")
+    
+    # Check if user has password (SSO-only users cannot login with password)
+    if not user.password_hash:
+        # Check if SSO is configured and enabled for this tenant
+        sso_config = crud_sso.get_sso_config(db, user.tenant_id)
+        if sso_config and sso_config.enabled:
+            raise ErrorCodeException(
+                status_code=401,
+                error_code="SSO_REQUIRED",
+                detail=f"This user can only login via SSO. Please use SSO authentication."
+            )
+        else:
+            raise ErrorCodeException(
+                status_code=401,
+                error_code="INVALID_CREDENTIALS",
+                detail="This user can only login via SSO, but SSO is not configured"
+            )
+    
+    if not verify_password(password, user.password_hash):
         raise ErrorCodeException(status_code=401, error_code="INVALID_CREDENTIALS")
     
     # Check if user is active

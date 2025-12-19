@@ -21,7 +21,14 @@
           :showText="true"
         />
         <Tag
-          v-if="riskBreakdown && riskBreakdown.final_score !== null"
+          v-if="totalRiskScore !== null && totalRiskScore !== undefined"
+          :value="`${t('assets.fields.riskScore')}: ${totalRiskScore.toFixed(2)} (${riskLevelLabel(totalRiskScore)})`"
+          :severity="riskLevelSeverity(totalRiskScore)"
+          class="risk-badge"
+          v-tooltip.top="riskBreakdown && riskBreakdown.final_score !== totalRiskScore ? `${t('assets.riskBreakdown.baseRiskScore')}: ${riskBreakdown.final_score?.toFixed(2) || '0.00'} + ${t('assets.riskBreakdown.riskFromDependencies')}: ${(totalRiskScore - (riskBreakdown.final_score || 0)).toFixed(2)}` : ''"
+        />
+        <Tag
+          v-else-if="riskBreakdown && riskBreakdown.final_score !== null"
           :value="`${t('assets.fields.riskScore')}: ${riskBreakdown.final_score} (${riskLevelLabel(riskBreakdown.final_score)})`"
           :severity="riskLevelSeverity(riskBreakdown.final_score)"
           class="risk-badge"
@@ -75,6 +82,7 @@ import { computed, ref } from 'vue'
 const props = defineProps({
   asset: { type: Object, required: true },
   riskBreakdown: { type: Object, default: null },
+  totalRiskScore: { type: Number, default: null },
   canWrite: { type: Function, required: true }
 })
 

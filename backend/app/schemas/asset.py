@@ -17,6 +17,24 @@ from .contact import Contact
 from .asset_interface import AssetInterface, AssetInterfaceUpdate, AssetInterfaceCreate
 
 
+class AssetContact(BaseModel):
+    """Asset contact with role information"""
+    contact: Contact
+    role: str = Field(..., description="Contact role: owner, point_of_contact, other, technical, administrative")
+    
+    class Config:
+        from_attributes = True
+
+
+class AssetContactCreate(BaseModel):
+    """Create asset contact with role"""
+    contact_id: uuid.UUID
+    role: str = Field(..., description="Contact role: owner, point_of_contact, other, technical, administrative")
+    
+    class Config:
+        from_attributes = True
+
+
 class AssetCustomFieldUpdate(BaseModel):
     custom_fields: Dict[str, Optional[Any]]
 
@@ -49,6 +67,7 @@ class AssetBase(BaseModel):
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
     status_id: Optional[uuid.UUID] = None
+    security_zone_id: Optional[uuid.UUID] = None
     installation_date: Optional[date] = None
     business_criticality: Optional[str] = Field(None, max_length=50, description="Business criticality")
     protocols: Optional[List[str]] = []
@@ -115,6 +134,7 @@ class AssetUpdate(BaseModel):
     location_id: Optional[uuid.UUID] = None
     area_id: Optional[uuid.UUID] = None
     status_id: Optional[uuid.UUID] = None
+    security_zone_id: Optional[uuid.UUID] = None
 
     # Risk Scoring fields
     impact_value: Optional[int] = None
@@ -156,6 +176,7 @@ class AssetCreate(BaseModel):
     map_x: Optional[float] = None
     map_y: Optional[float] = None
     status_id: Optional[uuid.UUID] = None
+    security_zone_id: Optional[uuid.UUID] = None
 
     # Risk Scoring fields
     impact_value: Optional[int] = 1

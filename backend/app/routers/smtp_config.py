@@ -42,58 +42,115 @@ def set_smtp_config(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    config = (
-        db.query(TenantSMTPConfig)
-        .filter(TenantSMTPConfig.tenant_id == current_user.tenant_id)
-        .first()
-    )
-    if config:
-        for field, value in config_in.dict().items():
-            setattr(config, field, value)
-    else:
-        config = TenantSMTPConfig(**config_in.dict(), tenant_id=current_user.tenant_id)
-        db.add(config)
-    db.commit()
-    db.refresh(config)
-    return config
+    try:
+        config = (
+            db.query(TenantSMTPConfig)
+            .filter(TenantSMTPConfig.tenant_id == current_user.tenant_id)
+            .first()
+        )
+        
+        config_data = config_in.dict(exclude_unset=True)
+        
+        if config:
+            # Update existing config
+            for field, value in config_data.items():
+                if hasattr(config, field):
+                    setattr(config, field, value)
+        else:
+            # Create new config
+            config = TenantSMTPConfig(
+                tenant_id=current_user.tenant_id,
+                **config_data
+            )
+            db.add(config)
+        
+        db.commit()
+        db.refresh(config)
+        return config
+    except Exception as e:
+        db.rollback()
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error saving SMTP config: {e}", exc_info=True)
+        raise ErrorCodeException(
+            status_code=400,
+            error_code=ErrorCode.SMTP_CONFIG_NOT_FOUND,
+            detail=f"Error saving SMTP configuration: {str(e)}"
+        )
 
 
 @router.post("/test")
 def test_smtp_config(
-    to_email: EmailStr,
+    config_data: TenantSMTPConfigCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    config = (
-        db.query(TenantSMTPConfig)
-        .filter(TenantSMTPConfig.tenant_id == current_user.tenant_id)
-        .first()
-    )
-    if not config:
-        raise ErrorCodeException(
-            status_code=404, error_code=ErrorCode.SMTP_CONFIG_NOT_FOUND
+    """
+    Test SMTP configuration.
+    Accepts SMTP config data and sends a test email to the current user's email.
+    """
+    # Use provided config or get from database
+    if config_data.host:
+        # Use provided config
+        email_config = EmailConfig(
+            provider=EmailProvider(config_data.provider or "smtp"),
+            smtp_host=config_data.host,
+            smtp_port=config_data.port,
+            smtp_username=config_data.username,
+            smtp_password=config_data.password,
+            smtp_use_tls=config_data.use_tls,
+            from_email=config_data.from_email
         )
-    
-    # Converti configurazione database in EmailConfig
-    email_config = EmailConfig(
-        provider=EmailProvider(config.provider or "smtp"),
-        api_key=config.api_key,
-        domain=config.domain,
-        region=config.region,
-        from_email=config.from_email,
-        credentials=config.credentials,
-        smtp_host=config.host,
-        smtp_port=config.port,
-        smtp_username=config.username,
-        smtp_password=config.password,
-        smtp_use_tls=config.use_tls
-    )
+        test_email = current_user.email
+    else:
+        # Get from database
+        config = (
+            db.query(TenantSMTPConfig)
+            .filter(TenantSMTPConfig.tenant_id == current_user.tenant_id)
+            .first()
+        )
+        if not config:
+            raise ErrorCodeException(
+                status_code=404, error_code=ErrorCode.SMTP_CONFIG_NOT_FOUND,
+                detail="No SMTP configuration found. Please save configuration first."
+            )
+        
+        email_config = EmailConfig(
+            provider=EmailProvider(config.provider or "smtp"),
+            api_key=config.api_key,
+            domain=config.domain,
+            region=config.region,
+            from_email=config.from_email,
+            credentials=config.credentials,
+            smtp_host=config.host,
+            smtp_port=config.port,
+            smtp_username=config.username,
+            smtp_password=config.password,
+            smtp_use_tls=config.use_tls
+        )
+        test_email = current_user.email
     
     try:
-        success = send_email(to_email, "Test Email", "This is a test email from Industrace.", email_config)
+        success = send_email(
+            test_email,
+            "Test Email - Industrace",
+            "This is a test email from Industrace notification system.",
+            email_config
+        )
         if success:
-            return {"detail": "Test email sent successfully"}
+            return {"detail": "Test email sent successfully", "email": test_email}
         else:
-            raise ErrorCodeException(status_code=400, error_code=ErrorCode.SMTP_SEND_ERROR)
+            raise ErrorCodeException(
+                status_code=400,
+                error_code=ErrorCode.SMTP_SEND_ERROR,
+                detail="Failed to send test email. Check SMTP configuration."
+            )
     except Exception as e:
-        raise ErrorCodeException(status_code=400, error_code=ErrorCode.SMTP_SEND_ERROR)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"SMTP test error: {e}", exc_info=True)
+        raise ErrorCodeException(
+            status_code=400,
+            error_code=ErrorCode.SMTP_SEND_ERROR,
+            detail=f"SMTP test failed: {str(e)}"
+        )

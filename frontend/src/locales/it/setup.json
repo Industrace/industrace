@@ -1,5 +1,6 @@
 {
     "title": "Setup",
+    "checking": "Verificando...",
     "fields": {
         "smtp": {
             "host": "Host SMTP",
@@ -12,6 +13,22 @@
     },
     "strings": {
         "description": "Configura le impostazioni del sistema per il tuo tenant",
+        "sso": {
+            "title": "Configurazione SSO",
+            "description": "Configura l'autenticazione Single Sign-On per il tenant"
+        },
+        "users": {
+            "title": "Gestione Utenti",
+            "description": "Gestisci gli utenti del sistema e i loro permessi"
+        },
+        "roles": {
+            "title": "Gestione Ruoli",
+            "description": "Configura i ruoli e i permessi degli utenti"
+        },
+        "notifications": {
+            "title": "Gestione Notifiche",
+            "description": "Configura le notifiche di sistema e la coda di invio"
+        },
         "smtp": {
             "title": "Configurazione SMTP",
             "description": "Configura le impostazioni del server di posta elettronica",
@@ -66,6 +83,10 @@
                 "item5": "Documenti e foto degli asset"
             },
             "generationOptions": "Opzioni di generazione:"
+        },
+        "vulnerabilityFeeds": {
+            "title": "Feed Vulnerabilità",
+            "description": "Configura i feed di vulnerabilità (remoti e locali) per il matching automatico"
         }
     },
     "messages": {

@@ -9,7 +9,9 @@
     "error_email_required": "Email is required",
     "error_email_invalid": "Please enter a valid email",
     "error_password_required": "Password is required",
-    "error_success": "Login successful"
+    "error_success": "Login successful",
+    "ssoRequired": "This user can only login via SSO. Please use Single Sign-On authentication.",
+    "ssoRequiredTitle": "SSO Login Required"
   },
   "fields": {
     "fullName": "Full name",

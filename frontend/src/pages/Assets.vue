@@ -88,7 +88,14 @@
       </template>
 
       <template #body-risk_score="{ data }">
-        <span v-if="data.risk_score !== null && data.risk_score !== undefined">
+        <span v-if="data.total_risk_score !== null && data.total_risk_score !== undefined">
+          <Tag 
+            :value="data.total_risk_score.toFixed(2)" 
+            :severity="riskLevelSeverity(data.total_risk_score)"
+            v-tooltip.top="data.risk_score !== data.total_risk_score ? `${t('assets.riskBreakdown.baseRiskScore')}: ${data.risk_score?.toFixed(2) || '0.00'} + ${t('assets.riskBreakdown.riskFromDependencies')}: ${(data.total_risk_score - (data.risk_score || 0)).toFixed(2)}` : ''"
+          />
+        </span>
+        <span v-else-if="data.risk_score !== null && data.risk_score !== undefined">
           <Tag :value="data.risk_score.toFixed(2)" :severity="riskLevelSeverity(data.risk_score)" />
         </span>
         <span v-else>-</span>

@@ -351,7 +351,7 @@ async function fetchSuppliers() {
     suppliers.value = response.data
     return response
   }, {
-    errorContext: t('suppliers.fetchError'),
+    errorContext: t('suppliers.messages.fetchError'),
     showToast: false
   })
 }

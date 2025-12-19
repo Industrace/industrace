@@ -10,7 +10,7 @@ import pandas as pd
 from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
-from app.models import User, Asset, AssetCommunication
+from app.models import User, Asset, AssetCommunication, AssetZoneMembership
 from app.services.audit_decorator import audit_log_action
 from app.schemas import (
     AssetRead as AssetSchema,
@@ -27,6 +27,7 @@ from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.schemas.asset_status import AssetStatus as AssetStatusSchema
 from app.schemas.contact import Contact as ContactSchema
+from app.schemas.asset import AssetContact, AssetContactCreate
 from app.schemas.asset import AssetBulkUpdateRequest, AssetBulkSoftDeleteRequest
 from app.schemas.asset import RiskScoreRequest, RiskScoreResponse, RiskOverviewResponse
 from app.services.risk_scoring import CompositeRiskScoringEngine
@@ -61,6 +62,11 @@ def create_asset(
     # Invalida cache dashboard dopo creazione asset
     from app.services.dashboard_cache import invalidate_dashboard_cache
     invalidate_dashboard_cache(str(current_user.tenant_id))
+    
+    # Auto-match vulnerabilità in background
+    from app.services.vulnerability_auto_match import VulnerabilityAutoMatcher
+    if VulnerabilityAutoMatcher.should_auto_match_asset(result):
+        VulnerabilityAutoMatcher.match_asset_async(result.id, current_user.tenant_id)
     
     return result
 
@@ -148,6 +154,15 @@ def list_assets(
     
     if assets:
         # PERFORMANCE: Processo batch invece di query N+1
+        # Calcola il rischio totale (base + dipendenze) per tutti gli asset in batch
+        from app.services.risk_propagation import RiskPropagationService
+        
+        # Calcola i rischi da dipendenze in batch per ottimizzare le performance
+        asset_ids = [asset.id for asset in assets]
+        risk_adjustments = RiskPropagationService.get_dependency_risk_adjustments_batch(
+            db, asset_ids, current_user.tenant_id
+        )
+        
         result = []
         for asset in assets:
             asset_dict = AssetRead.from_orm(asset).dict()
@@ -155,6 +170,20 @@ def list_assets(
             if asset.area:
                 asset_dict["area_name"] = asset.area.name
                 asset_dict["area_code"] = asset.area.code
+            
+            # Assicurati che le interfacce siano incluse (potrebbero non essere serializzate automaticamente)
+            if asset.interfaces:
+                from app.schemas.asset_interface import AssetInterface
+                # Serializza le interfacce manualmente se non sono già presenti
+                if not asset_dict.get("interfaces") or len(asset_dict.get("interfaces", [])) == 0:
+                    asset_dict["interfaces"] = [AssetInterface.from_orm(iface).dict() for iface in asset.interfaces]
+            
+            # Calcola rischio totale (base + dipendenze) usando i valori batch
+            base_risk = asset.risk_score or 0.0
+            risk_from_deps = risk_adjustments.get(str(asset.id), 0.0)
+            total_risk = min(10.0, base_risk + risk_from_deps)
+            
+            asset_dict["total_risk_score"] = round(total_risk, 2)
             result.append(asset_dict)
         
         return {
@@ -208,6 +237,7 @@ def get_assets_by_location(
             joinedload(Asset.status),
             joinedload(Asset.manufacturer),
             joinedload(Asset.asset_type),
+            joinedload(Asset.security_zone),
         )
         .filter(
             Asset.tenant_id == current_user.tenant_id,
@@ -239,6 +269,7 @@ def get_assets_for_network_map(
             joinedload(Asset.status),
             joinedload(Asset.manufacturer),
             joinedload(Asset.asset_type),
+            joinedload(Asset.security_zone),
         )
         .filter(Asset.tenant_id == current_user.tenant_id, Asset.deleted_at == None)
         .offset(skip)
@@ -413,6 +444,10 @@ def recalculate_all_risk_scores(
             updated_count += 1
 
     db.commit()
+    
+    # Invalida tutta la cache del rischio per questo tenant
+    from app.services.risk_cache import risk_cache
+    risk_cache.invalidate_tenant(str(current_user.tenant_id))
 
     return {
         "message": f"Risk scores ricalcolati per {updated_count} asset su {len(assets)} totali",
@@ -1153,7 +1188,14 @@ def get_asset(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    asset = crud_assets.get_asset(db, asset_id)
+    asset = (
+        db.query(Asset)
+        .options(
+            joinedload(Asset.security_zone),
+        )
+        .filter(Asset.id == asset_id)
+        .first()
+    )
     if not asset or asset.tenant_id != current_user.tenant_id:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
@@ -1188,6 +1230,15 @@ def update_asset(
     # Invalida cache dashboard dopo aggiornamento asset
     from app.services.dashboard_cache import invalidate_dashboard_cache
     invalidate_dashboard_cache(str(current_user.tenant_id))
+    
+    # Auto-match vulnerabilità in background se asset ha info rilevanti
+    from app.services.vulnerability_auto_match import VulnerabilityAutoMatcher
+    if VulnerabilityAutoMatcher.should_auto_match_asset(result):
+        # Controlla se manufacturer, model o firmware sono stati aggiornati
+        if (asset_update.manufacturer_id is not None or 
+            asset_update.model is not None or 
+            asset_update.firmware_version is not None):
+            VulnerabilityAutoMatcher.match_asset_async(result.id, current_user.tenant_id)
     
     return result
 
@@ -1298,6 +1349,60 @@ def update_asset_position_endpoint(
     return {"id": asset_id, "map_x": asset.map_x, "map_y": asset.map_y}
 
 
+@router.get("/{asset_id}/zone-memberships")
+def get_asset_zone_memberships(
+    asset_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get all zone memberships for an asset"""
+    from app.crud import asset_zone_memberships as crud_memberships
+    from app.schemas.asset_zone_membership import AssetZoneMembershipRead
+    from sqlalchemy.orm import joinedload
+    
+    # Verify asset exists
+    asset = crud_assets.get_asset(db, asset_id)
+    if not asset or asset.tenant_id != current_user.tenant_id:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+    
+    # Get memberships with zone details
+    memberships = (
+        db.query(AssetZoneMembership)
+        .options(
+            joinedload(AssetZoneMembership.security_zone),
+            joinedload(AssetZoneMembership.asset)
+        )
+        .filter(
+            AssetZoneMembership.asset_id == asset_id,
+            AssetZoneMembership.tenant_id == current_user.tenant_id,
+            AssetZoneMembership.deleted_at.is_(None)
+        )
+        .all()
+    )
+    
+    # Convert to response format with zone and asset names
+    result = []
+    for m in memberships:
+        membership_dict = {
+            "id": m.id,
+            "tenant_id": m.tenant_id,
+            "asset_id": m.asset_id,
+            "security_zone_id": m.security_zone_id,
+            "role": m.role,
+            "interface_scope": m.interface_scope,
+            "sl_target": m.sl_target,
+            "notes": m.notes,
+            "created_at": m.created_at,
+            "updated_at": m.updated_at,
+            "deleted_at": m.deleted_at,
+            "asset_name": m.asset.name if m.asset else None,
+            "security_zone_name": m.security_zone.name if m.security_zone else None
+        }
+        result.append(membership_dict)
+    
+    return result
+
+
 @router.get("/{asset_id}/communications")
 def get_asset_communications(asset_id: uuid.UUID, db: Session = Depends(get_db)):
     # Check if asset exists
@@ -1379,12 +1484,13 @@ def get_asset_communications(asset_id: uuid.UUID, db: Session = Depends(get_db))
     return results
 
 
-@router.get("/{asset_id}/contacts", response_model=List[ContactSchema])
+@router.get("/{asset_id}/contacts", response_model=List[AssetContact])
 def list_asset_contacts(
     asset_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """List all contacts for an asset with their roles"""
     asset = (
         db.query(Asset)
         .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
@@ -1392,17 +1498,61 @@ def list_asset_contacts(
     )
     if not asset:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
-    return [ContactSchema.from_orm(c) for c in asset.contacts]
+    
+    contacts_with_roles = crud_assets.get_asset_contacts_with_roles(db, asset_id)
+    return [
+        AssetContact(contact=ContactSchema.from_orm(item["contact"]), role=item["role"])
+        for item in contacts_with_roles
+    ]
 
 
-@router.put("/{asset_id}/contacts", response_model=List[ContactSchema])
-@audit_log_action("update_contacts", "Asset", model_class=Asset)
-def update_asset_contacts(
+@router.get("/{asset_id}/contacts/owners", response_model=List[ContactSchema])
+def list_asset_owners(
     asset_id: uuid.UUID,
-    contact_ids: List[uuid.UUID],
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """List owners of an asset"""
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not asset:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+    
+    owners = crud_assets.get_asset_contacts_by_role(db, asset_id, "owner")
+    return [ContactSchema.from_orm(c) for c in owners]
+
+
+@router.get("/{asset_id}/contacts/points-of-contact", response_model=List[ContactSchema])
+def list_asset_points_of_contact(
+    asset_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List points of contact for an asset"""
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not asset:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+    
+    points_of_contact = crud_assets.get_asset_contacts_by_role(db, asset_id, "point_of_contact")
+    return [ContactSchema.from_orm(c) for c in points_of_contact]
+
+
+@router.put("/{asset_id}/contacts", response_model=List[AssetContact])
+@audit_log_action("update_contacts", "Asset", model_class=Asset)
+def update_asset_contacts(
+    asset_id: uuid.UUID,
+    contacts: List[AssetContactCreate],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update contacts for an asset with their roles"""
     from app.models.contact import Contact
 
     asset = (
@@ -1412,17 +1562,84 @@ def update_asset_contacts(
     )
     if not asset:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
-    contacts = (
+    
+    # Validate all contacts exist and belong to tenant
+    contact_ids = [c.contact_id for c in contacts]
+    db_contacts = (
         db.query(Contact)
         .filter(
-            Contact.id.in_(contact_ids), Contact.tenant_id == current_user.tenant_id
+            Contact.id.in_(contact_ids), 
+            Contact.tenant_id == current_user.tenant_id
         )
         .all()
     )
-    asset.contacts = contacts
-    db.commit()
-    db.refresh(asset)
-    return [ContactSchema.from_orm(c) for c in asset.contacts]
+    
+    if len(db_contacts) != len(contact_ids):
+        raise ErrorCodeException(
+            status_code=404, 
+            error_code=ErrorCode.ASSET_NOT_FOUND,
+            detail="One or more contacts not found"
+        )
+    
+    # Update contacts with roles
+    contacts_data = [
+        {"contact_id": c.contact_id, "role": c.role}
+        for c in contacts
+    ]
+    crud_assets.update_asset_contacts_with_roles(db, asset_id, contacts_data)
+    
+    # Return updated contacts with roles
+    contacts_with_roles = crud_assets.get_asset_contacts_with_roles(db, asset_id)
+    return [
+        AssetContact(contact=ContactSchema.from_orm(item["contact"]), role=item["role"])
+        for item in contacts_with_roles
+    ]
+
+
+@router.post("/{asset_id}/contacts", response_model=AssetContact, status_code=201)
+@audit_log_action("add_contact", "Asset", model_class=Asset)
+def add_asset_contact(
+    asset_id: uuid.UUID,
+    contact: AssetContactCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Add a contact to an asset with a specific role"""
+    from app.models.contact import Contact
+    
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not asset:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+    
+    # Validate contact exists and belongs to tenant
+    db_contact = (
+        db.query(Contact)
+        .filter(
+            Contact.id == contact.contact_id,
+            Contact.tenant_id == current_user.tenant_id
+        )
+        .first()
+    )
+    if not db_contact:
+        raise ErrorCodeException(
+            status_code=404,
+            error_code=ErrorCode.ASSET_NOT_FOUND,
+            detail="Contact not found"
+        )
+    
+    # Add contact with role
+    crud_assets.add_asset_contact_with_role(
+        db, asset_id, contact.contact_id, contact.role
+    )
+    
+    return AssetContact(
+        contact=ContactSchema.from_orm(db_contact),
+        role=contact.role
+    )
 
 
 @router.delete("/{asset_id}/contacts/{contact_id}", status_code=204)
@@ -1433,6 +1650,7 @@ def delete_asset_contact(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Remove a contact from an asset"""
     asset = (
         db.query(Asset)
         .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
@@ -1440,8 +1658,8 @@ def delete_asset_contact(
     )
     if not asset:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
-    asset.contacts = [c for c in asset.contacts if c.id != contact_id]
-    db.commit()
+    
+    crud_assets.remove_asset_contact(db, asset_id, contact_id)
     return None
 
 

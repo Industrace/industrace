@@ -4,20 +4,20 @@
     <div class="p-fluid">
       <!-- Manufacturer name -->
       <div class="p-field">
-        <label for="name">{{ t('common.name') }}</label>
+        <label for="name">{{ t('common.fields.name') }}</label>
         <InputText id="name" v-model="form.name" required />
       </div>
 
       <!-- Description -->
       <div class="p-field">
-        <label for="description">{{ t('common.description') }}</label>
+        <label for="description">{{ t('common.fields.description') }}</label>
         <Textarea id="description" v-model="form.description" autoResize />
       </div>
 
       <!-- Actions -->
       <div class="flex justify-content-end gap-2 mt-4">
-        <Button :label="t('common.cancel')" class="p-button-text" @click="emit('cancel')" />
-        <Button :label="t('common.save')" type="submit" />
+        <Button :label="t('common.actions.cancel')" class="p-button-text" @click="emit('cancel')" />
+        <Button :label="t('common.actions.save')" type="submit" />
       </div>
     </div>
 

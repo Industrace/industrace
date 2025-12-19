@@ -17,11 +17,34 @@
   },
   "actions": {
     "viewAllAssets": "Visualizza Tutti i Dispositivi",
-    "recalculateRiskScores": "Ricalcola i Rischio"
+    "recalculateRiskScores": "Ricalcola i Rischio",
+    "viewAll": "Visualizza Tutto"
   },
   "tables": {
     "topRiskyAssets": "Dispositivi a Rischio",
     "latestAssets": "Dispositivi Recenti"
+  },
+  "widgets": {
+    "assetReviews": "Review Asset",
+    "overdueReviews": "Review Scadute",
+    "dueReviews": "Review in Scadenza",
+    "recentOverdue": "Review Scadute Recenti",
+    "missingDependencies": "Dipendenze Mancanti",
+    "missingDeps": "Dipendenze Mancanti",
+    "criticalMissing": "Critiche Mancanti",
+    "totalConnections": "Totale Connessioni",
+    "vulnerabilities": "Vulnerabilità",
+    "criticalUnpatched": "Critiche Non Patchate",
+    "highUnpatched": "Alte Non Patchate",
+    "totalUnpatched": "Totale Non Patchate",
+    "compliance": "Conformità ISA/IEC 62443",
+    "nonCompliantZones": "Zone Non Conformi",
+    "partialCompliantZones": "Zone Parzialmente Conformi",
+    "compliantZones": "Zone Conformi",
+    "totalZones": "Totale Zone"
+  },
+  "messages": {
+    "allSystemsOperational": "Tutti i sistemi operativi"
   },
   "recentActivity": "Attività Recente",
   "quickActions": "Azioni Rapide",

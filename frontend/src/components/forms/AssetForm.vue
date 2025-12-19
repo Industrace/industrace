@@ -24,6 +24,7 @@
         :sites="sites"
         :allLocations="allLocations"
         :allAreas="allAreas"
+        :securityZones="securityZones"
       />
 
       <!-- Technical Details -->
@@ -112,6 +113,10 @@ const props = defineProps({
   assetStatusOptions: {
     type: Array,
     required: true
+  },
+  securityZones: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -134,6 +139,7 @@ const {
   manufacturer_id: null,
   asset_type_id: null,
   status_id: null,
+  security_zone_id: null,
   tag: '',
   serial_number: '',
   ip_address: '',
@@ -167,6 +173,7 @@ watch(() => props.asset, (newAsset) => {
       manufacturer_id: newAsset.manufacturer_id || (newAsset.manufacturer && newAsset.manufacturer.id) || null,
       asset_type_id: newAsset.asset_type_id || (newAsset.asset_type && newAsset.asset_type.id) || null,
       status_id: newAsset.status_id || (newAsset.status && newAsset.status.id) || null,
+      security_zone_id: newAsset.security_zone_id || (newAsset.security_zone && newAsset.security_zone.id) || null,
       remote_access: newAsset.remote_access ?? false,
       remote_access_type: newAsset.remote_access_type ?? 'none',
       last_update_date: newAsset.last_update_date ?? null,

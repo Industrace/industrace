@@ -14,6 +14,7 @@
           <th>{{ t('assets.connections.logicalPortB') }}</th>
           <th>{{ t('assets.connections.interfaceB') }}</th>
           <th>{{ t('assets.connections.assetB') }}</th>
+          <th>{{ t('assetDependencies.hasDependency') }}</th>
           <th>{{ t('common.strings.actions') }}</th>
         </tr>
       </thead>
@@ -28,6 +29,33 @@
           <td>{{ row.interfaceB?.name || '-' }}</td>
           <td>{{ row.assetB?.name || '-' }}</td>
           <td>
+            <Tag 
+              v-if="row.dependency_status?.has_dependency"
+              :value="t('assetDependencies.hasDependency')"
+              severity="success"
+              icon="pi pi-check"
+            />
+            <Tag 
+              v-else-if="row.dependency_status?.status === 'missing'"
+              :value="t('assetDependencies.missingDependency')"
+              severity="danger"
+              icon="pi pi-exclamation-triangle"
+            />
+            <Tag 
+              v-else
+              :value="t('assetDependencies.noDependency')"
+              severity="warning"
+              icon="pi pi-info-circle"
+            />
+          </td>
+          <td>
+            <Button 
+              v-if="!row.dependency_status?.has_dependency"
+              icon="pi pi-plus" 
+              class="p-button-text p-button-sm mr-2" 
+              @click="$emit('create-dependency', row)"
+              v-tooltip.top="t('assetDependencies.createDependencyFromConnection')"
+            />
             <Button icon="pi pi-pencil" class="p-button-text p-button-sm mr-2" @click="$emit('edit-connection', row)" />
             <Button icon="pi pi-trash" class="p-button-text p-button-danger p-button-sm" @click="$emit('delete-connection', row)" />
           </td>
@@ -42,11 +70,15 @@
 
 <script setup>
 import Button from 'primevue/button'
+import Tag from 'primevue/tag'
+import Tooltip from 'primevue/tooltip'
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const props = defineProps({
   connections: { type: Array, default: () => [] }
 })
+
+defineEmits(['edit-connection', 'delete-connection', 'create-dependency'])
 </script>
 
 <style scoped>

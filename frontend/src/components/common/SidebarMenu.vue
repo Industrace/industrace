@@ -58,9 +58,40 @@ const menuSections = computed(() => {
     ]
   })
 
+  // Sezione Inventario (prima di Gestione)
+  const inventoryItems = []
+  if (canRead('sites')) inventoryItems.push({ label: t('menu.navigation.sites'), icon: 'pi-building', to: '/sites' })
+  if (canRead('areas')) inventoryItems.push({ label: t('menu.navigation.areas'), icon: 'pi-sitemap', to: '/areas' })
+  if (canRead('locations')) inventoryItems.push({ label: t('menu.navigation.locations'), icon: 'pi-map', to: '/locations' })
+  if (canRead('suppliers')) inventoryItems.push({ label: t('menu.navigation.suppliers'), icon: 'pi-briefcase', to: '/suppliers' })
+  if (canRead('manufacturers')) inventoryItems.push({ label: t('menu.navigation.manufacturers'), icon: 'pi-cog', to: '/manufacturers' })
+  if (canRead('contacts')) inventoryItems.push({ label: t('menu.navigation.contacts'), icon: 'pi-id-card', to: '/contacts' })
+  if (canRead('assets')) inventoryItems.push({ label: t('menu.navigation.assets'), icon: 'pi-server', to: '/assets' })
+  
+  if (inventoryItems.length > 0) {
+    sections.push({
+      label: t('menu.section.registry'),
+      items: inventoryItems
+    })
+  }
+
+  // Sezione ISA/IEC 62443
+  const isa62443Items = []
+  if (canRead('assets')) isa62443Items.push({ label: t('menu.navigation.securityZones'), icon: 'pi-shield', to: '/security-zones' })
+  if (canRead('assets')) isa62443Items.push({ label: t('menu.navigation.conduits'), icon: 'pi-link', to: '/conduits' })
+  if (canRead('assets')) isa62443Items.push({ label: t('menu.navigation.compliance'), icon: 'pi-check-circle', to: '/compliance' })
+  if (canRead('assets')) isa62443Items.push({ label: t('menu.navigation.vulnerabilities'), icon: 'pi-exclamation-triangle', to: '/vulnerabilities' })
+  
+  if (isa62443Items.length > 0) {
+    sections.push({
+      label: t('menu.section.isa62443'),
+      items: isa62443Items
+    })
+  }
+
   // Sezione Management
   const managementItems = []
-  if (canRead('assets')) managementItems.push({ label: t('menu.navigation.assets'), icon: 'pi-server', to: '/assets' })
+  if (canRead('assets')) managementItems.push({ label: t('menu.navigation.assetReviews'), icon: 'pi-calendar-check', to: '/asset-reviews' })
   if (canRead('asset_types')) managementItems.push({ label: t('menu.navigation.assettypes'), icon: 'pi-tags', to: '/asset-types' })
   if (canRead('asset_statuses')) managementItems.push({ label: t('menu.navigation.assetstatuses'), icon: 'pi-list', to: '/asset-statuses' })
   
@@ -71,35 +102,7 @@ const menuSections = computed(() => {
     })
   }
 
-  // Sezione Registry
-  const registryItems = []
-  if (canRead('sites')) registryItems.push({ label: t('menu.navigation.sites'), icon: 'pi-building', to: '/sites' })
-  
-  if (canRead('areas')) registryItems.push({ label: t('menu.navigation.areas'), icon: 'pi-sitemap', to: '/areas' })
-  
-  if (canRead('locations')) registryItems.push({ label: t('menu.navigation.locations'), icon: 'pi-map', to: '/locations' })
-  if (canRead('suppliers')) registryItems.push({ label: t('menu.navigation.suppliers'), icon: 'pi-briefcase', to: '/suppliers' })
-  if (canRead('manufacturers')) registryItems.push({ label: t('menu.navigation.manufacturers'), icon: 'pi-cog', to: '/manufacturers' })
-  if (canRead('contacts')) registryItems.push({ label: t('menu.navigation.contacts'), icon: 'pi-id-card', to: '/contacts' })
-  
-  if (registryItems.length > 0) {
-    sections.push({
-      label: t('menu.section.registry'),
-      items: registryItems
-    })
-  }
-
-  // Sezione Users
-  const usersItems = []
-  if (canRead('users')) usersItems.push({ label: t('menu.navigation.users'), icon: 'pi-users', to: '/users' })
-  if (canRead('users')) usersItems.push({ label: t('menu.navigation.roles'), icon: 'pi-key', to: '/roles' })
-  
-  if (usersItems.length > 0) {
-    sections.push({
-      label: t('menu.navigation.users'),
-      items: usersItems
-    })
-  }
+  // Sezione Users rimossa - ora accessibile dal Setup
 
   // Sezione Utility
   const utilityItems = []

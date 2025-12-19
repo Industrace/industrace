@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
     RATE_LIMIT_DEFAULT: str = os.getenv("RATE_LIMIT_DEFAULT", "100/hour")
+    
+    # SSO/Enterprise Auth
+    SSO_REDIRECT_URI: str = os.getenv("SSO_REDIRECT_URI", "http://localhost:5173/auth/sso/callback")
+    ENCRYPTION_KEY: str = os.getenv("ENCRYPTION_KEY", "")  # For encrypting client secrets (generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
     RATE_LIMIT_STRICT: str = os.getenv("RATE_LIMIT_STRICT", "10/minute")
 
     # API Versioning

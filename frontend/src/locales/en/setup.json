@@ -1,5 +1,6 @@
 {
   "title": "Setup",
+  "checking": "Checking...",
   "fields": {
     "smtp": {
       "host": "Host SMTP",
@@ -12,6 +13,22 @@
   },
   "strings": {
     "description": "Configure the system settings for your tenant",
+    "sso": {
+      "title": "SSO Configuration",
+      "description": "Configure Single Sign-On authentication for the tenant"
+    },
+    "users": {
+      "title": "User Management",
+      "description": "Manage system users and their permissions"
+    },
+    "roles": {
+      "title": "Role Management",
+      "description": "Configure user roles and permissions"
+    },
+    "notifications": {
+      "title": "Notification Management",
+      "description": "Configure system notifications and sending queue"
+    },
     "smtp": {
       "title": "SMTP Configuration",
       "description": "Configure the email server settings",
@@ -66,6 +83,10 @@
         "item5": "Asset documents and photos"
       },
       "generationOptions": "Generation options:"
+    },
+    "vulnerabilityFeeds": {
+      "title": "Vulnerability Feeds",
+      "description": "Configure vulnerability feeds (remote and local) for automatic matching"
     }
   },
   "messages": {

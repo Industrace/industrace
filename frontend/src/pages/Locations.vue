@@ -419,7 +419,7 @@ async function fetchSites() {
     sites.value = response.data
     return response
   }, {
-    errorContext: t('common.fetchError'),
+    errorContext: t('common.messages.fetchError'),
     showToast: false
   })
 }
@@ -431,7 +431,7 @@ async function fetchAreas(siteId = null) {
     areas.value = response.data
     return response
   }, {
-    errorContext: t('common.fetchError'),
+    errorContext: t('common.messages.fetchError'),
     showToast: false
   })
 }
@@ -453,7 +453,7 @@ async function fetchLocations() {
     locations.value = response.data
     return response
   }, {
-    errorContext: t('common.fetchError'),
+    errorContext: t('common.messages.fetchError'),
     showToast: false
   })
 }
@@ -467,7 +467,7 @@ function openCreateDialog() {
 function openEditDialog(location) {
   // Load all areas when opening edit dialog
   fetchAreas()
-  openEdit(t('common.edit'), location)
+  openEdit(t('common.actions.edit'), location)
 }
 
 function openBulkEditDialog() {

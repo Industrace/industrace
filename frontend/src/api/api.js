@@ -138,6 +138,18 @@ export default {
   getRiskyAssets(limit = 10) {
     return api.get('/dashboard/risky-assets', { params: { limit } })
   },
+  getReviewsSummary() {
+    return api.get('/dashboard/reviews-summary')
+  },
+  getDependenciesSummary() {
+    return api.get('/dashboard/dependencies-summary')
+  },
+  getVulnerabilitiesSummary() {
+    return api.get('/dashboard/vulnerabilities-summary')
+  },
+  getComplianceSummary() {
+    return api.get('/dashboard/compliance-summary')
+  },
   getAssetConnections(id) {
     return api.get(`/assets/${id}/connections`)
   },
@@ -316,13 +328,304 @@ export default {
   getAssetContacts(assetId) {
     return api.get(`/assets/${assetId}/contacts`)
   },
-  updateAssetContacts(assetId, contactIds) {
-    return api.put(`/assets/${assetId}/contacts`, contactIds, {
+  getAssetOwners(assetId) {
+    return api.get(`/assets/${assetId}/contacts/owners`)
+  },
+  getAssetPointsOfContact(assetId) {
+    return api.get(`/assets/${assetId}/contacts/points-of-contact`)
+  },
+  addAssetContactWithRole(assetId, contactData) {
+    return api.post(`/assets/${assetId}/contacts`, contactData)
+  },
+  updateAssetContacts(assetId, contactsData) {
+    return api.put(`/assets/${assetId}/contacts`, contactsData, {
       headers: { 'Content-Type': 'application/json' }
     })
   },
   deleteAssetContact(assetId, contactId) {
     return api.delete(`/assets/${assetId}/contacts/${contactId}`)
+  },
+  // Asset Reviews
+  getAssetReviewStatus(assetId) {
+    return api.get(`/assets/${assetId}/review-status`)
+  },
+  markAssetAsReviewed(assetId, reviewData) {
+    return api.post(`/assets/${assetId}/review`, reviewData)
+  },
+  skipAssetReview(assetId, skipData) {
+    return api.post(`/assets/${assetId}/review/skip`, skipData)
+  },
+  getDueAssets(params = {}) {
+    return api.get('/assets/review/due', { params })
+  },
+  getOverdueAssets(params = {}) {
+    return api.get('/assets/review/overdue', { params })
+  },
+  getUpcomingAssets(params = {}) {
+    return api.get('/assets/review/upcoming', { params })
+  },
+  bulkReviewAssets(bulkData) {
+    return api.post('/assets/review/bulk', bulkData)
+  },
+  recalculateReviewDates() {
+    return api.post('/assets/review/recalculate-all')
+  },
+  // Notifications
+  getNotificationTemplates() {
+    return api.get('/notifications/templates')
+  },
+  getNotificationPreferences() {
+    return api.get('/notifications/preferences')
+  },
+  createNotificationPreference(preferenceData) {
+    return api.post('/notifications/preferences', preferenceData)
+  },
+  updateNotificationPreference(preferenceId, preferenceData) {
+    return api.put(`/notifications/preferences/${preferenceId}`, preferenceData)
+  },
+  deleteNotificationPreference(preferenceId) {
+    return api.delete(`/notifications/preferences/${preferenceId}`)
+  },
+  getNotificationQueue(params = {}) {
+    return api.get('/notifications/queue', { params })
+  },
+  retryNotification(queueId) {
+    return api.post(`/notifications/queue/${queueId}/retry`)
+  },
+  cancelNotification(queueId) {
+    return api.delete(`/notifications/queue/${queueId}`)
+  },
+  getNotificationLogs(params = {}) {
+    return api.get('/notifications/logs', { params })
+  },
+  testNotification(testData) {
+    return api.post('/notifications/test', testData)
+  },
+  processNotificationQueue(batchSize = 50) {
+    return api.post('/notifications/queue/process', null, { params: { batch_size: batchSize } })
+  },
+  // ISA/IEC 62443 - Security Zones
+  getSecurityZones(params = {}) {
+    return api.get('/security-zones', { params })
+  },
+  getSecurityZone(id) {
+    return api.get(`/security-zones/${id}`)
+  },
+  createSecurityZone(zoneData) {
+    return api.post('/security-zones', zoneData)
+  },
+  updateSecurityZone(id, zoneData) {
+    return api.put(`/security-zones/${id}`, zoneData)
+  },
+  deleteSecurityZone(id) {
+    return api.delete(`/security-zones/${id}`)
+  },
+  getZoneAssets(zoneId) {
+    return api.get(`/security-zones/${zoneId}/assets`)
+  },
+  getZoneMemberships(zoneId, params = {}) {
+    return api.get(`/security-zones/${zoneId}/memberships`, { params })
+  },
+  getAssetZoneMemberships(assetId) {
+    return api.get(`/assets/${assetId}/zone-memberships`)
+  },
+  getAssetCompliance(assetId) {
+    return api.get(`/compliance/asset/${assetId}`)
+  },
+  createZoneMembership(zoneId, membershipData) {
+    return api.post(`/security-zones/${zoneId}/memberships`, membershipData)
+  },
+  updateZoneMembership(zoneId, membershipId, membershipData) {
+    return api.put(`/security-zones/${zoneId}/memberships/${membershipId}`, membershipData)
+  },
+  deleteZoneMembership(zoneId, membershipId) {
+    return api.delete(`/security-zones/${zoneId}/memberships/${membershipId}`)
+  },
+  getZoneCompliance(zoneId) {
+    return api.get(`/compliance/zone/${zoneId}`)
+  },
+  getZoneFoundationRequirements(zoneId) {
+    return api.get(`/compliance/zone/${zoneId}/foundation-requirements`)
+  },
+  getZoneSecurityRequirementsByFR(zoneId, frId) {
+    return api.get(`/compliance/zone/${zoneId}/security-requirements/${frId}`)
+  },
+  // New capability-based assessment endpoints
+  getSRAssessmentAssist(zoneId, srId) {
+    return api.get(`/compliance/zone/${zoneId}/sr/${srId}/assessment-assist`)
+  },
+  createOrUpdateSRAssessment(zoneId, srId, assessmentData) {
+    return api.post(`/compliance/zone/${zoneId}/sr/${srId}/assessment`, assessmentData)
+  },
+  getSRInvolvedAssets(zoneId, srId) {
+    return api.get(`/compliance/zone/${zoneId}/sr/${srId}/assets`)
+  },
+  getSRInvolvedConduits(zoneId, srId) {
+    return api.get(`/compliance/zone/${zoneId}/sr/${srId}/conduits`)
+  },
+  getZoneRisk(zoneId) {
+    return api.get(`/security-zones/${zoneId}/risk`)
+  },
+  recalculateZoneSLA(zoneId) {
+    return api.post(`/security-zones/${zoneId}/recalculate-sla`)
+  },
+  calculateZoneSecurityLevel(zoneId) {
+    return api.post(`/security-zones/${zoneId}/calculate-sl`)
+  },
+  // ISA/IEC 62443 - Conduits
+  getConduits(params = {}) {
+    return api.get('/conduits', { params })
+  },
+  getConduit(id) {
+    return api.get(`/conduits/${id}`)
+  },
+  createConduit(conduitData) {
+    return api.post('/conduits', conduitData)
+  },
+  updateConduit(id, conduitData) {
+    return api.put(`/conduits/${id}`, conduitData)
+  },
+  deleteConduit(id) {
+    return api.delete(`/conduits/${id}`)
+  },
+  recalculateConduitSLA(conduitId) {
+    return api.post(`/conduits/${conduitId}/recalculate-sla`)
+  },
+  // ISA/IEC 62443 - Compliance
+  getSecurityRequirements(params = {}) {
+    return api.get('/compliance/requirements', { params })
+  },
+  getComplianceByZone(zoneId) {
+    return api.get(`/compliance/zone/${zoneId}`)
+  },
+  getComplianceByAsset(assetId) {
+    return api.get(`/compliance/assets/${assetId}`)
+  },
+  assessCompliance(complianceData) {
+    return api.post('/compliance/assess', complianceData)
+  },
+  updateComplianceRecord(recordId, complianceData) {
+    return api.put(`/compliance/records/${recordId}`, complianceData)
+  },
+  getGapAnalysis(zoneId = null) {
+    const url = zoneId 
+      ? `/compliance/gap-analysis?zone_id=${zoneId}`
+      : '/compliance/gap-analysis'
+    return api.get(url)
+  },
+  // Asset Dependencies
+  getAssetDependencies(params = {}) {
+    return api.get('/asset-dependencies', { params })
+  },
+  getAssetDependency(id) {
+    return api.get(`/asset-dependencies/${id}`)
+  },
+  createAssetDependency(dependencyData) {
+    return api.post('/asset-dependencies', dependencyData)
+  },
+  updateAssetDependency(id, dependencyData) {
+    return api.put(`/asset-dependencies/${id}`, dependencyData)
+  },
+  deleteAssetDependency(id) {
+    return api.delete(`/asset-dependencies/${id}`)
+  },
+  getDependenciesForAsset(assetId) {
+    return api.get(`/asset-dependencies/assets/${assetId}/dependencies`)
+  },
+  getDependentsOfAsset(assetId) {
+    return api.get(`/asset-dependencies/assets/${assetId}/dependents`)
+  },
+  getRiskPropagation(assetId, maxDepth = 5) {
+    return api.get(`/asset-dependencies/assets/${assetId}/risk-propagation`, {
+      params: { max_depth: maxDepth }
+    })
+  },
+  getRiskFromDependencies(assetId) {
+    return api.get(`/asset-dependencies/assets/${assetId}/risk-from-dependencies`)
+  },
+  getImpactAnalysis(assetId) {
+    return api.get(`/asset-dependencies/asset/${assetId}/impact-analysis`)
+  },
+  getDependencyChain(assetId) {
+    return api.get(`/asset-dependencies/asset/${assetId}/chain`)
+  },
+  // Vulnerability Intelligence
+  getVulnerabilities(params = {}) {
+    return api.get('/vulnerabilities', { params })
+  },
+  getVulnerability(id) {
+    return api.get(`/vulnerabilities/${id}`)
+  },
+  getVulnerabilityAffectedAssets(vulnerabilityId, params = {}) {
+    return api.get(`/vulnerabilities/${vulnerabilityId}/assets`, { params })
+  },
+  getAssetVulnerabilities(assetId) {
+    return api.get(`/vulnerabilities/assets/${assetId}`)
+  },
+  updateAssetVulnerability(assetId, assetVulnId, updateData) {
+    return api.put(`/vulnerabilities/assets/${assetId}/vulnerabilities/${assetVulnId}`, updateData)
+  },
+  matchVulnerabilitiesToAsset(assetId) {
+    return api.post(`/vulnerabilities/assets/${assetId}/match-vulnerabilities`)
+  },
+  getVulnerabilityStats() {
+    return api.get('/vulnerabilities/stats')
+  },
+  getVulnerabilityFeedSources() {
+    return api.get('/vulnerabilities/feeds')
+  },
+  createVulnerabilityFeedSource(feedData) {
+    return api.post('/vulnerabilities/feeds', feedData)
+  },
+  updateVulnerabilityFeedSource(id, feedData) {
+    return api.put(`/vulnerabilities/feeds/${id}`, feedData)
+  },
+  deleteVulnerabilityFeedSource(id) {
+    return api.delete(`/vulnerabilities/feeds/${id}`)
+  },
+  syncVulnerabilityFeed(feedSourceId) {
+    return api.post(`/vulnerabilities/feeds/${feedSourceId}/sync`)
+  },
+  uploadLocalFeed(file, feedData) {
+    const formData = new FormData()
+    formData.append('file', file)
+    Object.keys(feedData).forEach(key => {
+      formData.append(key, feedData[key])
+    })
+    return api.post('/vulnerabilities/feeds/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+  // Enterprise Auth (SSO)
+  getSSOConfig() {
+    return api.get('/auth/sso/config')
+  },
+  createSSOConfig(configData) {
+    return api.post('/auth/sso/config', configData)
+  },
+  updateSSOConfig(configData) {
+    return api.put('/auth/sso/config', configData)
+  },
+  deleteSSOConfig() {
+    return api.delete('/auth/sso/config')
+  },
+  startSSOConnect() {
+    return api.post('/auth/sso/connect/start')
+  },
+  testSSOConnection() {
+    return api.post('/auth/sso/test')
+  },
+  getUserAuthMethods(userId) {
+    return api.get(`/auth/sso/users/${userId}/auth-methods`)
+  },
+  // Azure AD User Import
+  listAzureADUsers(params = {}) {
+    return api.get('/auth/sso/azure-ad/users', { params })
+  },
+  importAzureADUsers(importData) {
+    return api.post('/auth/sso/azure-ad/import', importData)
   },
   getContact(id) {
     return api.get(`/contacts/${id}`)
@@ -403,8 +706,8 @@ export default {
   setSMTPConfig(data) {
     return api.post('/smtp-config', data)
   },
-  testSMTPConfig({ to_email }) {
-    return api.post('/setup/test-smtp', { to_email })
+  testSMTPConfig(configData) {
+    return api.post('/smtp-config/test', configData)
   },
   
   // Risk Scoring APIs
@@ -567,5 +870,22 @@ export default {
     return api.get(`/print/kit/download/${filename}`, {
       responseType: 'blob'
     })
+  },
+  
+  // Generic HTTP methods for direct API calls
+  get(url, config = {}) {
+    return api.get(url, config)
+  },
+  post(url, data = null, config = {}) {
+    return api.post(url, data, config)
+  },
+  put(url, data = null, config = {}) {
+    return api.put(url, data, config)
+  },
+  patch(url, data = null, config = {}) {
+    return api.patch(url, data, config)
+  },
+  delete(url, config = {}) {
+    return api.delete(url, config)
   }
 }

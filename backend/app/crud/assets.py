@@ -26,6 +26,7 @@ def get_asset(db: Session, asset_id: uuid.UUID) -> Optional[Asset]:
             joinedload(Asset.manufacturer),
             joinedload(Asset.status),
             joinedload(Asset.site),
+            joinedload(Asset.security_zone),
         )
         .filter(Asset.id == asset_id)
         .first()
@@ -387,3 +388,118 @@ def get_asset_contacts(db: Session, asset_id: uuid.UUID) -> List:
     )
 
     return asset.contacts if asset else []
+
+
+def get_asset_contacts_with_roles(db: Session, asset_id: uuid.UUID) -> List[dict]:
+    """Retrieve contacts with their roles for an asset"""
+    from app.models.asset import asset_contacts
+    from app.models.contact import Contact
+    from sqlalchemy import select
+    
+    # Query the association table directly to get roles
+    stmt = (
+        select(Contact, asset_contacts.c.role)
+        .select_from(asset_contacts.join(Contact))
+        .where(asset_contacts.c.asset_id == asset_id)
+    )
+    
+    results = db.execute(stmt).all()
+    return [
+        {
+            "contact": contact,
+            "role": role
+        }
+        for contact, role in results
+    ]
+
+
+def get_asset_contacts_by_role(db: Session, asset_id: uuid.UUID, role: str) -> List:
+    """Retrieve contacts with a specific role for an asset"""
+    from app.models.asset import asset_contacts
+    from app.models.contact import Contact
+    from sqlalchemy import select
+    
+    stmt = (
+        select(Contact)
+        .select_from(asset_contacts.join(Contact))
+        .where(
+            asset_contacts.c.asset_id == asset_id,
+            asset_contacts.c.role == role
+        )
+    )
+    
+    results = db.execute(stmt).scalars().all()
+    return list(results)
+
+
+def add_asset_contact_with_role(
+    db: Session, 
+    asset_id: uuid.UUID, 
+    contact_id: uuid.UUID, 
+    role: str = "other"
+) -> bool:
+    """Add a contact to an asset with a specific role"""
+    from app.models.asset import asset_contacts
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    
+    # Validate role
+    valid_roles = ['owner', 'point_of_contact', 'other', 'technical', 'administrative']
+    if role not in valid_roles:
+        raise ValueError(f"Invalid role. Must be one of: {valid_roles}")
+    
+    # Insert or update (ON CONFLICT DO UPDATE)
+    stmt = (
+        pg_insert(asset_contacts)
+        .values(asset_id=asset_id, contact_id=contact_id, role=role)
+        .on_conflict_do_update(
+            index_elements=['asset_id', 'contact_id'],
+            set_=dict(role=role)
+        )
+    )
+    
+    db.execute(stmt)
+    db.commit()
+    return True
+
+
+def remove_asset_contact(db: Session, asset_id: uuid.UUID, contact_id: uuid.UUID) -> bool:
+    """Remove a contact from an asset"""
+    from app.models.asset import asset_contacts
+    from sqlalchemy import delete
+    
+    stmt = delete(asset_contacts).where(
+        asset_contacts.c.asset_id == asset_id,
+        asset_contacts.c.contact_id == contact_id
+    )
+    
+    db.execute(stmt)
+    db.commit()
+    return True
+
+
+def update_asset_contacts_with_roles(
+    db: Session,
+    asset_id: uuid.UUID,
+    contacts: List[dict]  # List of {contact_id: UUID, role: str}
+) -> bool:
+    """Update all contacts for an asset with their roles"""
+    from app.models.asset import asset_contacts
+    from sqlalchemy import delete, insert
+    
+    # Delete all existing contacts for this asset
+    delete_stmt = delete(asset_contacts).where(
+        asset_contacts.c.asset_id == asset_id
+    )
+    db.execute(delete_stmt)
+    
+    # Insert new contacts with roles
+    if contacts:
+        insert_values = [
+            {"asset_id": asset_id, "contact_id": c["contact_id"], "role": c.get("role", "other")}
+            for c in contacts
+        ]
+        insert_stmt = insert(asset_contacts).values(insert_values)
+        db.execute(insert_stmt)
+    
+    db.commit()
+    return True

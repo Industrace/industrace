@@ -1,6 +1,6 @@
 # backend/models/site.py
 import uuid
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Table
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Table, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -36,6 +36,7 @@ class Site(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     deleted_at = Column(DateTime, nullable=True)
+    review_interval_months = Column(Integer, nullable=True)  # Intervallo review specifico per site (override tenant)
     assets = relationship("Asset", back_populates="site")
     areas = relationship("Area", back_populates="site")
     parent_id = Column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=True)

@@ -49,6 +49,18 @@ import itUsers from './it/users.json'
 import enUsers from './en/users.json'
 import itGlobalsearch from './it/globalsearch.json'
 import enGlobalsearch from './en/globalsearch.json'
+import itAssetReviews from './it/assetReviews.json'
+import enAssetReviews from './en/assetReviews.json'
+import itNotifications from './it/notifications.json'
+import enNotifications from './en/notifications.json'
+import itISA62443 from './it/isa62443.json'
+import enISA62443 from './en/isa62443.json'
+import itAssetDependencies from './it/assetDependencies.json'
+import enAssetDependencies from './en/assetDependencies.json'
+import itVulnerabilities from './it/vulnerabilities.json'
+import enVulnerabilities from './en/vulnerabilities.json'
+import itSSO from './it/sso.json'
+import enSSO from './en/sso.json'
 
 // Funzione per appiattire gli oggetti annidati
 const flattenObject = (obj, prefix = '') => {
@@ -112,7 +124,13 @@ const messages = {
     print: itPrint,
     roles: itRoles,
     users: itUsers,
-    globalsearch: itGlobalsearch
+    globalsearch: itGlobalsearch,
+    assetReviews: itAssetReviews,
+    notifications: itNotifications,
+    isa62443: itISA62443,
+    assetDependencies: itAssetDependencies,
+    vulnerabilities: itVulnerabilities,
+    sso: itSSO
   }),
   en: flattenObject({
     common: enCommon,
@@ -137,7 +155,13 @@ const messages = {
     print: enPrint,
     roles: enRoles,
     users: enUsers,
-    globalsearch: enGlobalsearch
+    globalsearch: enGlobalsearch,
+    assetReviews: enAssetReviews,
+    notifications: enNotifications,
+    isa62443: enISA62443,
+    assetDependencies: enAssetDependencies,
+    vulnerabilities: enVulnerabilities,
+    sso: enSSO
   })
 }
 
