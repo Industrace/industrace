@@ -57,10 +57,14 @@ def update_sso_config(
     
     update_data = sso_config_update.dict(exclude_unset=True)
     
-    # Encrypt client_secret if provided
+    # Encrypt client_secret if provided AND not empty
+    # If client_secret is empty string, preserve existing secret (don't update it)
     if "client_secret" in update_data:
         client_secret = update_data.pop("client_secret")
-        update_data["client_secret_encrypted"] = encrypt_secret(client_secret)
+        # Only update secret if a non-empty value is provided
+        if client_secret and client_secret.strip():
+            update_data["client_secret_encrypted"] = encrypt_secret(client_secret)
+        # If empty string, don't include in update_data (preserve existing secret)
     
     for field, value in update_data.items():
         setattr(db_sso_config, field, value)

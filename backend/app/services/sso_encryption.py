@@ -10,17 +10,27 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Generate key if not exists (for development only)
-if not settings.ENCRYPTION_KEY:
-    logger.warning("ENCRYPTION_KEY not set - generating temporary key (NOT for production!)")
-    _temp_key = Fernet.generate_key()
-    _fernet = Fernet(_temp_key)
-else:
-    try:
-        _fernet = Fernet(settings.ENCRYPTION_KEY.encode())
-    except Exception as e:
-        logger.error(f"Invalid ENCRYPTION_KEY: {e}")
-        raise ValueError("Invalid ENCRYPTION_KEY. Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"")
+# Initialize Fernet - lazy initialization to avoid blocking app startup
+_fernet = None
+
+def _get_fernet():
+    """Get or initialize Fernet instance"""
+    global _fernet
+    if _fernet is not None:
+        return _fernet
+    
+    if not settings.ENCRYPTION_KEY:
+        logger.warning("ENCRYPTION_KEY not set - generating temporary key (NOT for production!)")
+        _temp_key = Fernet.generate_key()
+        _fernet = Fernet(_temp_key)
+    else:
+        try:
+            _fernet = Fernet(settings.ENCRYPTION_KEY.encode())
+        except Exception as e:
+            logger.error(f"Invalid ENCRYPTION_KEY: {e}")
+            raise ValueError("Invalid ENCRYPTION_KEY. Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"")
+    
+    return _fernet
 
 
 def encrypt_secret(secret: str) -> str:
@@ -28,7 +38,8 @@ def encrypt_secret(secret: str) -> str:
     if not secret:
         return ""
     try:
-        encrypted = _fernet.encrypt(secret.encode())
+        fernet = _get_fernet()
+        encrypted = fernet.encrypt(secret.encode())
         return encrypted.decode()
     except Exception as e:
         logger.error(f"Error encrypting secret: {e}")
@@ -40,7 +51,8 @@ def decrypt_secret(encrypted: str) -> str:
     if not encrypted:
         return ""
     try:
-        decrypted = _fernet.decrypt(encrypted.encode())
+        fernet = _get_fernet()
+        decrypted = fernet.decrypt(encrypted.encode())
         return decrypted.decode()
     except Exception as e:
         logger.error(f"Error decrypting secret: {e}")

@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, Request, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
 from app.models import User, Tenant
@@ -38,6 +39,35 @@ router = APIRouter(
     prefix="/auth/sso",
     tags=["sso"],
 )
+
+
+# Public endpoint to check if SSO is enabled (for login page)
+@router.get("/enabled")
+async def check_sso_enabled(
+    tenant_id: Optional[uuid.UUID] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Public endpoint to check if SSO is enabled for a tenant.
+    Used by login page to show/hide SSO button.
+    """
+    # If tenant_id not provided, try to get from first tenant (for testing)
+    if not tenant_id:
+        tenant = db.query(Tenant).first()
+        if tenant:
+            tenant_id = tenant.id
+        else:
+            return {"enabled": False, "provider": None}
+    
+    sso_config = crud_sso.get_sso_config(db, tenant_id)
+    if not sso_config or not sso_config.enabled:
+        return {"enabled": False, "provider": None}
+    
+    return {
+        "enabled": True,
+        "provider": sso_config.provider_type,
+        "provider_name": "Microsoft" if sso_config.provider_type == "azure_ad" else sso_config.provider_type
+    }
 
 
 # SSO Configuration Management
@@ -269,12 +299,13 @@ async def sso_callback(
     request: Request = None,
 ):
     """OAuth2 callback endpoint - handles redirect from identity provider"""
+    logger.info(f"SSO callback received for provider {provider}")
+    
     if error:
-        raise ErrorCodeException(
-            status_code=400,
-            error_code=ErrorCode.INVALID_INPUT,
-            detail=f"OAuth error: {error}"
-        )
+        logger.error(f"OAuth error in callback: {error}")
+        frontend_url = settings.SSO_REDIRECT_URI.replace("/auth/sso/callback", "")
+        redirect_url = f"{frontend_url}/auth/sso/error?error={error}"
+        return RedirectResponse(url=redirect_url)
     
     # Decode state to get code_verifier and tenant_id
     try:
@@ -285,25 +316,31 @@ async def sso_callback(
             raise ValueError("Invalid state format")
         original_state, code_verifier, tenant_id_str = state_parts
         tenant_id = uuid.UUID(tenant_id_str)
+        logger.info(f"Decoded state successfully for tenant {tenant_id}")
     except Exception as e:
-        raise ErrorCodeException(
-            status_code=400,
-            error_code=ErrorCode.INVALID_INPUT,
-            detail=f"Invalid state: {str(e)}"
-        )
+        logger.error(f"Failed to decode state: {e}")
+        frontend_url = settings.SSO_REDIRECT_URI.replace("/auth/sso/callback", "")
+        redirect_url = f"{frontend_url}/auth/sso/error?error=Invalid+state+parameter"
+        return RedirectResponse(url=redirect_url)
     
     sso_config = crud_sso.get_sso_config(db, tenant_id)
     if not sso_config or not sso_config.enabled:
-        raise ErrorCodeException(
-            status_code=404,
-            error_code=ErrorCode.ASSET_NOT_FOUND,
-            detail="SSO not configured or not enabled"
-        )
+        logger.warning(f"SSO not configured or not enabled for tenant {tenant_id}")
+        frontend_url = settings.SSO_REDIRECT_URI.replace("/auth/sso/callback", "")
+        redirect_url = f"{frontend_url}/auth/sso/error?error=SSO+not+configured+or+not+enabled"
+        return RedirectResponse(url=redirect_url)
+    
+    if sso_config.provider_type != provider:
+        logger.error(f"Provider mismatch: config has {sso_config.provider_type}, callback has {provider}")
+        frontend_url = settings.SSO_REDIRECT_URI.replace("/auth/sso/callback", "")
+        redirect_url = f"{frontend_url}/auth/sso/error?error=Provider+mismatch"
+        return RedirectResponse(url=redirect_url)
     
     redirect_uri = sso_config.redirect_uri or settings.SSO_REDIRECT_URI
     
     try:
         # Exchange code for token
+        logger.info("Exchanging authorization code for access token")
         token_response = await SSOAuthService.exchange_code_for_token(
             sso_config,
             code,
@@ -313,17 +350,21 @@ async def sso_callback(
         
         access_token = token_response.get("access_token")
         if not access_token:
+            logger.error("No access token in token response")
             raise ValueError("No access token in response")
         
         # Get user info
+        logger.info("Retrieving user info from identity provider")
         user_info = await SSOAuthService.get_user_info(sso_config, access_token)
         
         # Find or create user
+        logger.info("Finding or creating user")
         user = SSOAuthService.find_or_create_user(
             db, user_info, tenant_id, sso_config
         )
         
         # Create JWT token
+        logger.info(f"Creating JWT token for user {user.id}")
         sso_token = SSOAuthService.create_sso_token(user)
         
         # Audit log
@@ -340,6 +381,8 @@ async def sso_callback(
             commit=True,
         )
         
+        logger.info(f"SSO login successful for user {user.id} ({user.email})")
+        
         # Redirect to frontend with token
         # In production, use secure cookie instead of query param
         frontend_url = settings.SSO_REDIRECT_URI.replace("/auth/sso/callback", "")
@@ -347,10 +390,21 @@ async def sso_callback(
         
         return RedirectResponse(url=redirect_url)
         
+    except ValueError as e:
+        # User-facing errors (domain restriction, auto-provisioning disabled, etc.)
+        logger.warning(f"SSO callback user error: {e}")
+        frontend_url = settings.SSO_REDIRECT_URI.replace("/auth/sso/callback", "")
+        # URL encode error message
+        import urllib.parse
+        error_msg = urllib.parse.quote(str(e))
+        redirect_url = f"{frontend_url}/auth/sso/error?error={error_msg}"
+        return RedirectResponse(url=redirect_url)
     except Exception as e:
         logger.error(f"SSO callback error: {e}", exc_info=True)
         frontend_url = settings.SSO_REDIRECT_URI.replace("/auth/sso/callback", "")
-        redirect_url = f"{frontend_url}/auth/sso/error?error={str(e)}"
+        import urllib.parse
+        error_msg = urllib.parse.quote(f"SSO login failed: {str(e)}")
+        redirect_url = f"{frontend_url}/auth/sso/error?error={error_msg}"
         return RedirectResponse(url=redirect_url)
 
 
@@ -483,29 +537,61 @@ async def list_azure_ad_users(
         )
     
     try:
+        logger.info(f"Fetching Azure AD users for tenant {current_user.tenant_id}, filter: {filter_query}, top: {top}")
+        
         users = await AzureADService.list_users(
             config=sso_config,
             filter_query=filter_query,
             top=top
         )
         
-        # Convert to response format
-        azure_users = [
-            AzureADUser(
-                id=u.get("id"),
-                displayName=u.get("displayName"),
-                mail=u.get("mail"),
-                userPrincipalName=u.get("userPrincipalName"),
-                accountEnabled=u.get("accountEnabled", True),
-                jobTitle=u.get("jobTitle"),
-                department=u.get("department")
-            )
-            for u in users
-        ]
+        logger.info(f"Retrieved {len(users)} raw users from Azure AD")
+        
+        # Convert to response format, filtering out invalid users
+        azure_users = []
+        for u in users:
+            try:
+                # Ensure id is present (required field)
+                user_id = u.get("id")
+                if not user_id:
+                    logger.warning(f"Skipping user without ID: {u}")
+                    continue
+                
+                azure_user = AzureADUser(
+                    id=user_id,
+                    displayName=u.get("displayName"),
+                    mail=u.get("mail"),
+                    userPrincipalName=u.get("userPrincipalName"),
+                    accountEnabled=u.get("accountEnabled", True),
+                    jobTitle=u.get("jobTitle"),
+                    department=u.get("department")
+                )
+                azure_users.append(azure_user)
+            except Exception as user_error:
+                logger.warning(f"Error processing user {u.get('id', 'unknown')}: {user_error}, skipping")
+                continue
+        
+        logger.info(f"Successfully converted {len(azure_users)} users to response format")
         
         return AzureADUserListResponse(
             users=azure_users,
             total=len(azure_users)
+        )
+    except ValueError as e:
+        # Errors from AzureADService (authentication, network, decryption, etc.)
+        error_msg = str(e)
+        logger.error(f"Azure AD service error: {error_msg}", exc_info=True)
+        # If it's a decryption error, return a more specific error code/message
+        if "decrypt client secret" in error_msg.lower():
+            raise ErrorCodeException(
+                status_code=400,
+                error_code=ErrorCode.INVALID_INPUT,
+                detail="Unable to decrypt client secret. Please reconfigure the SSO settings with a new client secret."
+            )
+        raise ErrorCodeException(
+            status_code=400,
+            error_code=ErrorCode.INVALID_INPUT,
+            detail=f"Azure AD service error: {error_msg}"
         )
     except Exception as e:
         logger.error(f"Error listing Azure AD users: {e}", exc_info=True)
@@ -517,7 +603,6 @@ async def list_azure_ad_users(
 
 
 @router.post("/azure-ad/import", response_model=ImportUsersResponse)
-@audit_log_action("import_users_from_azure_ad", "User")
 async def import_azure_ad_users(
     import_request: ImportUsersRequest,
     current_user: User = Depends(get_current_user),
@@ -527,59 +612,77 @@ async def import_azure_ad_users(
     Import selected users from Azure AD into the system.
     Users will be created with SSO authentication only (no password).
     """
-    if current_user.role.name != "admin":
-        raise ErrorCodeException(
-            status_code=403,
-            error_code=ErrorCode.ACCESS_DENIED,
-            detail="Only admins can import users"
-        )
-    
-    sso_config = crud_sso.get_sso_config(db, current_user.tenant_id)
-    if not sso_config:
-        raise ErrorCodeException(
-            status_code=404,
-            error_code=ErrorCode.ASSET_NOT_FOUND,
-            detail="SSO configuration not found"
-        )
-    
-    if sso_config.provider_type != "azure_ad":
-        raise ErrorCodeException(
-            status_code=400,
-            error_code=ErrorCode.INVALID_INPUT,
-            detail="This endpoint is only for Azure AD"
-        )
-    
-    # Verify role exists
-    from app.models import Role
-    role = db.query(Role).filter(
-        Role.id == import_request.role_id,
-        Role.tenant_id == current_user.tenant_id
-    ).first()
-    if not role:
-        raise ErrorCodeException(
-            status_code=404,
-            error_code=ErrorCode.ASSET_NOT_FOUND,
-            detail="Role not found"
-        )
-    
-    imported = 0
-    skipped = 0
-    errors = []
-    imported_user_ids = []
-    
     try:
+        logger.info(f"Import request received: {len(import_request.user_ids)} users, role_id: {import_request.role_id}")
+        
+        if current_user.role.name != "admin":
+            raise ErrorCodeException(
+                status_code=403,
+                error_code=ErrorCode.ACCESS_DENIED,
+                detail="Only admins can import users"
+            )
+        
+        sso_config = crud_sso.get_sso_config(db, current_user.tenant_id)
+        if not sso_config:
+            raise ErrorCodeException(
+                status_code=404,
+                error_code=ErrorCode.ASSET_NOT_FOUND,
+                detail="SSO configuration not found"
+            )
+        
+        if sso_config.provider_type != "azure_ad":
+            raise ErrorCodeException(
+                status_code=400,
+                error_code=ErrorCode.INVALID_INPUT,
+                detail="This endpoint is only for Azure AD"
+            )
+        
+        # Verify role exists
+        from app.models import Role
+        role = db.query(Role).filter(
+            Role.id == import_request.role_id,
+            Role.tenant_id == current_user.tenant_id
+        ).first()
+        if not role:
+            raise ErrorCodeException(
+                status_code=404,
+                error_code=ErrorCode.ASSET_NOT_FOUND,
+                detail="Role not found"
+            )
+        
+        logger.info(f"Role verified: {role.name} (id: {role.id})")
+        
+        imported = 0
+        skipped = 0
+        errors = []
+        imported_user_ids = []
+        
+        logger.info(f"Starting import of {len(import_request.user_ids)} users from Azure AD for tenant {current_user.tenant_id}")
+        
         # Get user details from Azure AD
         for azure_user_id in import_request.user_ids:
             try:
+                logger.debug(f"Processing Azure AD user ID: {azure_user_id}")
+                
                 # Get user info from Azure AD
                 azure_user = await AzureADService.get_user_by_id(sso_config, azure_user_id)
                 
+                if not azure_user:
+                    logger.warning(f"Azure AD user {azure_user_id} not found")
+                    errors.append({
+                        "user_id": azure_user_id,
+                        "error": "User not found in Azure AD"
+                    })
+                    skipped += 1
+                    continue
+                
                 external_id = azure_user.get("id")
                 email = azure_user.get("mail") or azure_user.get("userPrincipalName")
-                name = azure_user.get("displayName") or email.split("@")[0] if email else "Unknown"
+                name = azure_user.get("displayName") or (email.split("@")[0] if email else "Unknown")
                 sso_email = azure_user.get("userPrincipalName")
                 
                 if not email:
+                    logger.warning(f"Email not found for Azure AD user {azure_user_id}")
                     errors.append({
                         "user_id": azure_user_id,
                         "error": "Email not found in Azure AD user"
@@ -587,10 +690,23 @@ async def import_azure_ad_users(
                     skipped += 1
                     continue
                 
+                if not external_id:
+                    logger.warning(f"External ID not found for Azure AD user {azure_user_id}")
+                    errors.append({
+                        "user_id": azure_user_id,
+                        "email": email,
+                        "error": "External ID not found in Azure AD user"
+                    })
+                    skipped += 1
+                    continue
+                
+                logger.debug(f"Processing user: {email} (external_id: {external_id})")
+                
                 # Check domain restriction
                 if sso_config.domain_restriction:
                     domain = email.split("@")[-1] if "@" in email else ""
                     if domain.lower() != sso_config.domain_restriction.lower():
+                        logger.info(f"User {email} skipped due to domain restriction: {domain} != {sso_config.domain_restriction}")
                         errors.append({
                             "user_id": azure_user_id,
                             "email": email,
@@ -615,6 +731,7 @@ async def import_azure_ad_users(
                 
                 if existing_user:
                     # Update existing user
+                    logger.info(f"Updating existing user {existing_user.id} ({email})")
                     existing_user.external_id = external_id
                     existing_user.sso_email = sso_email
                     existing_user.auth_provider = "azure_ad"
@@ -622,30 +739,87 @@ async def import_azure_ad_users(
                     existing_user.sso_metadata = azure_user
                     if not existing_user.name or existing_user.name == "Unknown":
                         existing_user.name = name
-                    db.commit()
-                    imported_user_ids.append(str(existing_user.id))
-                    imported += 1
+                    try:
+                        db.commit()
+                        db.refresh(existing_user)
+                        imported_user_ids.append(str(existing_user.id))
+                        imported += 1
+                        logger.info(f"Updated user {email} from Azure AD")
+                    except Exception as db_error:
+                        logger.error(f"Database error updating user {email}: {db_error}", exc_info=True)
+                        db.rollback()
+                        errors.append({
+                            "user_id": azure_user_id,
+                            "email": email,
+                            "error": f"Database error: {str(db_error)}"
+                        })
+                        skipped += 1
                 else:
                     # Create new user
-                    new_user = User(
-                        tenant_id=current_user.tenant_id,
-                        email=email.lower(),
-                        name=name,
-                        password_hash=None,  # SSO-only user
-                        auth_provider="azure_ad",
-                        external_id=external_id,
-                        sso_email=sso_email,
-                        sso_metadata=azure_user,
-                        role_id=import_request.role_id,
-                        is_active=True
-                    )
-                    db.add(new_user)
-                    db.commit()
-                    db.refresh(new_user)
-                    imported_user_ids.append(str(new_user.id))
-                    imported += 1
+                    logger.info(f"Creating new user {email}")
                     
-                    logger.info(f"Imported user {email} from Azure AD")
+                    # Ensure sso_metadata is JSON-serializable
+                    try:
+                        import json
+                        # Test if azure_user is JSON serializable
+                        json.dumps(azure_user)
+                        sso_metadata = azure_user
+                    except (TypeError, ValueError) as json_error:
+                        logger.warning(f"Azure user data not fully JSON serializable for {email}, storing minimal metadata: {json_error}")
+                        # Store only essential fields
+                        sso_metadata = {
+                            "id": external_id,
+                            "displayName": name,
+                            "mail": email,
+                            "userPrincipalName": sso_email
+                        }
+                    
+                    try:
+                        new_user = User(
+                            tenant_id=current_user.tenant_id,
+                            email=email.lower(),
+                            name=name or "Unknown",
+                            password_hash=None,  # SSO-only user
+                            auth_provider="azure_ad",
+                            external_id=external_id,
+                            sso_email=sso_email,
+                            sso_metadata=sso_metadata,
+                            role_id=import_request.role_id,
+                            is_active=True
+                        )
+                        db.add(new_user)
+                        db.flush()  # Flush to get any immediate errors
+                        db.commit()
+                        db.refresh(new_user)
+                        imported_user_ids.append(str(new_user.id))
+                        imported += 1
+                        logger.info(f"Imported user {email} from Azure AD (new user ID: {new_user.id})")
+                    except IntegrityError as integrity_error:
+                        logger.error(f"Integrity error creating user {email}: {integrity_error}", exc_info=True)
+                        db.rollback()
+                        # Check if it's a duplicate email
+                        if "email" in str(integrity_error).lower() or "unique" in str(integrity_error).lower():
+                            errors.append({
+                                "user_id": azure_user_id,
+                                "email": email,
+                                "error": f"User with email {email} already exists"
+                            })
+                        else:
+                            errors.append({
+                                "user_id": azure_user_id,
+                                "email": email,
+                                "error": f"Database integrity error: {str(integrity_error)}"
+                            })
+                        skipped += 1
+                    except Exception as db_error:
+                        logger.error(f"Database error creating user {email}: {db_error}", exc_info=True)
+                        db.rollback()
+                        errors.append({
+                            "user_id": azure_user_id,
+                            "email": email,
+                            "error": f"Database error: {str(db_error)}"
+                        })
+                        skipped += 1
                 
             except Exception as e:
                 logger.error(f"Error importing user {azure_user_id}: {e}", exc_info=True)
@@ -656,16 +830,21 @@ async def import_azure_ad_users(
                 skipped += 1
         
         # Audit log
-        create_audit_log(
-            db=db,
-            user_id=current_user.id,
-            tenant_id=current_user.tenant_id,
-            action="import_users_from_azure_ad",
-            entity="User",
-            entity_id=None,
-            description=f"Imported {imported} users from Azure AD, skipped {skipped}",
-            commit=True
-        )
+        try:
+            create_audit_log(
+                db=db,
+                user_id=current_user.id,
+                tenant_id=current_user.tenant_id,
+                action="import_users_from_azure_ad",
+                entity="User",
+                entity_id=None,
+                description=f"Imported {imported} users from Azure AD, skipped {skipped}",
+                commit=True
+            )
+        except Exception as audit_error:
+            logger.warning(f"Failed to create audit log for user import: {audit_error}")
+        
+        logger.info(f"Import completed: {imported} imported, {skipped} skipped, {len(errors)} errors")
         
         return ImportUsersResponse(
             imported=imported,
@@ -673,12 +852,14 @@ async def import_azure_ad_users(
             errors=errors,
             users=imported_user_ids
         )
-        
+    except ErrorCodeException:
+        # Re-raise ErrorCodeException as-is
+        raise
     except Exception as e:
-        logger.error(f"Error in import process: {e}", exc_info=True)
+        logger.error(f"Unexpected error in import_azure_ad_users endpoint: {e}", exc_info=True)
         raise ErrorCodeException(
             status_code=500,
             error_code=ErrorCode.INTERNAL_ERROR,
-            detail=f"Import failed: {str(e)}"
+            detail=f"Unexpected error during import: {str(e)}"
         )
 
