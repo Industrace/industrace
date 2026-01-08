@@ -9,7 +9,7 @@
 
     <div class="setup-tiles">
       <!-- SSO Configuration Tile -->
-      <div class="setup-tile" @click="goToSSO">
+      <div v-if="canRead('sso')" class="setup-tile" @click="goToSSO">
         <div class="tile-icon">
           <i class="pi pi-lock"></i>
         </div>
@@ -23,7 +23,7 @@
       </div>
 
       <!-- Users Management Tile -->
-      <div class="setup-tile" @click="goToUsers">
+      <div v-if="canRead('users')" class="setup-tile" @click="goToUsers">
         <div class="tile-icon">
           <i class="pi pi-users"></i>
         </div>
@@ -37,7 +37,7 @@
       </div>
 
       <!-- Roles Management Tile -->
-      <div class="setup-tile" @click="goToRoles">
+      <div v-if="canRead('roles')" class="setup-tile" @click="goToRoles">
         <div class="tile-icon">
           <i class="pi pi-key"></i>
         </div>
@@ -51,7 +51,7 @@
       </div>
 
       <!-- Notifications Management Tile -->
-      <div class="setup-tile" @click="goToNotifications">
+      <div v-if="canRead('notifications')" class="setup-tile" @click="goToNotifications">
         <div class="tile-icon">
           <i class="pi pi-bell"></i>
         </div>
@@ -107,7 +107,7 @@
       </div>
 
       <!-- Vulnerability Feeds Tile -->
-      <div class="setup-tile" @click="goToVulnerabilityFeeds">
+      <div v-if="canRead('vulnerabilities')" class="setup-tile" @click="goToVulnerabilityFeeds">
         <div class="tile-icon">
           <i class="pi pi-shield"></i>
         </div>
@@ -287,6 +287,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { usePermissions } from '@/composables/usePermissions'
 import api from '@/api/api'
 
 // PrimeVue Components
@@ -300,6 +301,7 @@ import Checkbox from 'primevue/checkbox'
 const { t, locale } = useI18n()
 const toast = useToast()
 const router = useRouter()
+const { canRead, canWrite } = usePermissions()
 
 // Computed properties for arrays
 const printedKitItems = computed(() => {

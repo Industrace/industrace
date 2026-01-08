@@ -34,7 +34,9 @@ class TenantSSOConfig(Base):
     scopes = Column(JSONB, default=["openid", "profile", "email"])
     
     # Auto-provisioning
-    auto_provision_enabled = Column(Boolean, default=True)
+    # Default False: Only existing users can login via SSO (Scenario 3 - Maximum Security)
+    # Users are automatically linked if email matches
+    auto_provision_enabled = Column(Boolean, default=False)
     default_role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=True)  # Role per nuovi utenti
     domain_restriction = Column(String(255), nullable=True)  # Solo utenti da questo dominio (es: "company.com")
     

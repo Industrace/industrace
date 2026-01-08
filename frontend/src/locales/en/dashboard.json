@@ -10,22 +10,64 @@
     "activeAssets": "Active Assets",
     "inactiveAssets": "Inactive Assets"
   },
-  "charts": {
-    "assetsByStatus": "Assets by Status",
-    "assetsByType": "Assets by Type",
-    "riskDistribution": "Risk Distribution"
+  "exposure": {
+    "title": "Where am I exposed",
+    "description": "Systemic risk summary",
+    "overallExposure": "Overall Exposure",
+    "overallExposureSubtitle": "Overall exposure score",
+    "assetsAtRisk": "Assets at Risk",
+    "assetsAtRiskSubtitle": "High or critical risk detected",
+    "criticalAssets": "Critical Assets",
+    "criticalAssetsSubtitle": "Assets with high criticality",
+    "assetsWithCriticalVulns": "Assets with Critical Vulnerabilities",
+    "assetsWithCriticalVulnsSubtitle": "Assets with critical or high unpatched vulnerabilities",
+    "highRiskVulnerabilities": "High-Risk Vulnerabilities",
+    "highRiskVulnerabilitiesSubtitle": "Critical or high unpatched vulnerabilities"
   },
-  "recentActivity": "Recent Activity",
-  "quickActions": "Quick Actions",
-  "alerts": "Alerts",
+  "attention": {
+    "title": "What needs attention today",
+    "description": "Things that require human action",
+    "reviewsOverdue": "Overdue Reviews",
+    "reviewsOverdueSubtitle": "Assets with overdue reviews",
+    "complianceGaps": "Compliance Gaps",
+    "complianceGapsSubtitle": "Non-compliant zones or assets",
+    "missingDependencies": "Missing Dependencies",
+    "missingDependenciesSubtitle": "Non-critical missing dependencies",
+    "evidenceMissing": "Evidence Missing",
+    "evidenceMissingSubtitle": "Missing evidence for capabilities"
+  },
+  "change": {
+    "title": "What changed recently",
+    "description": "Context, not direct risk",
+    "recentChanges": "Recent Changes",
+    "recentChangesSubtitle": "Latest asset modifications",
+    "newlyAddedAssets": "Newly Added Assets",
+    "newlyAddedAssetsSubtitle": "Assets added or updated",
+    "noRecentChanges": "No recent changes",
+    "created": "Created",
+    "updated": "Updated",
+    "justNow": "Just now",
+    "minutesAgo": "{count} minutes ago",
+    "hoursAgo": "{count} hours ago",
+    "daysAgo": "{count} days ago"
+  },
+  "posture": {
+    "title": "Am I defensible?",
+    "description": "Managerial / audit-friendly view",
+    "securityPosture": "Security Posture",
+    "securityPostureSubtitle": "Overall security status",
+    "iec62443Coverage": "IEC 62443 Coverage",
+    "iec62443CoverageSubtitle": "Percentage of assessed zones",
+    "nonCompliantZones": "Non-Compliant Zones",
+    "nonCompliantZonesSubtitle": "Non-compliant zones",
+    "slGapSummary": "SL Gap Summary",
+    "slGapSummarySubtitle": "Gap between SL-Target and SL-Achieved"
+  },
   "actions": {
     "viewAllAssets": "View All Assets",
     "recalculateRiskScores": "Recalculate Risk Scores",
-    "viewAll": "View All"
-  },
-  "tables": {
-    "topRiskyAssets": "Top Risky Assets",
-    "latestAssets": "Latest Assets"
+    "viewAll": "View All",
+    "viewAssets": "View assets"
   },
   "widgets": {
     "assetReviews": "Asset Reviews",
@@ -48,5 +90,8 @@
   },
   "messages": {
     "allSystemsOperational": "All systems operational"
-  }
+  },
+  "recentActivity": "Recent Activity",
+  "quickActions": "Quick Actions",
+  "alerts": "Alerts"
 }

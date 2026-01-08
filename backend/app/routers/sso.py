@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models import User, Tenant
 from app.services.auth import get_current_user
 from app.services.audit_decorator import audit_log_action
+from app.services.rbac import require_permission
 from app.crud import sso as crud_sso
 from app.schemas.sso import (
     TenantSSOConfigRead,
@@ -28,6 +29,7 @@ from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.services.sso_auth import SSOAuthService
 from app.services.azure_ad_service import AzureADService
+from app.config import settings
 from app.services.audit_log import create_audit_log
 from app.config import settings
 from datetime import datetime
@@ -75,6 +77,7 @@ async def check_sso_enabled(
 def get_sso_config(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("sso", 1)),
 ):
     """Get SSO configuration for current tenant"""
     sso_config = crud_sso.get_sso_config(db, current_user.tenant_id)
@@ -93,14 +96,9 @@ def create_sso_config(
     sso_config: TenantSSOConfigCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("sso", 2)),
 ):
-    """Create SSO configuration for current tenant (admin only)"""
-    if current_user.role.name != "admin":
-        raise ErrorCodeException(
-            status_code=403,
-            error_code=ErrorCode.ACCESS_DENIED,
-            detail="Only admins can configure SSO"
-        )
+    """Create SSO configuration for current tenant"""
     
     try:
         db_sso_config = crud_sso.create_sso_config(
@@ -121,14 +119,9 @@ def update_sso_config(
     sso_config_update: TenantSSOConfigUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("sso", 2)),
 ):
-    """Update SSO configuration for current tenant (admin only)"""
-    if current_user.role.name != "admin":
-        raise ErrorCodeException(
-            status_code=403,
-            error_code=ErrorCode.ACCESS_DENIED,
-            detail="Only admins can configure SSO"
-        )
+    """Update SSO configuration for current tenant"""
     
     db_sso_config = crud_sso.update_sso_config(
         db, current_user.tenant_id, sso_config_update
@@ -147,14 +140,9 @@ def update_sso_config(
 def delete_sso_config(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("sso", 2)),
 ):
-    """Delete SSO configuration for current tenant (admin only)"""
-    if current_user.role.name != "admin":
-        raise ErrorCodeException(
-            status_code=403,
-            error_code=ErrorCode.ACCESS_DENIED,
-            detail="Only admins can configure SSO"
-        )
+    """Delete SSO configuration for current tenant"""
     
     success = crud_sso.delete_sso_config(db, current_user.tenant_id)
     if not success:
@@ -171,14 +159,9 @@ async def sso_connect_start(
     connect_start: SSOConnectStart,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("sso", 2)),
 ):
-    """Start SSO connect workflow (admin only)"""
-    if current_user.role.name != "admin":
-        raise ErrorCodeException(
-            status_code=403,
-            error_code=ErrorCode.ACCESS_DENIED,
-            detail="Only admins can configure SSO"
-        )
+    """Start SSO connect workflow"""
     
     # For Azure AD, we need to create a temporary config or use existing
     # For now, we'll require config to exist first
@@ -383,12 +366,25 @@ async def sso_callback(
         
         logger.info(f"SSO login successful for user {user.id} ({user.email})")
         
-        # Redirect to frontend with token
-        # In production, use secure cookie instead of query param
+        # Redirect to frontend with secure cookie AND token in query (for localStorage)
+        # The cookie is the primary method (secure, httponly), but we also pass it as query
+        # parameter so the frontend can save it to localStorage for the API interceptor
         frontend_url = settings.SSO_REDIRECT_URI.replace("/auth/sso/callback", "")
         redirect_url = f"{frontend_url}/auth/sso/success?token={sso_token}"
         
-        return RedirectResponse(url=redirect_url)
+        # Create response with secure cookie (same as regular login)
+        response = RedirectResponse(url=redirect_url)
+        response.set_cookie(
+            key="access_token_cookie",
+            value=sso_token,
+            httponly=True,
+            secure=settings.SECURE_COOKIES,
+            samesite=settings.SAME_SITE_COOKIES,
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            path="/",
+        )
+        
+        return response
         
     except ValueError as e:
         # User-facing errors (domain restriction, auto-provisioning disabled, etc.)
@@ -413,14 +409,9 @@ async def sso_callback(
 async def test_sso_connection(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("sso", 2)),
 ):
-    """Test SSO connection (admin only)"""
-    if current_user.role.name != "admin":
-        raise ErrorCodeException(
-            status_code=403,
-            error_code=ErrorCode.ACCESS_DENIED,
-            detail="Only admins can test SSO"
-        )
+    """Test SSO connection"""
     
     sso_config = crud_sso.get_sso_config(db, current_user.tenant_id)
     if not sso_config:
@@ -478,10 +469,12 @@ def get_user_auth_methods(
     user_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("sso", 1)),
 ):
     """Get authentication methods available for a user"""
     # Only admins or the user themselves
-    if current_user.role.name != "admin" and current_user.id != user_id:
+    from app.services.rbac import check_permission
+    if not check_permission(current_user, "sso", 2) and current_user.id != user_id:
         raise ErrorCodeException(
             status_code=403,
             error_code=ErrorCode.ACCESS_DENIED
@@ -509,17 +502,12 @@ async def list_azure_ad_users(
     top: int = Query(100, ge=1, le=999, description="Maximum number of users to return"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("sso", 3)),
 ):
     """
     List users from Azure AD (Entra ID) for import.
     Requires SSO configuration to be set up.
     """
-    if current_user.role.name != "admin":
-        raise ErrorCodeException(
-            status_code=403,
-            error_code=ErrorCode.ACCESS_DENIED,
-            detail="Only admins can import users"
-        )
     
     sso_config = crud_sso.get_sso_config(db, current_user.tenant_id)
     if not sso_config:
@@ -607,6 +595,7 @@ async def import_azure_ad_users(
     import_request: ImportUsersRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("sso", 3)),
 ):
     """
     Import selected users from Azure AD into the system.
@@ -614,13 +603,6 @@ async def import_azure_ad_users(
     """
     try:
         logger.info(f"Import request received: {len(import_request.user_ids)} users, role_id: {import_request.role_id}")
-        
-        if current_user.role.name != "admin":
-            raise ErrorCodeException(
-                status_code=403,
-                error_code=ErrorCode.ACCESS_DENIED,
-                detail="Only admins can import users"
-            )
         
         sso_config = crud_sso.get_sso_config(db, current_user.tenant_id)
         if not sso_config:

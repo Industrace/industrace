@@ -12,10 +12,12 @@
         "newPassword": "Nuova Password",
         "confirmPassword": "Conferma Password",
         "settings": "Impostazioni",
-        "resetPassword": "Reset Password"
+        "resetPassword": "Reset Password",
+        "notificationsEnabled": "Notifiche Abilitate"
     },
     "strings": {
         "userInfo": "Informazioni Utente",
+        "security": "Sicurezza",
         "resetPasswordInfo": "Inserisci la password attuale e la nuova password per aggiornare le tue credenziali di accesso.",
         "currentPasswordRequired": "La password attuale è obbligatoria",
         "newPasswordRequired": "La nuova password è obbligatoria",
@@ -28,7 +30,10 @@
         "settingsComingSoon": "Impostazioni aggiuntive saranno disponibili prossimamente",
         "enterCurrentPassword": "Inserisci la password attuale",
         "enterNewPassword": "Inserisci la nuova password",
-        "confirmNewPassword": "Conferma la nuova password"
+        "confirmNewPassword": "Conferma la nuova password",
+        "notificationsEnabledHelp": "Abilita o disabilita tutte le notifiche email. Quando disabilitato, non riceverai nessuna notifica, indipendentemente dalle preferenze specifiche.",
+        "notificationsUpdated": "Preferenza notifiche aggiornata con successo",
+        "notificationsUpdateError": "Errore nell'aggiornamento della preferenza notifiche"
     },
     "messages": {
         "success": "Operazione completata con successo",

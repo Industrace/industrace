@@ -67,7 +67,9 @@
     "customFieldsAllKeysMustBeUnique": "All keys must be unique",
     "customFieldsNoCustomFields": "No custom fields",
     "fetchSitesError": "Error loading sites",
-    "noInterfaces": "No network interfaces configured"
+    "noInterfaces": "No network interfaces configured",
+    "noteSaved": "Note saved successfully",
+    "noteSaveError": "Error saving note"
   },
   "actions": {
     "addProtocol": "Add Protocol"
@@ -107,6 +109,7 @@
     "filterbyStatus": "Filter by status",
     "filterbySite": "Filter by site",
     "filterbyArea": "Filter by area",
+    "filterbyLocation": "Filter by location",
     "advancedFilters": "Advanced filters",
     "networkInterfacesSummary": "Network interfaces ({count})",
     "networkConnection": "Network Connection",
@@ -124,6 +127,9 @@
     "remoteAccessTypeAttended": "Attended Remote Access",
     "remoteAccessTypeUnattended": "Unattended Remote Access",
     "remoteAccessTypeNone": "No Remote Access",
+    "remoteAccessNone": "No Remote Access",
+    "remoteAccessAttended": "Attended",
+    "remoteAccessUnattended": "Unattended",
     "physicalAccessEaseEasy": "Easy",
     "physicalAccessEaseMedium": "Medium",
     "physicalAccessEaseHard": "Hard",
@@ -132,6 +138,12 @@
     "physicalAccessInternal": "Internal",
     "physicalAccessDMZ": "DMZ",
     "physicalAccessExternal": "External",
+    "physicalAccessUnrestricted": "Unrestricted (public/external)",
+    "physicalAccessControlled": "Controlled (Office/shared area)",
+    "physicalAccessRestricted": "Restricted (badge/locked cabinet/plant floor)",
+    "physicalAccessUnrestrictedTooltip": "Public or external access without restrictions",
+    "physicalAccessControlledTooltip": "Office or shared area access with basic control",
+    "physicalAccessRestrictedTooltip": "Restricted access with badge, locked cabinet or protected plant floor area",
     "riskLevelUndefined": "Undefined",
     "riskLevelLow": "Basso",
     "riskLevelMedium": "Medium",
@@ -143,7 +155,11 @@
     "chooseField": "Choose field",
     "floorplan": "View floorplan",
     "riskScoreMin": "Risk Score Min",
-    "riskScoreMax": "Risk Score Max"
+    "riskScoreMax": "Risk Score Max",
+    "activeFilters": "Active filters",
+    "filters": {
+      "hasCriticalVulns": "With Critical Vulnerabilities"
+    }
   },
   "detail": {
     "navigation": "Navigation",

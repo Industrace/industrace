@@ -21,6 +21,9 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     deleted_at = Column(DateTime, nullable=True)
     
+    # Notification preferences
+    notifications_enabled = Column(Boolean, default=True)  # Global setting to enable/disable all notifications
+    
     # SSO fields
     auth_provider = Column(String(50), nullable=True, index=True)  # 'local', 'azure_ad', 'google', 'okta'
     external_id = Column(String(255), nullable=True, index=True)  # ID utente nel provider esterno
@@ -29,3 +32,4 @@ class User(Base):
     sso_metadata = Column(JSONB, nullable=True)  # Dati aggiuntivi dal provider
     
     role = relationship("Role", back_populates="users", lazy="joined")
+    tenant = relationship("Tenant", lazy="joined")

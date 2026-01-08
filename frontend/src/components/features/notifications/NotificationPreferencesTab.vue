@@ -28,11 +28,12 @@
             <InputSwitch v-model="data.email_enabled" @update:modelValue="updatePreference(data, 'email_enabled', $event)" />
           </template>
         </Column>
-        <Column :header="t('notifications.inAppEnabled')">
+        <!-- In-app notifications disabled for now -->
+        <!-- <Column :header="t('notifications.inAppEnabled')">
           <template #body="{ data }">
-            <InputSwitch v-model="data.in_app_enabled" @update:modelValue="updatePreference(data, 'in_app_enabled', $event)" />
+            <InputSwitch v-model="data.in_app_enabled" @update:modelValue="updatePreference(data, 'in_app_enabled', $event)" disabled />
           </template>
-        </Column>
+        </Column> -->
         <Column field="frequency" :header="t('notifications.frequency')" sortable>
           <template #body="{ data }">
             <Dropdown
@@ -47,6 +48,7 @@
         </Column>
         <Column :header="t('notifications.minSeverity')">
           <template #body="{ data }">
+            <div class="flex align-items-center gap-2">
             <InputNumber 
               v-model="data.severity_min" 
               :min="0" 
@@ -54,7 +56,14 @@
               @update:modelValue="updatePreference(data, 'severity_min', $event)"
               class="w-8rem"
               :showButtons="true"
+                :title="t('notifications.minSeverityTooltip')"
+              />
+              <i 
+                class="pi pi-info-circle text-color-secondary cursor-pointer" 
+                :title="t('notifications.minSeverityTooltip')"
+                style="font-size: 0.875rem;"
             />
+            </div>
           </template>
         </Column>
         <Column :header="t('common.strings.actions')">
@@ -100,12 +109,13 @@
             {{ t('notifications.emailEnabled') }}
           </label>
         </div>
-        <div class="field">
+        <!-- In-app notifications disabled for now -->
+        <!-- <div class="field">
           <label class="checkbox-label">
-            <Checkbox v-model="newPreference.in_app_enabled" :binary="true" inputId="in_app_enabled" />
-            {{ t('notifications.inAppEnabled') }}
+            <Checkbox v-model="newPreference.in_app_enabled" :binary="true" inputId="in_app_enabled" disabled />
+            {{ t('notifications.inAppEnabled') }} (Disabilitato)
           </label>
-        </div>
+        </div> -->
         <div class="field">
           <label for="frequency">{{ t('notifications.frequency') }}</label>
           <Dropdown
@@ -118,7 +128,14 @@
           />
         </div>
         <div class="field">
-          <label for="severity_min">{{ t('notifications.minSeverity') }}</label>
+          <label for="severity_min">
+            {{ t('notifications.minSeverity') }}
+            <i 
+              class="pi pi-info-circle text-color-secondary ml-2" 
+              :title="t('notifications.minSeverityTooltip')"
+              style="font-size: 0.875rem; cursor: help;"
+            />
+          </label>
           <InputNumber 
             id="severity_min"
             v-model="newPreference.severity_min" 
@@ -127,7 +144,9 @@
             class="w-full"
             :showButtons="true"
             :placeholder="t('notifications.minSeverityPlaceholder')"
+            :title="t('notifications.minSeverityTooltip')"
           />
+          <small class="text-color-secondary">{{ t('notifications.minSeverityHelp') }}</small>
         </div>
         <div class="flex justify-content-end gap-2 mt-3">
           <Button 
@@ -181,7 +200,7 @@ const errors = ref({})
 const newPreference = ref({
   notification_type: null,
   email_enabled: true,
-  in_app_enabled: true,
+  in_app_enabled: false, // Disabled for now
   frequency: 'immediate',
   severity_min: null
 })
@@ -224,13 +243,13 @@ async function createPreference() {
   creating.value = true
   try {
     await api.createNotificationPreference(newPreference.value)
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('notifications.preferenceCreated') })
+    toast.add({ severity: 'success', summary: t('common.messages.success'), detail: t('notifications.preferenceCreated') })
     showAddDialog.value = false
     // Reset form
     newPreference.value = {
       notification_type: null,
       email_enabled: true,
-      in_app_enabled: true,
+      in_app_enabled: false, // Disabled for now
       frequency: 'immediate',
       severity_min: null
     }
@@ -238,7 +257,7 @@ async function createPreference() {
     emit('refresh')
   } catch (error) {
     console.error('Error creating preference:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: error.response?.data?.detail || t('notifications.errorCreating') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: error.response?.data?.detail || t('notifications.errorCreating') })
   } finally {
     creating.value = false
   }
@@ -249,23 +268,23 @@ async function deletePreference(preference) {
   
   try {
     await api.deleteNotificationPreference(preference.id)
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('notifications.preferenceDeleted') })
+    toast.add({ severity: 'success', summary: t('common.messages.success'), detail: t('notifications.preferenceDeleted') })
     await fetchAvailableTemplates()
     emit('refresh')
   } catch (error) {
     console.error('Error deleting preference:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: error.response?.data?.detail || t('notifications.errorDeleting') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: error.response?.data?.detail || t('notifications.errorDeleting') })
   }
 }
 
 async function updatePreference(preference, field, value) {
   try {
     await api.updateNotificationPreference(preference.id, { [field]: value })
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('notifications.preferenceUpdated') })
+    toast.add({ severity: 'success', summary: t('common.messages.success'), detail: t('notifications.preferenceUpdated') })
     emit('refresh')
   } catch (error) {
     console.error('Error updating preference:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: error.response?.data?.detail || t('notifications.errorUpdating') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: error.response?.data?.detail || t('notifications.errorUpdating') })
     // Revert change
     emit('refresh') // Refresh to get correct values
   }

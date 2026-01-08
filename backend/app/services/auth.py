@@ -112,4 +112,9 @@ async def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise ErrorCodeException(status_code=401, error_code=ErrorCode.USER_NOT_FOUND)
+    
+    # Check if user is deleted
+    if user.deleted_at is not None:
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.USER_NOT_FOUND)
+    
     return user

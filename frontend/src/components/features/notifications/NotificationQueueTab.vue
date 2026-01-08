@@ -11,50 +11,63 @@
     <div v-if="loading" class="text-center p-4">
       <ProgressSpinner />
     </div>
-    <div v-else>
+    <div v-else-if="!loading">
       <DataTable 
-        :value="queue" 
+        :value="safeQueue" 
         :emptyMessage="t('notifications.noQueueItems')"
         :paginator="true"
         :rows="20"
         class="p-datatable-sm"
+        :key="`queue-${safeQueue.length}`"
       >
         <Column field="notification_type" :header="t('notifications.type')" sortable>
           <template #body="{ data }">
-            <span class="font-semibold">{{ getNotificationTypeLabel(data.notification_type) }}</span>
+            <span class="font-semibold" v-if="data">{{ getNotificationTypeLabel(data.notification_type) }}</span>
           </template>
         </Column>
-        <Column field="email" :header="t('common.fields.email')" sortable />
-        <Column field="subject" :header="t('notifications.subject')" />
+        <Column field="email" :header="t('common.fields.email')" sortable>
+          <template #body="{ data }">
+            <span v-if="data">{{ data.email }}</span>
+          </template>
+        </Column>
+        <Column field="subject" :header="t('notifications.subject')">
+          <template #body="{ data }">
+            <span v-if="data">{{ data.subject }}</span>
+          </template>
+        </Column>
         <Column field="status" :header="t('notifications.status')" sortable>
           <template #body="{ data }">
             <Tag 
+              v-if="data"
               :value="getStatusLabel(data.status)" 
               :severity="getStatusSeverity(data.status)" 
             />
           </template>
         </Column>
-        <Column field="attempts" :header="t('notifications.attempts')" />
+        <Column field="attempts" :header="t('notifications.attempts')">
+          <template #body="{ data }">
+            <span v-if="data">{{ data.attempts || 0 }}</span>
+          </template>
+        </Column>
         <Column :header="t('notifications.scheduledFor')" sortable sortField="scheduled_for">
           <template #body="{ data }">
-            {{ formatDate(data.scheduled_for) }}
+            <span v-if="data">{{ formatDate(data.scheduled_for) || '-' }}</span>
           </template>
         </Column>
         <Column :header="t('notifications.sentAt')" sortable sortField="sent_at">
           <template #body="{ data }">
-            {{ formatDate(data.sent_at) || '-' }}
+            <span v-if="data">{{ formatDate(data.sent_at) || '-' }}</span>
           </template>
         </Column>
         <Column v-if="canAdmin" :header="t('common.strings.actions')">
           <template #body="{ data }">
-            <div class="flex gap-2">
+            <div class="flex gap-2" v-if="data">
               <Button 
                 v-if="data.status === 'failed' || data.status === 'pending'"
                 icon="pi pi-refresh" 
                 class="p-button-rounded p-button-text p-button-success" 
                 @click="$emit('retry', data.id)" 
                 :title="t('notifications.retry')"
-                v-tooltip.top="t('notifications.retry')"
               />
               <Button 
                 v-if="data.status === 'pending'"
@@ -62,7 +75,6 @@
                 class="p-button-rounded p-button-text p-button-danger" 
                 @click="$emit('cancel', data.id)" 
                 :title="t('notifications.cancel')"
-                v-tooltip.top="t('notifications.cancel')"
               />
             </div>
           </template>
@@ -91,6 +103,12 @@ const props = defineProps({
 const emit = defineEmits(['refresh', 'retry', 'cancel', 'process'])
 const { t } = useI18n()
 const { formatDate: formatDateUtil } = useDateFormatter()
+
+// Ensure queue is always a safe array
+const safeQueue = computed(() => {
+  if (!props.queue) return []
+  return Array.isArray(props.queue) ? props.queue.filter(item => item !== null && item !== undefined) : []
+})
 
 const formatDate = (date) => {
   if (!date) return null

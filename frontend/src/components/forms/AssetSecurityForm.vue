@@ -10,20 +10,11 @@
       <div class="grid">
         <div class="col-12 md:col-6">
           <div class="p-field">
-            <label class="flex align-items-center">
-              <InputSwitch v-model="form.remote_access" class="mr-2" />
-              {{ t('assets.fields.remoteAccess') }}
-            </label>
-          </div>
-        </div>
-
-        <div class="col-12 md:col-6" v-if="form.remote_access">
-          <div class="p-field">
-            <label for="remote_access_type">{{ t('assets.fields.remoteAccessType') }}</label>
+            <label for="remote_access">{{ t('assets.fields.remoteAccess') }}</label>
             <Dropdown 
-              id="remote_access_type" 
+              id="remote_access" 
               v-model="form.remote_access_type" 
-              :options="remoteAccessTypeOptions" 
+              :options="remoteAccessOptions" 
               optionLabel="label" 
               optionValue="value"
               :placeholder="t('common.strings.select')"
@@ -43,7 +34,24 @@
               optionValue="value"
               :placeholder="t('common.strings.select')"
               class="w-full"
-            />
+            >
+              <template #value="slotProps">
+                <span v-if="slotProps.value">
+                  {{ getPhysicalAccessLabel(slotProps.value) }}
+                </span>
+                <span v-else>{{ t('common.strings.select') }}</span>
+              </template>
+              <template #option="slotProps">
+                <div class="flex align-items-center justify-content-between w-full">
+                  <span>{{ slotProps.option.label }}</span>
+                  <i 
+                    v-if="slotProps.option.tooltip"
+                    class="pi pi-info-circle text-500 ml-2"
+                    v-tooltip.top="slotProps.option.tooltip"
+                  ></i>
+                </div>
+              </template>
+            </Dropdown>
           </div>
         </div>
 
@@ -67,10 +75,10 @@
 </template>
 
 <script setup>
+import { watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from 'primevue/card'
 import Dropdown from 'primevue/dropdown'
-import InputSwitch from 'primevue/inputswitch'
 
 const props = defineProps({
   form: { type: Object, required: true }
@@ -78,17 +86,41 @@ const props = defineProps({
 
 const { t } = useI18n()
 
-const remoteAccessTypeOptions = [
-  { label: t('assets.strings.remoteAccessTypeNone'), value: 'none' },
-  { label: t('assets.strings.remoteAccessTypeAttended'), value: 'attended' },
-  { label: t('assets.strings.remoteAccessTypeUnattended'), value: 'unattended' }
+// Sincronizza remote_access con remote_access_type
+watch(() => props.form.remote_access_type, (newValue) => {
+  if (props.form) {
+    props.form.remote_access = newValue !== 'none' && newValue !== null
+  }
+}, { immediate: true })
+
+const remoteAccessOptions = [
+  { label: t('assets.strings.remoteAccessNone'), value: 'none' },
+  { label: t('assets.strings.remoteAccessAttended'), value: 'attended' },
+  { label: t('assets.strings.remoteAccessUnattended'), value: 'unattended' }
 ]
 
 const physicalAccessOptions = [
-  { label: t('assets.strings.physicalAccessInternal'), value: 'internal' },
-  { label: t('assets.strings.physicalAccessDMZ'), value: 'dmz' },
-  { label: t('assets.strings.physicalAccessExternal'), value: 'external' }
+  { 
+    label: t('assets.strings.physicalAccessUnrestricted'), 
+    value: 'unrestricted',
+    tooltip: t('assets.strings.physicalAccessUnrestrictedTooltip')
+  },
+  { 
+    label: t('assets.strings.physicalAccessControlled'), 
+    value: 'controlled',
+    tooltip: t('assets.strings.physicalAccessControlledTooltip')
+  },
+  { 
+    label: t('assets.strings.physicalAccessRestricted'), 
+    value: 'restricted',
+    tooltip: t('assets.strings.physicalAccessRestrictedTooltip')
+  }
 ]
+
+function getPhysicalAccessLabel(value) {
+  const option = physicalAccessOptions.find(opt => opt.value === value)
+  return option ? option.label : value
+}
 
 const businessCriticalityOptions = [
   { label: t('assets.strings.businessCriticalityLow'), value: 'low' },

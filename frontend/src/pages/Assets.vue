@@ -13,8 +13,111 @@
       :assetStatusOptions="assetStatusOptions"
       :sites="sites"
       :areas="allAreas"
-      @showAdvancedFilters="showAdvancedFilters = true"
+      :locations="locations"
     />
+
+    <!-- Active Filters Display -->
+    <div v-if="activeFiltersCount > 0" class="active-filters mb-3">
+      <div class="flex align-items-center gap-2 flex-wrap">
+        <span class="text-sm text-600 font-medium">{{ t('assets.strings.activeFilters') || 'Active Filters' }}:</span>
+        
+        <!-- Status Filter -->
+        <span 
+          v-if="filters.status_id.value" 
+          class="p-tag p-tag-info active-filter-tag"
+          @click="clearFilter('status_id')"
+        >
+          {{ getStatusFilterLabel() }}
+          <i class="pi pi-times ml-2" style="font-size: 0.75rem"></i>
+        </span>
+        
+        <!-- Site Filter -->
+        <span 
+          v-if="filters.site_id.value" 
+          class="p-tag p-tag-info active-filter-tag"
+          @click="clearFilter('site_id')"
+        >
+          {{ getSiteFilterLabel() }}
+          <i class="pi pi-times ml-2" style="font-size: 0.75rem"></i>
+        </span>
+        
+        <!-- Area Filter -->
+        <span 
+          v-if="filters.area_id.value" 
+          class="p-tag p-tag-info active-filter-tag"
+          @click="clearFilter('area_id')"
+        >
+          {{ getAreaFilterLabel() }}
+          <i class="pi pi-times ml-2" style="font-size: 0.75rem"></i>
+        </span>
+        
+        <!-- Location Filter -->
+        <span 
+          v-if="filters.location_id.value" 
+          class="p-tag p-tag-info active-filter-tag"
+          @click="clearFilter('location_id')"
+        >
+          {{ getLocationFilterLabel() }}
+          <i class="pi pi-times ml-2" style="font-size: 0.75rem"></i>
+        </span>
+        
+        <!-- Business Criticality Filter -->
+        <span 
+          v-if="filters.business_criticality.value" 
+          class="p-tag active-filter-tag"
+          :style="{ 
+            background: getCriticalityColor(filters.business_criticality.value),
+            color: '#fff',
+            border: 'none'
+          }"
+          @click="clearFilter('business_criticality')"
+        >
+          {{ getBusinessCriticalityLabel(filters.business_criticality.value) }}
+          <i class="pi pi-times ml-2" style="font-size: 0.75rem"></i>
+        </span>
+        
+        <!-- Risk Score Min Filter -->
+        <span 
+          v-if="filters.risk_score_min.value !== null && filters.risk_score_min.value !== undefined" 
+          class="p-tag p-tag-warning active-filter-tag"
+          @click="clearFilter('risk_score_min')"
+        >
+          {{ t('assets.fields.riskScore') }} ≥ {{ filters.risk_score_min.value }}
+          <i class="pi pi-times ml-2" style="font-size: 0.75rem"></i>
+        </span>
+        
+        <!-- Risk Score Max Filter -->
+        <span 
+          v-if="filters.risk_score_max.value !== null && filters.risk_score_max.value !== undefined" 
+          class="p-tag p-tag-warning active-filter-tag"
+          @click="clearFilter('risk_score_max')"
+        >
+          {{ t('assets.fields.riskScore') }} ≤ {{ filters.risk_score_max.value }}
+          <i class="pi pi-times ml-2" style="font-size: 0.75rem"></i>
+        </span>
+        
+        <!-- Has Critical Vulns Filter -->
+        <span 
+          v-if="filters.has_critical_vulns?.value" 
+          class="p-tag p-tag-danger active-filter-tag"
+          @click="filters.has_critical_vulns.value = false"
+        >
+          {{ t('assets.filters.hasCriticalVulns') || 'Con Vulnerabilità Critiche' }}
+          <i class="pi pi-times ml-2" style="font-size: 0.75rem"></i>
+        </span>
+        
+        <!-- Clear All Button -->
+        <Button 
+          :label="t('common.actions.clearAll') || 'Clear All'" 
+          icon="pi pi-filter-slash" 
+          severity="secondary"
+          size="small"
+          text
+          @click="clearAllFilters"
+          class="p-button-text"
+        />
+      </div>
+    </div>
 
     <!-- Indicatore conteggio totale -->
     <div class="flex justify-content-between align-items-center mb-3">
@@ -22,9 +125,9 @@
         <i class="pi pi-info-circle mr-2"></i>
         {{ $t('assets.strings.totalAssets') }} {{ totalAssetsCount }}
       </div>
-      <div class="text-sm text-600" v-if="filteredAssets.length !== totalAssetsCount">
+      <div class="text-sm text-600" v-if="assets.length !== totalAssetsCount">
         <i class="pi pi-filter mr-2"></i>
-        {{ t('assets.strings.filteredAssets', { filtered: filteredAssets.length, total: totalAssetsCount }) }}
+        {{ t('assets.strings.filteredAssets', { filtered: assets.length, total: totalAssetsCount }) }}
       </div>
     </div>
 
@@ -186,12 +289,6 @@
       @close="closeConfirmDialog"
     />
     
-    <AssetsAdvancedFilters 
-      v-model:visible="showAdvancedFilters"
-      :filters="filters"
-      @apply="applyAdvancedFilters"
-      @clear="clearAdvancedFilters"
-    />
 
     <AssetsBulkActions 
       v-model:visible="showBulkDialog"
@@ -213,7 +310,7 @@
 
 <script setup>
 import { ref, onMounted, nextTick, watch, computed, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useApi } from '../composables/useApi'
@@ -234,11 +331,11 @@ import BaseConfirmDialog from '../components/base/BaseConfirmDialog.vue'
 import AssetImportDialog from '../components/dialogs/AssetImportDialog.vue'
 import AssetsHeader from '../components/features/assets/AssetsHeader.vue'
 import AssetsFilters from '../components/features/assets/AssetsFilters.vue'
-import AssetsAdvancedFilters from '../components/features/assets/AssetsAdvancedFilters.vue'
 import AssetsBulkActions from '../components/features/assets/AssetsBulkActions.vue'
 import AssetsTrashActions from '../components/features/assets/AssetsTrashActions.vue'
 
 const router = useRouter()
+const route = useRoute()
 const { t } = useI18n()
 const toast = useToast()
 
@@ -261,14 +358,16 @@ const allColumns = [
 
 // Composables
 const { loading, execute } = useApi()
-const { filters, globalSearch, selectedColumns, filterData, getApiParams } = useFilters({
+const { filters, globalSearch, selectedColumns, filterData, getApiParams, clearFilter: clearFilterComposable, resetFilters, sortField, sortOrder, setSort } = useFilters({
   global: { value: null, matchMode: 'contains' },
   status_id: { value: null, matchMode: 'equals' },
   site_id: { value: null, matchMode: 'equals' },
   area_id: { value: null, matchMode: 'equals' },
+  location_id: { value: null, matchMode: 'equals' },
   business_criticality: { value: null, matchMode: 'equals' },
   risk_score_min: { value: null, matchMode: 'gte' },
-  risk_score_max: { value: null, matchMode: 'lte' }
+  risk_score_max: { value: null, matchMode: 'lte' },
+  has_critical_vulns: { value: false, matchMode: 'equals' }
 }, 'assets')
 
 const { isVisible: showDialog, data: editingAsset, openCreate, openEdit, close } = useDialog()
@@ -328,23 +427,6 @@ const selectedAssets = ref([])
 const showBulkDialog = ref(false)
 const trashMode = ref(false)
 
-
-
-const showAdvancedFilters = ref(false)
-function applyAdvancedFilters(advancedFiltersData) {
-  filters.value.business_criticality.value = advancedFiltersData.business_criticality
-  filters.value.risk_score_min.value = advancedFiltersData.risk_score_min
-  filters.value.risk_score_max.value = advancedFiltersData.risk_score_max
-}
-function clearAdvancedFilters() {
-  advancedFilters.business_criticality = null
-  advancedFilters.risk_score_min = null
-  advancedFilters.risk_score_max = null
-  filters.value.business_criticality.value = null
-  filters.value.risk_score_min.value = null
-  filters.value.risk_score_max.value = null
-}
-
 function onEditCancel() {
   close()
 }
@@ -385,7 +467,296 @@ async function handleSubmit(assetData) {
 watch(() => editingAsset.value, (newAsset) => {
 })
 
+// Flag per evitare chiamate API durante l'inizializzazione
+const isInitializing = ref(true)
+
+// Debounce timer per evitare troppe chiamate API
+let debounceTimer = null
+
+// Debounced fetchAssets per evitare troppe chiamate API
+function debouncedFetchAssets() {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+  }
+  debounceTimer = setTimeout(() => {
+    if (!isInitializing.value) {
+      fetchAssets()
+    }
+  }, 300)
+}
+
+// Funzione per sincronizzare i filtri con l'URL
+function syncFiltersToUrl() {
+  const query = {}
+  
+  // Aggiorna o rimuove i query params in base ai filtri
+  if (filters.value.status_id?.value) {
+    query.status_id = filters.value.status_id.value
+  }
+  
+  if (filters.value.site_id?.value) {
+    query.site_id = filters.value.site_id.value
+  }
+  
+  if (filters.value.area_id?.value) {
+    query.area_id = filters.value.area_id.value
+  }
+  
+  if (filters.value.location_id?.value) {
+    query.location_id = filters.value.location_id.value
+  }
+  
+  if (filters.value.business_criticality?.value) {
+    // Se c'è un valore originale salvato (da URL con virgole), usalo
+    // Altrimenti usa il valore del filtro
+    if (filters.value.business_criticality._originalValue) {
+      query.business_criticality = filters.value.business_criticality._originalValue
+    } else {
+      query.business_criticality = filters.value.business_criticality.value
+    }
+  }
+  
+  if (filters.value.risk_score_min?.value !== null && filters.value.risk_score_min?.value !== undefined) {
+    query.risk_score_min = filters.value.risk_score_min.value.toString()
+  }
+  
+  if (filters.value.risk_score_max?.value !== null && filters.value.risk_score_max?.value !== undefined) {
+    query.risk_score_max = filters.value.risk_score_max.value.toString()
+  }
+  
+  if (filters.value.global?.value) {
+    query.global_search = filters.value.global.value
+  }
+  
+  if (filters.value.has_critical_vulns?.value) {
+    query.has_critical_vulns = 'true'
+  }
+  
+  // Sincronizza sort e order
+  if (sortField.value) {
+    query.sort = sortField.value
+    query.order = sortOrder.value === 1 ? 'asc' : 'desc'
+  }
+  
+  // Aggiorna l'URL solo se è diverso da quello attuale per evitare loop
+  const currentQuery = { ...route.query }
+  const queryChanged = JSON.stringify(query) !== JSON.stringify(currentQuery)
+  
+  if (queryChanged) {
+    router.replace({ query })
+  }
+}
+
+// Watch specifico per business_criticality per rimuovere _originalValue quando l'utente cambia manualmente
+watch(
+  () => filters.value.business_criticality?.value,
+  (newValue, oldValue) => {
+    // Se l'utente ha cambiato manualmente il valore (non durante l'inizializzazione)
+    // e c'era un _originalValue, rimuovilo per usare solo il valore selezionato
+    if (!isInitializing.value && oldValue !== undefined && filters.value.business_criticality?._originalValue) {
+      // Rimuovi _originalValue solo se il nuovo valore è diverso dal primo valore di _originalValue
+      const originalFirstValue = filters.value.business_criticality._originalValue.split(',')[0].trim().toLowerCase()
+      if (newValue !== originalFirstValue) {
+        delete filters.value.business_criticality._originalValue
+      }
+    }
+  }
+)
+
+// Watch reattivo sui filtri per triggerare automaticamente fetchAssets e sincronizzare URL
+watch(
+  () => [
+    filters.value.status_id?.value,
+    filters.value.site_id?.value,
+    filters.value.area_id?.value,
+    filters.value.location_id?.value,
+    filters.value.business_criticality?.value,
+    filters.value.risk_score_min?.value,
+    filters.value.risk_score_max?.value,
+    filters.value.global?.value,
+    filters.value.has_critical_vulns?.value,
+    sortField.value,
+    sortOrder.value,
+    trashMode.value
+  ],
+  () => {
+    if (!isInitializing.value) {
+      syncFiltersToUrl()
+      debouncedFetchAssets()
+    }
+  },
+  { deep: true }
+)
+
+// Watch per sincronizzare l'URL quando cambia (es. navigazione dalla dashboard)
+watch(
+  () => route.query,
+  (newQuery) => {
+    if (!isInitializing.value) {
+      // Aggiorna i filtri solo se sono diversi dall'URL
+      let filtersChanged = false
+      
+      if (newQuery.status_id !== filters.value.status_id?.value) {
+        filters.value.status_id.value = newQuery.status_id || null
+        filtersChanged = true
+      }
+      
+      if (newQuery.site_id !== filters.value.site_id?.value) {
+        filters.value.site_id.value = newQuery.site_id || null
+        filtersChanged = true
+      }
+      
+      if (newQuery.area_id !== filters.value.area_id?.value) {
+        filters.value.area_id.value = newQuery.area_id || null
+        filtersChanged = true
+      }
+      
+      if (newQuery.location_id !== filters.value.location_id?.value) {
+        filters.value.location_id.value = newQuery.location_id || null
+        filtersChanged = true
+      }
+      
+      if (newQuery.business_criticality !== filters.value.business_criticality?.value) {
+        const value = newQuery.business_criticality
+        const criticalityValues = Array.isArray(value) ? value : value?.split(',')
+        const firstValue = criticalityValues?.[0]?.trim().toLowerCase()
+        if (firstValue && ['low', 'medium', 'high', 'critical'].includes(firstValue)) {
+          filters.value.business_criticality.value = firstValue
+          // Salva il valore originale se contiene virgole
+          if (value && value.includes && value.includes(',')) {
+            filters.value.business_criticality._originalValue = value
+          } else {
+            delete filters.value.business_criticality._originalValue
+          }
+        } else {
+          filters.value.business_criticality.value = null
+          delete filters.value.business_criticality._originalValue
+        }
+        filtersChanged = true
+      }
+      
+      if (newQuery.risk_score_min !== (filters.value.risk_score_min?.value?.toString() || null)) {
+        const value = newQuery.risk_score_min ? parseFloat(newQuery.risk_score_min) : null
+        filters.value.risk_score_min.value = !isNaN(value) ? value : null
+        filtersChanged = true
+      }
+      
+      if (newQuery.risk_score_max !== (filters.value.risk_score_max?.value?.toString() || null)) {
+        const value = newQuery.risk_score_max ? parseFloat(newQuery.risk_score_max) : null
+        filters.value.risk_score_max.value = !isNaN(value) ? value : null
+        filtersChanged = true
+      }
+      
+      if ((newQuery.global_search || newQuery.search) !== filters.value.global?.value) {
+        filters.value.global.value = newQuery.global_search || newQuery.search || null
+        filtersChanged = true
+      }
+      
+      if (newQuery.has_critical_vulns === 'true' && !filters.value.has_critical_vulns?.value) {
+        filters.value.has_critical_vulns.value = true
+        filtersChanged = true
+      } else if (newQuery.has_critical_vulns !== 'true' && filters.value.has_critical_vulns?.value) {
+        filters.value.has_critical_vulns.value = false
+        filtersChanged = true
+      }
+      
+      // Sincronizza sort e order
+      const newSortField = newQuery.sort || newQuery.sort_by
+      const newSortOrder = newQuery.order || newQuery.sort_order || 'asc'
+      if (newSortField !== sortField.value || (newSortField && (newSortOrder === 'desc' ? -1 : 1) !== sortOrder.value)) {
+        if (newSortField) {
+          setSort(newSortField, newSortOrder === 'desc' ? -1 : 1)
+        } else {
+          setSort('', 1)
+        }
+        filtersChanged = true
+      }
+      
+      // Se i filtri sono cambiati, fetchAssets verrà chiamato dal watch sui filtri
+      // Non chiamare fetchAssets qui per evitare doppie chiamate
+    }
+  },
+  { immediate: false }
+)
+
+// Initialize filters from query params
+function initializeFiltersFromQuery() {
+  const query = route.query
+  
+  // Parse status_id
+  if (query.status_id) {
+    filters.value.status_id.value = query.status_id
+  }
+  
+  // Parse site_id
+  if (query.site_id) {
+    filters.value.site_id.value = query.site_id
+  }
+  
+  // Parse area_id
+  if (query.area_id) {
+    filters.value.area_id.value = query.area_id
+  }
+  
+  // Parse location_id
+  if (query.location_id) {
+    filters.value.location_id.value = query.location_id
+  }
+  
+  // Parse risk_score_min
+  if (query.risk_score_min) {
+    const value = parseFloat(query.risk_score_min)
+    if (!isNaN(value)) {
+      filters.value.risk_score_min.value = value
+    }
+  }
+  
+  // Parse risk_score_max
+  if (query.risk_score_max) {
+    const value = parseFloat(query.risk_score_max)
+    if (!isNaN(value)) {
+      filters.value.risk_score_max.value = value
+    }
+  }
+  
+  // Parse business_criticality (support single value or comma-separated values)
+  // Quando arriva "critical,high" dalla dashboard, prendiamo il primo valore per il dropdown
+  // ma manteniamo il valore completo nell'URL per il backend
+  if (query.business_criticality) {
+    const value = query.business_criticality
+    const criticalityValues = Array.isArray(value) ? value : value.split(',')
+    const firstValue = criticalityValues[0]?.trim().toLowerCase()
+    if (firstValue && ['low', 'medium', 'high', 'critical'].includes(firstValue)) {
+      filters.value.business_criticality.value = firstValue
+      // Salva il valore originale se contiene virgole per mantenerlo nell'URL
+      if (value.includes(',')) {
+        filters.value.business_criticality._originalValue = value
+      }
+    }
+  }
+  
+  // Parse has_critical_vulns
+  if (query.has_critical_vulns === 'true') {
+    filters.value.has_critical_vulns.value = true
+  }
+  
+  // Parse global_search
+  if (query.global_search || query.search) {
+    filters.value.global.value = query.global_search || query.search
+  }
+  
+  // Parse sort and order
+  if (query.sort || query.sort_by) {
+    const field = query.sort || query.sort_by
+    const order = query.order || query.sort_order || 'asc'
+    setSort(field, order === 'desc' ? -1 : 1)
+  }
+}
+
 onMounted(async () => {
+  // Initialize filters from query params before fetching
+  initializeFiltersFromQuery()
+  
   await Promise.all([
     fetchAssets(), 
     fetchSites(), 
@@ -395,11 +766,22 @@ onMounted(async () => {
     fetchManufactures(),
     fetchAssetStatuses()
   ])
+  
+  // Dopo il caricamento iniziale, abilita i watch
+  isInitializing.value = false
 })
 
 async function fetchAssets() {
   await execute(async () => {
     const params = getApiParams()
+    // Sovrascrivi business_criticality se c'è un _originalValue
+    if (filters.value.business_criticality?._originalValue) {
+      params.business_criticality = filters.value.business_criticality._originalValue
+    }
+    // Aggiungi has_critical_vulns se è true
+    if (filters.value.has_critical_vulns?.value) {
+      params.has_critical_vulns = true
+    }
     let response
     if (trashMode.value) {
       response = await api.getAssetsTrash(params)
@@ -561,44 +943,8 @@ async function duplicateAsset(asset) {
   )
 }
 
-const filteredAssets = computed(() => {
-  let filtered = assets.value
-  if (filters.value.status_id.value) {
-    filtered = filtered.filter(a => a.status_id === filters.value.status_id.value)
-  }
-  if (filters.value.site_id.value) {
-    filtered = filtered.filter(a => a.site_id === filters.value.site_id.value)
-  }
-  if (filters.value.area_id.value) {
-    filtered = filtered.filter(a => a.area_id === filters.value.area_id.value)
-  }
-  if (filters.value.business_criticality.value) {
-    filtered = filtered.filter(a => (a.business_criticality || '').toLowerCase() === filters.value.business_criticality.value)
-  }
-  if (filters.value.risk_score_min.value !== null) {
-    filtered = filtered.filter(a => (a.risk_score ?? 0) >= filters.value.risk_score_min.value)
-  }
-  if (filters.value.risk_score_max.value !== null) {
-    filtered = filtered.filter(a => (a.risk_score ?? 0) <= filters.value.risk_score_max.value)
-  }
-  if (filters.value.global.value) {
-    const search = filters.value.global.value.toLowerCase()
-    filtered = filtered.filter(a =>
-      (a.name && a.name.toLowerCase().includes(search)) ||
-      (a.interfaces && a.interfaces.some(i => i.ip_address && i.ip_address.toLowerCase().includes(search))) ||
-      (a.site && a.site.name && a.site.name.toLowerCase().includes(search)) ||
-      (a.area_name && a.area_name.toLowerCase().includes(search)) ||
-      (a.location && a.location.name && a.location.name.toLowerCase().includes(search)) ||
-      (a.status && a.status.name && a.status.name.toLowerCase().includes(search)) ||
-      (a.manufacturer && a.manufacturer.name && a.manufacturer.name.toLowerCase().includes(search)) ||
-      (a.asset_type && a.asset_type.name && a.asset_type.name.toLowerCase().includes(search))
-    )
-  }
-  return filtered
-})
-
 const assetsWithIP = computed(() =>
-  filteredAssets.value.map(asset => ({
+  assets.value.map(asset => ({
     ...asset,
     ip_address: asset.interfaces && asset.interfaces.length
       ? asset.interfaces.map(i => i.ip_address).filter(Boolean).join(', ')
@@ -714,7 +1060,7 @@ async function bulkSoftDelete(assets) {
 
 function toggleTrashMode() {
   trashMode.value = !trashMode.value
-  fetchAssets()
+  // fetchAssets verrà chiamato automaticamente dal watch su trashMode
 }
 
 async function restoreAsset(id) {
@@ -775,6 +1121,70 @@ function getCriticalityColor(value) {
   }
 }
 
+// Active filters management
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (filters.value.status_id?.value) count++
+  if (filters.value.site_id?.value) count++
+  if (filters.value.area_id?.value) count++
+  if (filters.value.location_id?.value) count++
+  if (filters.value.business_criticality?.value) count++
+  if (filters.value.risk_score_min?.value !== null && filters.value.risk_score_min?.value !== undefined) count++
+  if (filters.value.risk_score_max?.value !== null && filters.value.risk_score_max?.value !== undefined) count++
+  if (filters.value.global?.value) count++
+  if (filters.value.has_critical_vulns?.value) count++
+  return count
+})
+
+function getStatusFilterLabel() {
+  if (!filters.value.status_id?.value) return ''
+  const status = assetStatusOptions.value.find(s => s.id === filters.value.status_id.value)
+  return status ? status.name : ''
+}
+
+function getSiteFilterLabel() {
+  if (!filters.value.site_id?.value) return ''
+  const site = sites.value.find(s => s.id === filters.value.site_id.value)
+  return site ? site.name : ''
+}
+
+function getAreaFilterLabel() {
+  if (!filters.value.area_id?.value) return ''
+  const area = allAreas.value.find(a => a.id === filters.value.area_id.value)
+  return area ? area.name : ''
+}
+
+function getLocationFilterLabel() {
+  if (!filters.value.location_id?.value) return ''
+  const location = locations.value.find(l => l.id === filters.value.location_id.value)
+  return location ? location.name : ''
+}
+
+function clearFilter(filterName) {
+  if (filters.value[filterName]) {
+    // Per boolean, usa false invece di null
+    if (filterName === 'has_critical_vulns') {
+      filters.value[filterName].value = false
+    } else {
+      filters.value[filterName].value = null
+    }
+  }
+  // syncFiltersToUrl e fetchAssets verranno chiamati automaticamente dal watch
+}
+
+function clearAllFilters() {
+  filters.value.status_id.value = null
+  filters.value.site_id.value = null
+  filters.value.area_id.value = null
+  filters.value.location_id.value = null
+  filters.value.business_criticality.value = null
+  filters.value.risk_score_min.value = null
+  filters.value.risk_score_max.value = null
+  filters.value.global.value = null
+  filters.value.has_critical_vulns.value = false
+  // syncFiltersToUrl e fetchAssets verranno chiamati automaticamente dal watch
+}
+
 
 
 
@@ -815,6 +1225,25 @@ function confirmEmptyTrash() {
 .asset-link:hover {
   color: #0056b3;
   text-decoration: underline;
+}
+
+.active-filters {
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 0.5rem;
+  border: 1px solid #dee2e6;
+}
+
+.active-filter-tag {
+  cursor: pointer;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  transition: opacity 0.2s ease;
+}
+
+.active-filter-tag:hover {
+  opacity: 0.8;
 }
 
 </style>

@@ -52,6 +52,16 @@
         />
       </TabPanel>
 
+      <!-- Templates Tab (Admin only) -->
+      <TabPanel v-if="canAdmin">
+        <template #header>
+          <span style="display: flex; align-items: center; gap: 0.4em;">
+            <i class="pi pi-file-edit"></i> {{ t('notifications.templates') }}
+          </span>
+        </template>
+        <NotificationTemplatesTab />
+      </TabPanel>
+
       <!-- Test Tab (Admin only) -->
       <TabPanel v-if="canAdmin">
         <template #header>
@@ -78,12 +88,13 @@ import Badge from 'primevue/badge'
 import NotificationPreferencesTab from '../components/features/notifications/NotificationPreferencesTab.vue'
 import NotificationQueueTab from '../components/features/notifications/NotificationQueueTab.vue'
 import NotificationLogsTab from '../components/features/notifications/NotificationLogsTab.vue'
+import NotificationTemplatesTab from '../components/features/notifications/NotificationTemplatesTab.vue'
 import NotificationTestTab from '../components/features/notifications/NotificationTestTab.vue'
 import api from '@/api/api'
 
 const { t } = useI18n()
 const toast = useToast()
-const { canRead } = usePermissions()
+const { canRead, canWrite } = usePermissions()
 
 const preferences = ref([])
 const queue = ref([])
@@ -92,7 +103,8 @@ const loadingPreferences = ref(false)
 const loadingQueue = ref(false)
 const loadingLogs = ref(false)
 
-const canAdmin = computed(() => canRead('users')) // Admin check
+// Admin per notifiche = livello 3 (gestione template e coda)
+const canAdmin = computed(() => canRead('notifications') && canWrite('notifications'))
 
 const queueStats = computed(() => {
   const pending = queue.value.filter(q => q.status === 'pending').length
@@ -108,7 +120,7 @@ async function fetchPreferences() {
     preferences.value = res.data || []
   } catch (error) {
     console.error('Error fetching preferences:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: t('notifications.errorLoadingPreferences') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: t('notifications.errorLoadingPreferences') })
   } finally {
     loadingPreferences.value = false
   }
@@ -118,10 +130,12 @@ async function fetchQueue() {
   loadingQueue.value = true
   try {
     const res = await api.getNotificationQueue({ limit: 100 })
-    queue.value = res.data || []
+    // Ensure queue is always an array
+    queue.value = Array.isArray(res.data) ? res.data : []
   } catch (error) {
     console.error('Error fetching queue:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: t('notifications.errorLoadingQueue') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: t('notifications.errorLoadingQueue') })
+    queue.value = [] // Set empty array on error
   } finally {
     loadingQueue.value = false
   }
@@ -134,7 +148,7 @@ async function fetchLogs(params = {}) {
     logs.value = res.data || []
   } catch (error) {
     console.error('Error fetching logs:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: t('notifications.errorLoadingLogs') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: t('notifications.errorLoadingLogs') })
   } finally {
     loadingLogs.value = false
   }
@@ -143,43 +157,45 @@ async function fetchLogs(params = {}) {
 async function handleRetry(queueId) {
   try {
     await api.retryNotification(queueId)
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('notifications.retrySuccess') })
+    toast.add({ severity: 'success', summary: t('common.messages.success'), detail: t('notifications.retrySuccess') })
     await fetchQueue()
   } catch (error) {
     console.error('Error retrying notification:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: error.response?.data?.detail || t('notifications.errorRetry') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: error.response?.data?.detail || t('notifications.errorRetry') })
   }
 }
 
 async function handleCancel(queueId) {
   try {
     await api.cancelNotification(queueId)
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('notifications.cancelSuccess') })
+    toast.add({ severity: 'success', summary: t('common.messages.success'), detail: t('notifications.cancelSuccess') })
     await fetchQueue()
   } catch (error) {
     console.error('Error cancelling notification:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: error.response?.data?.detail || t('notifications.errorCancel') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: error.response?.data?.detail || t('notifications.errorCancel') })
   }
 }
 
 async function handleProcessQueue() {
   try {
     const res = await api.processNotificationQueue(50)
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('notifications.queueProcessed', res.data?.stats) })
+    toast.add({ severity: 'success', summary: t('common.messages.success'), detail: t('notifications.queueProcessed', res.data?.stats) })
     await fetchQueue()
   } catch (error) {
     console.error('Error processing queue:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: error.response?.data?.detail || t('notifications.errorProcessing') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: error.response?.data?.detail || t('notifications.errorProcessing') })
   }
 }
 
 async function handleTest(testData) {
   try {
     await api.testNotification(testData)
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('notifications.testSent') })
+    toast.add({ severity: 'success', summary: t('common.messages.success'), detail: t('notifications.testSent') })
+    // Refresh logs to show the test notification
+    await fetchLogs()
   } catch (error) {
     console.error('Error sending test:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: error.response?.data?.detail || t('notifications.errorTest') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: error.response?.data?.detail || t('notifications.errorTest') })
   }
 }
 

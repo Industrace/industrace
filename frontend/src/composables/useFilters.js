@@ -195,7 +195,20 @@ export function useFilters(initialFilters = {}, storageKey = null, initialColumn
    * @returns {Object} - Parametri per l'API
    */
   const getApiParams = () => {
-    const params = { ...filters.value }
+    const params = {}
+    
+    // Extract values from filter objects
+    Object.entries(filters.value).forEach(([key, filterObj]) => {
+      if (filterObj && typeof filterObj === 'object' && 'value' in filterObj) {
+        // Filter object with value property
+        if (filterObj.value !== null && filterObj.value !== undefined && filterObj.value !== '') {
+          params[key] = filterObj.value
+        }
+      } else if (filterObj !== null && filterObj !== undefined && filterObj !== '') {
+        // Direct value
+        params[key] = filterObj
+      }
+    })
     
     if (globalSearch.value) {
       params.search = globalSearch.value

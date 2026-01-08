@@ -92,6 +92,19 @@
               :disabled="!isFormValid"
             />
 
+            <!-- SSO Login Button -->
+            <div v-if="ssoEnabled" class="sso-section">
+              <div class="divider">
+                <span>{{ $t('login.strings.or') }}</span>
+              </div>
+              <Button 
+                :label="ssoButtonLabel" 
+                :icon="ssoProvider.value === 'google' ? 'pi pi-google' : ssoProvider.value === 'okta' ? 'pi pi-key' : 'pi pi-microsoft'"
+                @click="handleSSOLogin"
+                class="sso-button"
+                :loading="ssoLoading"
+              />
+            </div>
 
           </form>
         </div>
@@ -104,11 +117,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '../store/auth'
 import { useI18n } from 'vue-i18n'
+import api from '../api/api'
 
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
@@ -125,10 +139,56 @@ const loading = ref(false)
 const emailError = ref('')
 const passwordError = ref('')
 
+const ssoEnabled = ref(false)
+const ssoProvider = ref(null)
+const ssoLoading = ref(false)
+
 const toast = useToast()
 const authStore = useAuthStore()
 const router = useRouter()
 const { t } = useI18n()
+
+// Check SSO availability on mount
+onMounted(async () => {
+  try {
+    const response = await api.checkSSOEnabled()
+    ssoEnabled.value = response.data.enabled || false
+    ssoProvider.value = response.data.provider || null
+  } catch (error) {
+    console.error('Error checking SSO availability:', error)
+    ssoEnabled.value = false
+  }
+})
+
+const ssoButtonLabel = computed(() => {
+  if (ssoProvider.value === 'azure_ad') {
+    return t('login.strings.loginWithMicrosoft')
+  } else if (ssoProvider.value === 'google') {
+    return t('login.strings.loginWithGoogle')
+  } else if (ssoProvider.value === 'okta') {
+    return t('login.strings.loginWithOkta')
+  }
+  return t('login.strings.loginWithSSO')
+})
+
+const handleSSOLogin = () => {
+  ssoLoading.value = true
+  try {
+    // Redirect directly to SSO authorization endpoint
+    // The backend will handle tenant detection and redirect to provider
+    const provider = ssoProvider.value || 'azure_ad'
+    window.location.href = `/api/auth/sso/${provider}/authorize`
+  } catch (error) {
+    console.error('SSO login error:', error)
+    toast.add({
+      severity: 'error',
+      summary: t('common.messages.error'),
+      detail: error.response?.data?.detail || t('login.messages.ssoError'),
+      life: 5000
+    })
+    ssoLoading.value = false
+  }
+}
 
 
 // Validazione form
@@ -194,9 +254,9 @@ const handleSubmit = async () => {
 
     // Prova a ottenere la traduzione specifica per il codice di errore
     if (errorCode) {
-      const translatedError = t(`errors.${errorCode}`)
+      const translatedError = t(`core.${errorCode}`)
       // Se la traduzione esiste e non è uguale alla chiave, usala
-      if (translatedError && translatedError !== `errors.${errorCode}`) {
+      if (translatedError && translatedError !== `core.${errorCode}`) {
         message = translatedError
       } else if (errorDetail) {
         message = errorDetail
@@ -519,6 +579,39 @@ const handleSubmit = async () => {
   padding: 0 1rem;
   color: #64748b;
   font-size: 0.9rem;
+}
+
+/* SSO Section */
+.sso-section {
+  margin-top: 1.5rem;
+}
+
+.sso-button {
+  width: 100%;
+  padding: 1rem;
+  background: #0078d4;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.sso-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 120, 212, 0.3);
+  background: #106ebe;
+}
+
+.sso-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 

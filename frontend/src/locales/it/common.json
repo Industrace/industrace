@@ -48,7 +48,8 @@
     "moveToTrash": "Sposta nel cestino",
     "show": "Mostra",
     "hide": "Nascondi",
-    "print": "Stampa"
+    "print": "Stampa",
+    "clearAll": "Pulisci tutto"
   },
   "fields": {
     "name": "Nome",
@@ -90,7 +91,9 @@
     "error": "Errore",
     "warning": "Attenzione",
     "info": "Informazione",
-    "confirmDelete": "Sei sicuro di voler eliminare questo elemento?",
+    "deleteConfirm": "Sei sicuro di voler eliminare questo elemento?",
+    "deleteWarning": "Questa azione sposterà l'elemento nel cestino",
+    "confirmHardDelete": "Sei sicuro di voler eliminare definitivamente {name}? Questa azione non può essere annullata.",
     "noData": "Nessun dato disponibile",
     "selectOption": "Seleziona un'opzione",
     "required": "Campo obbligatorio",
@@ -111,8 +114,6 @@
     "emptyTrashConfirm": "Sei sicuro di voler svuotare il cestino ?",
     "emptyTrashWarning": "Questa azione non può essere annullata",
     "trashEmptied": "Cestino svuotato con successo",
-    "emptyTrashError": "Errore nell'svuotamento del cestino",
-    "warningDelete" : "Sei sicuro di voler eliminare l'elemento ?",
-    "warningEmptyTrash" : "Sei sicuro di voler svuotare il cestino ?"
+    "emptyTrashError": "Errore nell'svuotamento del cestino"
   }
 }

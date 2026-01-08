@@ -13,6 +13,7 @@ from app.models import User, SecurityZone, Asset, Location
 from app.models.asset_zone_membership import AssetZoneMembership
 from app.services.auth import get_current_user
 from app.services.audit_decorator import audit_log_action
+from app.services.rbac import require_permission
 from app.services.isa62443_compliance_engine import ISA62443ComplianceEngine
 from app.services.zone_risk_calculator import ZoneRiskCalculator
 from app.errors.exceptions import ErrorCodeException
@@ -79,6 +80,7 @@ def list_security_zones(
     site_id: Optional[uuid.UUID] = Query(None, description="Filter by site"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 1)),
 ):
     """List security zones"""
     query = (
@@ -102,6 +104,7 @@ def get_security_zone(
     zone_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 1)),
 ):
     """Get security zone details"""
     zone = (
@@ -160,6 +163,7 @@ def create_security_zone(
     zone_data: SecurityZoneCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 2)),
 ):
     """Create a new security zone"""
     zone = SecurityZone(
@@ -181,6 +185,7 @@ def update_security_zone(
     zone_data: SecurityZoneUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 2)),
 ):
     """Update a security zone"""
     zone = (
@@ -213,6 +218,7 @@ def delete_security_zone(
     zone_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 3)),
 ):
     """Delete a security zone (soft delete)"""
     zone = (
@@ -239,6 +245,7 @@ def list_zone_assets(
     zone_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 1)),
 ):
     """List assets in a security zone (via memberships)"""
     from app.crud import asset_zone_memberships as crud_memberships
@@ -334,6 +341,7 @@ def get_zone_compliance(
     zone_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 1)),
 ):
     """Get compliance status for a security zone"""
     zone = (
@@ -359,6 +367,7 @@ def calculate_zone_security_level(
     zone_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 3)),
 ):
     """Recalculate Security Level Achieved for a zone"""
     zone = (
@@ -383,6 +392,7 @@ def get_zone_risk(
     zone_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 1)),
 ):
     """Get risk analysis for a security zone"""
     zone = (
@@ -410,6 +420,7 @@ def create_asset_zone_membership(
     membership_data: AssetZoneMembershipCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 2)),
 ):
     """Add an asset to a security zone with a specific role"""
     # Verify zone exists
@@ -492,6 +503,7 @@ def list_zone_memberships(
     role: Optional[str] = Query(None, description="Filter by role"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 1)),
 ):
     """List all asset memberships for a security zone"""
     # Verify zone exists
@@ -522,6 +534,7 @@ def update_asset_zone_membership(
     membership_data: AssetZoneMembershipUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 2)),
 ):
     """Update an asset zone membership"""
     # Verify zone exists
@@ -554,6 +567,7 @@ def delete_asset_zone_membership(
     membership_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 2)),
 ):
     """Remove an asset from a security zone (soft delete membership)"""
     # Verify zone exists

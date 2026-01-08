@@ -381,8 +381,8 @@ async function saveSite(data) {
 
 async function deleteSite(id) {
   await confirmDelete(
-    t('common.messages.confirmDelete'),
-    t('common.messages.warningDelete'),
+    t('common.messages.deleteConfirm'),
+    t('common.messages.deleteConfirm'),
     async () => {
       await execute(async () => {
         await api.deleteSite(id)

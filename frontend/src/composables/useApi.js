@@ -66,10 +66,11 @@ export function useApi() {
            const errorMessages = validationErrors.map(error => {
              // Se abbiamo un error_code, usiamo la traduzione
              if (error.error_code) {
-               return `${error.field}: ${t(`errors.${error.error_code}`)}`
+               const translated = t(`core.${error.error_code}`)
+               return `${error.field}: ${translated !== `core.${error.error_code}` ? translated : error.message || t('core.generic')}`
              }
              // Altrimenti usiamo il messaggio originale
-             return `${error.field}: ${error.message || t('errors.generic')}`
+             return `${error.field}: ${error.message || t('core.generic')}`
            }).join('\n')
 
            toast.add({
@@ -80,7 +81,7 @@ export function useApi() {
            })
          } else {
           const errorCode = err.response?.data?.error_code
-          const message = errorCode ? t(`errors.${errorCode}`) : t('errors.generic')
+          const message = errorCode ? (t(`core.${errorCode}`) !== `core.${errorCode}` ? t(`core.${errorCode}`) : t('core.generic')) : t('core.generic')
           const fullMessage = errorContext ? `${errorContext}: ${message}` : message
           
           toast.add({

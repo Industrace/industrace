@@ -28,11 +28,15 @@ import SetupWizard from './pages/SetupWizard.vue'
 import Profile from './pages/Profile.vue'
 import NetworkMap from './pages/NetworkMap.vue'
 import AssetReviews from './pages/AssetReviews.vue'
+import SSOSuccess from './pages/SSOSuccess.vue'
+import SSOError from './pages/SSOError.vue'
 import api from './api/api'
 import { useAuthStore } from './store/auth'
 
 const routes = [
   { path: '/login', name: 'Login', component: Login },
+  { path: '/auth/sso/success', name: 'SSOSuccess', component: SSOSuccess },
+  { path: '/auth/sso/error', name: 'SSOError', component: SSOError },
   { path: '/', name: 'Dashboard', component: Dashboard, meta: { requiresAuth: true } },
   { path: '/assets', name: 'Assets', component: Assets, meta: { requiresAuth: true } },
   { path: '/assets/:id', name: 'AssetDetail', component: AssetDetail, meta: { requiresAuth: true } },
@@ -83,11 +87,22 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
+  // Allow SSO success/error pages without auth check
+  if (to.name === 'SSOSuccess' || to.name === 'SSOError') {
+    next()
+    return
+  }
+  
   if (to.meta.requiresAuth) {
     try {
       await api.getCurrentUser()
       next()
     } catch (error) {
+      // Clear any stale auth state
+      const auth = useAuthStore()
+      if (auth.isAuthenticated) {
+        auth.logout()
+      }
       next('/login')
     }
   } else {

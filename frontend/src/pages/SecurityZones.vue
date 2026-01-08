@@ -4,6 +4,7 @@
       <h1>{{ t('isa62443.securityZones.title') }}</h1>
       <div class="header-actions">
         <Button 
+          v-if="canWrite('security_zones')"
           :label="t('isa62443.securityZones.createZone')" 
           icon="pi pi-plus" 
           @click="showCreateDialog = true"
@@ -54,6 +55,7 @@
         <template #body="{ data }">
           <div class="flex gap-2">
             <Button 
+              v-if="canWrite('security_zones')"
               icon="pi pi-pencil" 
               class="p-button-rounded p-button-text" 
               @click="editZone(data)" 
@@ -61,6 +63,7 @@
               v-tooltip.top="t('common.actions.edit')"
             />
             <Button 
+              v-if="canDelete('security_zones')"
               icon="pi pi-trash" 
               class="p-button-rounded p-button-text p-button-danger" 
               @click="deleteZone(data.id)" 
@@ -97,6 +100,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useRouter } from 'vue-router'
+import { usePermissions } from '@/composables/usePermissions'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -108,6 +112,7 @@ import api from '@/api/api'
 const { t } = useI18n()
 const toast = useToast()
 const router = useRouter()
+const { canWrite, canDelete } = usePermissions()
 
 const zones = ref([])
 const loading = ref(false)

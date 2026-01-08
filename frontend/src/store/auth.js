@@ -66,13 +66,22 @@ async function login(email, password) {
   }
 }
 
-  async function fetchUser() {
+  async function fetchUser(suppressLogout = false) {
     try {
       const response = await api.getCurrentUser()
       user.value = response.data
       isAuthenticated.value = true
     } catch (error) {
-      logout()
+      // Only logout if suppressLogout is false
+      // This is useful for SSO where we have a valid token but fetchUser might fail temporarily
+      if (!suppressLogout) {
+        logout()
+      } else {
+        // Just log the error but don't logout
+        // Keep isAuthenticated as is - if we have a token, the router guard will verify it
+        console.warn('Failed to fetch user, but suppressing logout (token may still be valid):', error)
+        // Don't change isAuthenticated - let the router guard verify the token
+      }
     }
   }
 
@@ -82,9 +91,16 @@ async function logout() {
   } catch (e) {
     // anche se fallisce, prosegui col logout locale
   }
+  // Clear all authentication data
   user.value = null
   isAuthenticated.value = false
   stopTokenRefresh()
+  
+  // Remove token from localStorage (critical for logout to work properly)
+  // The persist plugin will handle clearing the store state automatically
+  // but we need to manually clear the token since it's not part of the store
+  localStorage.removeItem('access_token')
+  
   router.push('/login')
 }
   return { user, isAuthenticated, login, logout, fetchUser,startTokenRefresh,stopTokenRefresh }

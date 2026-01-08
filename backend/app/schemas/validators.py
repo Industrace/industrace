@@ -72,7 +72,8 @@ def validate_physical_access_ease(cls, v):
     """Validate physical access ease values"""
     if v is None:
         return v
-    allowed_values = ['internal', 'dmz', 'external']
+    # Support both old values (for backward compatibility) and new values
+    allowed_values = ['internal', 'dmz', 'external', 'unrestricted', 'controlled', 'restricted']
     if v.lower() not in allowed_values:
         raise InvalidPhysicalAccessEaseError('physical_access_ease')
     return v.lower()

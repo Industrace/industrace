@@ -1,382 +1,582 @@
-# Stato Implementazione - ISA62443 Design Document
+# Stato Implementazione - Industrace
 
-**Data Report**: 2025-01-XX  
-**Documento di Riferimento**: `ISA62443_DESIGN.md`  
-**Ultimo Aggiornamento**: 2025-01-XX - Sistema capability-based per SR assessment, evidenze esplicite/inferite
+**Data Report**: 2025-12-23  
+**Ultimo Aggiornamento**: 2025-12-23  
+**Repository**: `industrace-dev` (sviluppo privato)
 
 ## 📊 Riepilogo Generale
 
-| Categoria | ✅ Implementato | 🔄 Parziale | ❌ Non Implementato |
-|-----------|----------------|-------------|---------------------|
-| ISA/IEC 62443 Base | 95% | 3% | 2% ⬆️ |
-| Asset Dependencies | 90% | 5% | 5% ⬆️ |
-| Asset Review | 95% | 5% | 0% ⬆️ |
-| Asset Ownership/Contacts | 100% | 0% | 0% |
-| Notification System | 80% | 15% | 5% ⬆️ |
-| Vulnerability Intelligence | 75% | 15% | 10% ⬆️ |
-| Syslog Server | 0% | 0% | 100% |
-| BAS/CS | 0% | 0% | 100% |
-| Enterprise Auth (SSO) | 60% | 25% | 15% ⬆️ |
-| Asset Detail UI/UX | 70% | 20% | 10% 🔄 |
+| Categoria | ✅ Implementato | 🔄 Parziale | ❌ Non Implementato | Note |
+|-----------|----------------|-------------|---------------------|------|
+| **ISA/IEC 62443** | 95% | 3% | 2% | Sistema capability-based completo |
+| **Asset Dependencies** | 90% | 5% | 5% | Confidence/source implementati |
+| **Asset Review** | 95% | 5% | 0% | Notifiche automatiche mancanti |
+| **Asset Ownership/Contacts** | 100% | 0% | 0% | Completo |
+| **Notification System** | 98% | 2% | 0% | Completo, manca solo editor template avanzato |
+| **Vulnerability Intelligence** | 80% | 15% | 5% | Sistema vulnerability-aware (auto-discovery), non vulnerability management |
+| **Enterprise Auth (SSO)** | 85% | 10% | 5% | Azure AD completo, altri provider pronti ma non abilitati |
+| **Asset Detail UI/UX** | 70% | 20% | 10% | Nuovo layout in test |
+| **Syslog Server** | 0% | 0% | 100% | Design presente, non implementato |
+| **BAS/CS** | 0% | 0% | 100% | Design presente, non implementato |
 
-**Note Aggiornamento 2025-01-XX**: Progressi significativi su multiple feature:
-- **Asset Dependencies**: Campi confidence/source aggiunti, UI migliorata
-- **ISA/IEC 62443**: Zone Membership con ruoli implementato
-- **Asset Review**: Sistema completo implementato
-- **Notification System**: Email notifications implementate
-- **Vulnerability Intelligence**: Feed integration implementata
+---
 
 ## 1. ISA/IEC 62443 Integration
 
+**Design Document**: `docs/ISA62443_DESIGN.md`
+
 ### ✅ Implementato
 
-- **Modelli Database**:
-  - ✅ `SecurityZone` - Zone di sicurezza
-  - ✅ `Conduit` - Canali di comunicazione tra zone
-  - ✅ `SecurityRequirement` - Security Requirements (SR) ISA/IEC 62443
-  - ✅ `SecurityRequirementCompliance` - Compliance records per asset/zone (DEPRECATO, sostituito da SRAssessment)
-  - ✅ `AssetZoneMembership` - Membership asset-zone con ruoli - **NUOVO (2025-01-XX)**
-  - ✅ **Sistema Capability-based (2025-01-XX)** - **NUOVO**
-    - ✅ `SecurityCapability` - Capability di sicurezza system-wide (34 capability inizializzate)
-    - ✅ `SRCapability` - Mapping SR → Capability con importance (primary/supporting)
-    - ✅ `AssetCapability` - Evidenze esplicite: capability dichiarate manualmente su asset
-    - ✅ `SRAssessment` - Valutazione finale SR per zona/conduit (sostituisce SecurityRequirementCompliance)
-    - ✅ `SRAssessmentEvidence` - Evidenze utilizzate per supportare una valutazione SR
-    - ✅ `ConduitAsset` - Asset associati ai conduits con ruolo (enforcement, monitoring)
+#### Modelli Database
+- ✅ `SecurityZone` - Zone di sicurezza con SL-T, SL-A, SL-C
+- ✅ `Conduit` - Canali di comunicazione tra zone
+- ✅ `SecurityRequirement` - Security Requirements ISA/IEC 62443
+- ✅ `AssetZoneMembership` - Membership asset-zone con ruoli (Zone Participation Type)
+- ✅ **Sistema Capability-based**:
+  - ✅ `SecurityCapability` - 34 capability inizializzate
+  - ✅ `SRCapability` - Mapping SR → Capability
+  - ✅ `AssetCapability` - Evidenze esplicite
+  - ✅ `SRAssessment` - Valutazione SR (sostituisce SecurityRequirementCompliance)
+  - ✅ `SRAssessmentEvidence` - Evidenze per valutazione
+  - ✅ `ConduitAsset` - Asset associati ai conduits
 
-- **Servizi**:
-  - ✅ `ISA62443ComplianceEngine` - Calcolo SL-A, compliance status, gap analysis
-  - ✅ `ZoneRiskCalculator` - Calcolo rischio aggregato per zone
-  - ✅ Aggiornamento `ISA62443ComplianceEngine` per considerare multiple memberships - **COMPLETATO (2025-01-XX)**
+#### Servizi
+- ✅ `ISA62443ComplianceEngine` - Calcolo SL-A, compliance status, gap analysis
+- ✅ `ZoneRiskCalculator` - Calcolo rischio aggregato per zone
+- ✅ Integrazione con `CompositeRiskScoringEngine` (penalità SL gap, non-compliance)
 
-- **API Endpoints**:
-  - ✅ `GET /api/security-zones` - Lista zone
-  - ✅ `GET /api/security-zones/{id}` - Dettaglio zona
-  - ✅ `POST /api/security-zones` - Crea zona
-  - ✅ `PUT /api/security-zones/{id}` - Aggiorna zona
-  - ✅ `DELETE /api/security-zones/{id}` - Elimina zona (soft delete)
-  - ✅ `GET /api/security-zones/{id}/assets` - Asset nella zona
-  - ✅ `GET /api/security-zones/{id}/compliance` - Compliance status
-  - ✅ `POST /api/security-zones/{id}/calculate-sl` - Ricalcola SL-A
-  - ✅ `GET /api/security-zones/{id}/memberships` - Lista zone memberships per zona
-  - ✅ `POST /api/security-zones/{id}/memberships` - Aggiungi asset a zona con ruolo
-  - ✅ `PUT /api/security-zones/{id}/memberships/{membership_id}` - Aggiorna membership
-  - ✅ `DELETE /api/security-zones/{id}/memberships/{membership_id}` - Rimuovi asset da zona
-  - ✅ **Compliance Capability-based (2025-01-XX)** - **NUOVO**
-    - ✅ `GET /api/compliance/zone/{zone_id}/sr/{sr_id}/assessment-assist` - Dati per valutazione SR (required capabilities, available evidence, missing capabilities)
-    - ✅ `POST /api/compliance/zone/{zone_id}/sr/{sr_id}/assessment` - Crea/aggiorna SRAssessment con justification ed evidenze
+#### API Endpoints
+- ✅ CRUD Security Zones (`/api/security-zones`)
+- ✅ CRUD Conduits (`/api/conduits`)
+- ✅ CRUD Zone Memberships (`/api/security-zones/{id}/memberships`)
+- ✅ Compliance endpoints (`/api/compliance/zone/{zone_id}/...`)
+- ✅ Capability-based assessment (`/api/compliance/zone/{zone_id}/sr/{sr_id}/assessment-assist`)
 
-- **UI**:
-  - ✅ Pagine Security Zones Management (`frontend/src/pages/SecurityZones.vue`, `SecurityZoneDetail.vue`)
-    - ✅ Conteggio asset corretto usando `AssetZoneMembership` - **FIX (2025-01-XX)**
-    - ✅ Tab "Compliance" con 3-level review UX (`ZoneComplianceTab.vue`) - **NUOVO (2025-01-XX)**
-      - ✅ Level 1: Dashboard compatta con SL-T, SL-A, GAP, SR status summary (basato su SRAssessment)
-      - ✅ Level 2: Foundation Requirements (FR) con percentuale compliance e titoli completi (es: "FR1 - Identification & Authentication")
-      - ✅ Level 3: Security Requirements (SR) detail con **processo capability-based guidato** - **NUOVO (2025-01-XX)**
-        - ✅ Visualizzazione Required Capabilities per SR
-        - ✅ Available Evidence: asset e conduits con capability (esplicite e inferite)
-        - ✅ Missing Capabilities: capability richieste ma non presenti
-        - ✅ Zone Assessment: valutazione finale con status e justification
-        - ✅ Evidenze esplicite (verified/declared) vs inferite (inferred da asset_type)
-        - ✅ Status visuale per evidenze (verde=verified, arancione=declared/inferred)
-      - ✅ Ricalcolo automatico SL-A dopo aggiornamento compliance - **FIX (2025-01-XX)**
-      - ✅ Fix calcolo GAP (corretto controllo null/undefined) - **FIX (2025-01-XX)**
-      - ✅ Integrazione con SRAssessment (sostituisce SecurityRequirementCompliance) - **NUOVO (2025-01-XX)**
-  - ✅ Pagine Conduits Management (`frontend/src/pages/Conduits.vue`)
-  - ✅ Tab "IEC 62443" in Asset Detail (`frontend/src/components/features/assets/tabs/AssetDetailIEC62443Tab.vue`) - **NUOVO (2025-01-XX)**
-    - ✅ Riepilogo Compliance (SL-T, SL-A, Gap, Status)
-    - ✅ Zone Memberships con ruoli
-    - ✅ Security Requirements Compliance
-    - ✅ Gestione memberships (aggiungi/modifica/rimuovi)
-  - ✅ Compliance Dashboard base (`frontend/src/pages/Compliance.vue`)
-  - ❌ Campo `security_zone_id` in Asset Form - **DEPRECATO (2025-01-XX)**
-    - Campo rimosso da `AssetLocationForm.vue`
-    - Gestione zone tramite tab "IEC 62443" che supporta multiple memberships
+#### UI
+- ✅ Pagine Security Zones Management (`SecurityZones.vue`, `SecurityZoneDetail.vue`)
+- ✅ Pagine Conduits Management (`Conduits.vue`)
+- ✅ Tab "IEC 62443" in Asset Detail (`AssetDetailIEC62443Tab.vue`)
+- ✅ Tab "Compliance" in Security Zone Detail con 3-level review UX:
+  - Level 1: Dashboard (SL-T, SL-A, GAP, SR summary)
+  - Level 2: Foundation Requirements (FR) con percentuale compliance
+  - Level 3: Security Requirements detail con processo capability-based guidato
+- ✅ Compliance Dashboard base (`Compliance.vue`)
 
-- **Database**:
-  - ✅ Migrazioni per tutti i modelli ISA 62443 (`backend/alembic/versions/create_isa62443_models.py`)
-  - ✅ Migrazione capability-based (`backend/alembic/versions/create_capability_models.py`) - **NUOVO (2025-01-XX)**
-  - ✅ Merge migration per multiple heads (`backend/alembic/versions/7c13b475af01_merge_capability_heads.py`) - **NUOVO (2025-01-XX)**
-  - ✅ Scripts di inizializzazione:
-    - ✅ `backend/app/init_data/init_security_capabilities.py` - Inizializza 34 Security Capabilities
-    - ✅ `backend/app/init_data/init_sr_capability_mappings.py` - Inizializza mapping SR → Capability
+#### Database
+- ✅ Migrazioni per tutti i modelli ISA 62443
+- ✅ Migrazione capability-based
+- ✅ Scripts di inizializzazione (34 Security Capabilities, SR-Capability mappings)
 
 ### 🔄 Parzialmente Implementato
 
-- **Zone Membership con Ruoli**:
-  - ✅ Modello `AssetZoneMembership` - **COMPLETATO (2025-01-XX)**
-  - ✅ CRUD operations - **COMPLETATO**
-  - ✅ API endpoints - **COMPLETATO**
-  - ✅ Aggiornamento `ISA62443ComplianceEngine` per considerare multiple memberships - **COMPLETATO (2025-01-XX)**
-  - ✅ Aggiornamento UI per gestire memberships con ruoli - **COMPLETATO (2025-12-17)**
-    - ✅ Tab "IEC 62443" in Asset Detail con gestione completa memberships
-    - ✅ **SecurityZoneDetail ristrutturato (2025-12-17)**:
-      - ✅ Rimosso tab "Zone Memberships" separato
-      - ✅ Integrato gestione memberships nel tab "Assets"
-      - ✅ Tab "Assets" mostra asset con tipo di partecipazione e altre zone
-      - ✅ Dialog "Add Asset" con gestione individuale del tipo di partecipazione per ogni asset
-      - ✅ Tabella degli asset selezionati con dropdown per tipo di partecipazione, interface scope e SL target individuali
-      - ✅ Dropdown "Applica a tutti" per tipo di partecipazione predefinito
-    - ✅ **Zone Participation Type implementato (2025-12-17)**:
-      - ✅ Campo `role` rinominato concettualmente in "Zone Participation Type"
-      - ✅ Dropdown con valori predefiniti: primary, supporting, boundary, shared, monitoring, maintenance, safety
-      - ✅ Descrizioni per ogni tipo di partecipazione mostrate all'utente
-      - ✅ Visualizzazione con label invece di valori raw
+- **UI per gestione AssetCapability**: Endpoint API mancante per creare/modificare evidenze esplicite
+- **Inferenza capability da asset_type**: Implementata ma può essere migliorata
+- **Visualizzazione evidenze in Asset Detail**: Non implementata
+- **Reporting avanzato**: Gap analysis presente, export PDF/Excel mancante
+- **Visualizzazione grafica Zone & Conduit**: Network map base presente, visualizzazione ISA 62443 specifica mancante
 
-- **Risk Scoring Integration**:
-  - ✅ `ZoneRiskCalculator` - Implementato
-  - ✅ Integrazione con `CompositeRiskScoringEngine` - **COMPLETATO**
-    - ✅ Penalità per SL gap (1.5 punti per ogni livello di gap)
-    - ✅ Penalità per non-compliance (+2.0 per non-compliant, +1.0 per partial)
-    - ✅ Suggerimenti per migliorare compliance e raggiungere SL target
-
-- **Compliance Dashboard**:
-  - ✅ UI base presente (`frontend/src/pages/Compliance.vue`)
-  - ✅ Gap Analysis implementata - **COMPLETATO**
-    - ✅ Tab Gap Analysis con dettagli per zona
-    - ✅ Visualizzazione SL-T vs SL-A, gap, compliance status
-    - ✅ Conteggio requirement non-compliant e missing
-    - ✅ Tab Zone Compliance per dettagli per zona
-    - ✅ Tab Security Requirements Reference
-  - ✅ **Zone Compliance Tab (2025-01-XX)** - **NUOVO**
-    - ✅ 3-level review UX implementata (`ZoneComplianceTab.vue`)
-    - ✅ Ricalcolo automatico SL-A dopo aggiornamento compliance status
-    - ✅ Fix calcolo GAP (distinzione tra null/undefined e 0)
-    - ✅ **Processo capability-based guidato per valutazione SR (2025-01-XX)** - **NUOVO**
-      - ✅ Visualizzazione Required Capabilities per SR
-      - ✅ Available Evidence da asset e conduits (esplicite e inferite)
-      - ✅ Missing Capabilities detection
-      - ✅ Zone Assessment con status e justification
-      - ✅ Evidenze esplicite (AssetCapability) vs inferite (da asset_type → typical_roles)
-      - ✅ Status visuale: verified (verde), declared (arancione), inferred (blu/grigio)
-    - ✅ Foundation Requirements con descrizioni e typical assets
-    - ✅ Integrazione con SRAssessment per compliance status e statistiche
-  - 🔄 Reporting avanzato - Parziale (gap analysis presente, export PDF/Excel mancante)
-
-- **Visualizzazione**:
-  - ✅ UI base presente
-  - 🔄 Visualizzazione grafica Zone & Conduit - Parziale (network map base presente, visualizzazione ISA 62443 specifica mancante)
-
-### 🔄 Parzialmente Implementato - Sistema Capability-based
-
-- ✅ Modelli database completi (SecurityCapability, SRCapability, AssetCapability, SRAssessment, SRAssessmentEvidence, ConduitAsset)
-- ✅ Migrazione database e inizializzazione capability
-- ✅ API endpoints assessment-assist e assessment
-- ✅ UX capability-based per valutazione SR
-- ✅ Sistema evidenze (esplicite e inferite)
-- 🔄 **UI per gestione AssetCapability** - Parziale (endpoint API mancante per creare/modificare evidenze esplicite)
-- 🔄 **Inferenza capability da asset_type** - Implementata ma può essere migliorata (matching più sofisticato)
-- 🔄 **Visualizzazione evidenze in Asset Detail** - Non implementata (mostrare capability di un asset)
-
-### ❌ Non Implementato (Futuro)
+### ❌ Non Implementato
 
 - Zone isolation violations detection automatica
 - Advanced compliance reporting (PDF/Excel export)
 - Security Requirements popolamento standard ISA/IEC 62443 completo
-- Visualizzazione grafica avanzata Zone & Conduit
-- UI per gestione manuale AssetCapability (creare/modificare evidenze esplicite)
+- UI per gestione manuale AssetCapability
 - Visualizzazione capability in Asset Detail
+
+---
 
 ## 2. Asset Dependencies e Risk Propagation
 
+**Design Document**: `docs/ISA62443_DESIGN.md` (sezione Asset Dependencies)
+
 ### ✅ Implementato
 
-- **Modello Database**:
-  - ✅ `AssetDependency` con campi:
-    - `source_asset_id`, `target_asset_id`
-    - `dependency_type` (operational, data, control, safety, network)
-    - `criticality` (low, medium, high, critical)
-    - `confidence` (low, medium, high) - **NUOVO (2025-01-15)**
-    - `source` (manual, detected, imported) - **NUOVO (2025-01-15)**
-    - `description`, `notes`
-    - `created_at`, `updated_at`, `deleted_at`
+#### Modello Database
+- ✅ `AssetDependency` con campi:
+  - `dependency_type` (operational, data, control, safety, network)
+  - `criticality` (low, medium, high, critical)
+  - `confidence` (low, medium, high) - **2025-01-15**
+  - `source` (manual, detected, imported) - **2025-01-15**
 
-- **API Endpoints**:
-  - ✅ `GET /api/assets/{id}/dependencies` - Lista dipendenze
-  - ✅ `GET /api/assets/{id}/dependents` - Lista asset dipendenti
-  - ✅ `POST /api/assets/{id}/dependencies` - Crea dipendenza
-  - ✅ `PUT /api/assets/{id}/dependencies/{dep_id}` - Aggiorna dipendenza
-  - ✅ `DELETE /api/assets/{id}/dependencies/{dep_id}` - Elimina dipendenza
-  - ✅ `GET /api/assets/{id}/risk-propagation` - Calcola rischio propagato
-  - ✅ `GET /api/assets/{id}/risk-from-dependencies` - Calcola rischio da dipendenze
+#### Servizi
+- ✅ `RiskPropagationService` - Calcolo rischio propagato (considera confidence)
+- ✅ `ConnectionDependencyAnalyzer` - Analisi connessioni per suggerire dipendenze
 
-- **Servizi**:
-  - ✅ `RiskPropagationService` - Calcolo rischio propagato
-  - ✅ `ConnectionDependencyAnalyzer` - Analisi connessioni per suggerire dipendenze - **NUOVO (2025-01-15)**
+#### API Endpoints
+- ✅ CRUD Dependencies (`/api/assets/{id}/dependencies`)
+- ✅ Risk Propagation (`/api/assets/{id}/risk-propagation`)
+- ✅ Risk from Dependencies (`/api/assets/{id}/risk-from-dependencies`)
 
-- **UI**:
-  - ✅ Tab "Dependencies" in Asset Detail
-  - ✅ Tab "Risk Propagation" in Asset Detail
-  - ✅ Visualizzazione dipendenze con tipo, criticality, confidence
-  - ✅ Form per creare/modificare dipendenze
-  - ✅ Badge in Tab Connections per mostrare dipendenze esistenti - **NUOVO (2025-01-15)**
-  - ✅ Funzionalità "Create Dependency from Connection" - **NUOVO (2025-01-15)**
+#### UI
+- ✅ Tab "Dependencies" in Asset Detail
+- ✅ Tab "Risk Propagation" in Asset Detail
+- ✅ Tab "Risk" con breakdown completo (Base + Dependencies)
+- ✅ Badge in Tab Connections per mostrare dipendenze esistenti
+- ✅ Funzionalità "Create Dependency from Connection"
+
+#### Integrazione Risk Scoring
+- ✅ `CompositeRiskScoringEngine` aggiornato per includere:
+  - Risk from dependencies (penalità per dipendenze ad alto rischio)
+  - Risk propagation (come il rischio si propaga agli asset dipendenti)
+- ✅ Total Risk Score = Base Risk + Risk from Dependencies (capped at 10.0)
 
 ### 🔄 Parzialmente Implementato
 
-- **Risk Propagation**:
-  - ✅ Calcolo base implementato
-  - ✅ Visualizzazione depth e affected assets
-  - 🔄 Ottimizzazioni performance per grandi dataset
+- **Network Map dual layer visualization**: In sviluppo
+- **Ottimizzazioni performance**: Per grandi dataset
 
-- **Connection-Dependency Cross-Visibility**:
-  - ✅ Badge in Tab Connections implementati - **COMPLETATO (2025-01-15)**
-  - ✅ Badge in Tab Dependencies implementati - **COMPLETATO (2025-01-15)**
-  - ✅ Funzionalità "Create Dependency from Connection" implementata - **COMPLETATO (2025-01-15)**
-  - 🔄 Network Map dual layer visualization - In sviluppo
-
-### ✅ Implementato (2025-01-XX)
-
-- **Risk Score Calculation**:
-  - ✅ `CompositeRiskScoringEngine` aggiornato per includere:
-    - Risk from dependencies (penalità per dipendenze ad alto rischio)
-    - Risk propagation (come il rischio si propaga agli asset dipendenti)
-  - ✅ Total Risk Score = Base Risk + Risk from Dependencies (capped at 10.0)
-  - ✅ Visualizzazione in Asset List e Asset Detail Header
-
-### ✅ Implementato (UI Completa)
-
-- **Asset Detail - Risk Tab**:
-  - ✅ Sezione "Total Risk (Base + Dependencies)" con breakdown
-  - ✅ Sezione "Base Risk" collassabile
-  - ✅ Sezione "Risk from Dependencies" collassabile
-  - ✅ Sezione "Risk Propagation" collassabile
-  - ✅ Visualizzazione chiara del calcolo del rischio totale
+---
 
 ## 3. Asset Review e Maintenance Reminder System
 
+**Design Document**: `docs/ISA62443_DESIGN.md` (sezione Asset Review)
+
 ### ✅ Implementato
 
-- **Modello Database**:
-  - ✅ `AssetReview` con campi:
-    - `asset_id`, `review_type` (maintenance, security, compliance, safety)
-    - `review_date`, `next_review_date`
-    - `reviewer_id`, `status` (pending, completed, overdue)
-    - `notes`, `findings`
-    - `created_at`, `updated_at`, `deleted_at`
+#### Modello Database
+- ✅ `AssetReview` con campi:
+  - `review_type` (maintenance, security, compliance, safety)
+  - `review_date`, `next_review_date`
+  - `reviewer_id`, `status` (pending, completed, overdue)
+  - `notes`, `findings`
 
-- **API Endpoints**:
-  - ✅ `GET /api/assets/{id}/reviews` - Lista review
-  - ✅ `POST /api/assets/{id}/reviews` - Crea review
-  - ✅ `PUT /api/assets/{id}/reviews/{review_id}` - Aggiorna review
-  - ✅ `DELETE /api/assets/{id}/reviews/{review_id}` - Elimina review
-  - ✅ `GET /api/reviews/upcoming` - Review in scadenza
-  - ✅ `GET /api/reviews/overdue` - Review scadute
+#### API Endpoints
+- ✅ CRUD Reviews (`/api/assets/{id}/reviews`)
+- ✅ Review queries (`/api/reviews/upcoming`, `/api/reviews/overdue`)
 
-- **UI**:
-  - ✅ Tab "Reviews" in Asset Detail
-  - ✅ Pagina "Asset Reviews" con lista review
-  - ✅ Form per creare/modificare review
-  - ✅ Visualizzazione review upcoming/overdue
+#### UI
+- ✅ Tab "Reviews" in Asset Detail
+- ✅ Pagina "Asset Reviews" (`AssetReviews.vue`)
+- ✅ Form per creare/modificare review
 
 ### 🔄 Parzialmente Implementato
 
-- **Reminder System**:
-  - ✅ Modello database presente
-  - 🔄 Notifiche automatiche (integrate con Notification System)
+- **Notifiche automatiche**: Modello presente, integrazione con Notification System mancante
 
-### ❌ Non Implementato
-
-- Notifiche automatiche per review in scadenza (da integrare con Notification System)
+---
 
 ## 4. Asset Ownership e Point-of-Contact
 
-### ✅ Implementato
-
-- **Modello Database**:
-  - ✅ `AssetContact` con campo `role`:
-    - `role` può essere: 'owner', 'point_of_contact', 'other', 'technical', 'administrative'
-  - ✅ Relazioni many-to-many tra Asset e Contact
-
-- **API Endpoints**:
-  - ✅ `GET /api/assets/{id}/contacts` - Lista contatti
-  - ✅ `POST /api/assets/{id}/contacts` - Aggiungi contatto
-  - ✅ `DELETE /api/assets/{id}/contacts/{contact_id}` - Rimuovi contatto
-  - ✅ `GET /api/assets?contact_role={role}` - Filtra asset per ruolo contatto
-
-- **UI**:
-  - ✅ Tab "Contacts" in Asset Detail
-  - ✅ Visualizzazione owner e point-of-contact separati
-  - ✅ Form per aggiungere/rimuovere contatti con ruolo
+**Design Document**: `docs/ISA62443_DESIGN.md` (sezione Asset Ownership)
 
 ### ✅ Completo
 
-- Tutte le funzionalità di Ownership e Point-of-Contact sono implementate e funzionanti.
+- ✅ Modello `AssetContact` con campo `role` (owner, point_of_contact, other, technical, administrative)
+- ✅ Relazioni many-to-many tra Asset e Contact
+- ✅ API endpoints completi
+- ✅ UI Tab "Contacts" in Asset Detail
+- ✅ Visualizzazione owner e point-of-contact separati
+- ✅ Form per aggiungere/rimuovere contatti con ruolo
 
-## 5. Notification System (Email Notifications)
+---
+
+## 5. Notification System
+
+**Design Document**: `docs/ISA62443_DESIGN.md` (sezione Notification System)
 
 ### ✅ Implementato
 
-- **Modello Database**:
-  - ✅ `Notification` con campi:
-    - `user_id`, `type` (review_due, review_overdue, dependency_risk, compliance_issue)
-    - `title`, `message`, `read_at`
-    - `metadata` (JSON per dati aggiuntivi)
-    - `created_at`, `updated_at`
+#### Modelli Database
+- ✅ `NotificationTemplate` - Template email con supporto override tenant-specific
+- ✅ `NotificationPreference` - Preferenze utente per tipo di notifica
+- ✅ `NotificationQueue` - Coda notifiche con retry logic
+- ✅ `NotificationLog` - Log notifiche inviate/fallite
+- ✅ `TenantSMTPConfig` - Configurazione SMTP per tenant
+- ✅ **Campo `notifications_enabled` in User** - Preferenza globale per abilitare/disabilitare tutte le notifiche
 
-- **API Endpoints**:
-  - ✅ `GET /api/notifications` - Lista notifiche
-  - ✅ `PUT /api/notifications/{id}/read` - Marca come letta
-  - ✅ `PUT /api/notifications/read-all` - Marca tutte come lette
-  - ✅ `DELETE /api/notifications/{id}` - Elimina notifica
+#### Servizi
+- ✅ `NotificationService` - Gestione notifiche e rendering template
+  - ✅ Strategia multi-livello per destinatari (owner → preferenze → admin fallback)
+  - ✅ Controllo preferenze globali (`notifications_enabled`)
+  - ✅ Controllo preferenze specifiche con `severity_min` personalizzabile
+  - ✅ Logging dettagliato per troubleshooting
+- ✅ `EmailService` - Servizio email multi-provider (SMTP, SendGrid, Mailgun, AWS SES, Gmail OAuth2)
+- ✅ `EmailQueueProcessor` - Processore coda email con retry automatico
+- ✅ `BackgroundTaskManager` - Task automatici per processare coda e controllare review
+- ✅ `AssetReviewService` - Servizio per controllare asset review e inviare notifiche
 
-- **UI**:
-  - ✅ Pagina "Notifications" con lista notifiche
-  - ✅ Badge contatore notifiche non lette
-  - ✅ Mark as read/unread
+#### API Endpoints
+- ✅ CRUD Notifications (`/api/notifications`)
+- ✅ Notification Preferences (`/api/notifications/preferences`)
+- ✅ Notification Queue (`/api/notifications/queue`)
+- ✅ Notification Logs (`/api/notifications/logs`)
+- ✅ Notification Templates (`/api/notifications/templates`)
+- ✅ Template Override (`/api/notifications/templates/{code}/override`)
+- ✅ SMTP Configuration (`/api/smtp-config`)
+- ✅ SMTP Test (`/api/smtp-config/test`)
+- ✅ Test Notification (`/api/notifications/test`)
+- ✅ Manual Queue Processing (`/api/notifications/queue/process`)
+- ✅ Manual Review Check (`/api/notifications/check-reviews`)
+- ✅ **User Notification Preference** (`/api/users/me/notifications`) - Aggiorna preferenza globale
+
+#### UI
+- ✅ Pagina "Notifications" (`Notifications.vue`) con tab multipli:
+  - ✅ Tab "Preferences" - Gestione preferenze per tipo di notifica
+  - ✅ Tab "Queue" - Visualizzazione e gestione coda notifiche
+  - ✅ Tab "Logs" - Log notifiche inviate/fallite
+  - ✅ Tab "Test" - Invio email di test
+  - ✅ Tab "Templates" (admin) - Editor template email
+- ✅ Badge contatore notifiche non lette
+- ✅ **Configurazione SMTP nella pagina Setup** (`Setup.vue`)
+- ✅ Dialog configurazione SMTP con test connessione
+- ✅ **Profilo Utente** - Impostazione globale `notifications_enabled` con tooltip informativo
+- ✅ Editor template minimo con:
+  - ✅ Supporto override tenant-specific
+  - ✅ Visualizzazione template system-wide vs override
+  - ✅ Editor HTML con QuillEditor
+  - ✅ Gestione variabili template
+  - ✅ Pulsante "Crea Override" per template system-wide
+  - ✅ Pulsante "Elimina Override" per template tenant-specific
+
+#### Background Tasks
+- ✅ **Email Queue Processor**: Processa automaticamente la coda email ogni 60 secondi
+- ✅ **Asset Review Checker**: Controlla asset review e invia notifiche ogni 24 ore
+- ✅ Integrazione automatica con startup/shutdown dell'applicazione
+- ✅ Gestione lifecycle thread con graceful shutdown
+
+#### Funzionalità Avanzate
+- ✅ **Sistema di priorità template**: Override tenant-specific > template system-wide
+- ✅ **Preferenze con severity_min**: Utenti possono impostare soglia rischio personalizzata (0-10)
+- ✅ **Tooltip e help text**: Guida utente per configurazione preferenze
+- ✅ **Strategia destinatari intelligente**:
+  1. Priorità 1: Owner asset (se hanno User associato)
+  2. Priorità 2: Utenti con preferenze attive per tipo notifica
+  3. Fallback: Admin tenant
+- ✅ **Notifiche rischio asset**: Invio automatico quando rischio cambia significativamente
+- ✅ **Logging completo**: Tracciamento dettagliato per debugging e audit
 
 ### 🔄 Parzialmente Implementato
 
-- **Email Notifications**:
-  - ✅ Modello database presente
-  - ✅ API endpoints presenti
-  - 🔄 Invio email automatico (da configurare SMTP)
+- **Template email personalizzabili**: Editor minimo presente, editor avanzato con preview live mancante
 
 ### ❌ Non Implementato
 
-- Configurazione SMTP per invio email
-- Template email personalizzabili
 - Notifiche push (browser notifications)
+- Editor template avanzato con preview live e syntax highlighting
 
-## 6. Vulnerability Intelligence Feed Integration
+---
+
+## 6. Vulnerability Intelligence
+
+**Design Document**: `docs/VULNERABILITIES_DESIGN.md`
+
+### 🎯 Principi Fondamentali
+
+**Sistema "Vulnerability-Aware" (Non Vulnerability Management)**:
+- Industrace è un sistema di **intelligence** che **suggerisce** vulnerabilità potenzialmente rilevanti basate sui metadati degli asset
+- **NON** è un sistema di vulnerability management - non gestisce il ciclo di vita delle vulnerabilità
+- **Auto-Discovery**: Il sistema suggerisce vulnerabilità candidate che devono essere verificate manualmente
+- **Stato "Unreviewed" di Default**: Tutte le vulnerabilità suggerite hanno stato "unreviewed" finché non vengono esplicitamente:
+  - **Acknowledged**: Confermata come applicabile
+  - **Not Applicable**: Confermata come non applicabile
+  - **Mitigated**: Mitigata/risolta
+  - **False Positive**: Identificata come falso positivo
+- **Focus**: Evidenzia vulnerabilità pubbliche potenzialmente rilevanti basate sui metadati degli asset (manufacturer, model, firmware)
 
 ### ✅ Implementato
 
-- **Modello Database**:
-  - ✅ `VulnerabilityIntelligence` con campi:
-    - `cve_id`, `title`, `description`
-    - `severity` (critical, high, medium, low)
-    - `cvss_score`, `published_date`
-    - `affected_products` (JSON array)
-    - `references` (JSON array)
-    - `created_at`, `updated_at`
+#### Modelli Database
+- ✅ `Vulnerability` - Database vulnerabilità system-wide (no tenant_id)
+  - `cve_id`, `advisory_id`, `title`, `description`
+  - `cvss_v3_score`, `cvss_v3_vector`, `cvss_v2_score`, `cvss_v2_vector`
+  - `severity` (critical, high, medium, low)
+  - `affected_manufacturers`, `affected_products`, `affected_versions` (JSONB)
+  - `published_date`, `modified_date`
+  - `references` (JSONB), `vendor_advisory_url`, `patch_url`
+  - `source` (nvd, vendor, ics-cert, cisa), `source_url`
+  - Index su `cve_id`, `severity`, `published_date`
 
-- **API Endpoints**:
-  - ✅ `GET /api/vulnerabilities` - Lista vulnerabilità
-  - ✅ `GET /api/vulnerabilities/{id}` - Dettaglio vulnerabilità
-  - ✅ `GET /api/assets/{id}/vulnerabilities` - Vulnerabilità per asset
-  - ✅ `POST /api/vulnerabilities/sync` - Sincronizza feed esterno
+- ✅ `AssetVulnerability` - Associazione asset-vulnerabilità (tenant-specific)
+  - `asset_id`, `vulnerability_id`, `tenant_id`
+  - `match_confidence` (0.0-1.0) - Confidence del matching automatico
+  - `match_reason` - Ragione del match (manufacturer, model, firmware)
+  - `status` (unreviewed, acknowledged, not_applicable, mitigated, false_positive)
+  - `patched_date`, `patched_by`, `mitigation_notes`
+  - `risk_impact` - Impatto sul risk score dell'asset
+  - `detected_at`, `updated_at`
+  - Index su `tenant_id`, `asset_id`, `vulnerability_id`, `status`, `detected_at`
 
-- **UI**:
-  - ✅ Tab "Vulnerabilities" in Asset Detail
-  - ✅ Pagina "Vulnerabilities" con lista vulnerabilità
-  - ✅ Visualizzazione CVE, severity, CVSS score
-  - ✅ Filtri per severity, asset, data
+- ✅ `VulnerabilityFeedSource` - Configurazione feed sources
+  - `name`, `source_type` (nvd, vendor, ics-cert, cisa, custom)
+  - `feed_url`, `feed_format` (json, xml, rss, csv), `api_key`
+  - `sync_enabled`, `sync_interval_hours`
+  - `last_sync_at`, `last_sync_status`, `last_sync_error`, `last_sync_count`
+  - `filters` (JSONB) per manufacturer, product type, etc.
+  - Supporto system-wide (`tenant_id=NULL`) e tenant-specific
+
+#### Servizi
+- ✅ `VulnerabilityMatcher` - Matching automatico vulnerabilità-asset
+  - Fuzzy matching per manufacturer, model, product
+  - Version matching per firmware (exact, pattern, range)
+  - Calcolo `match_confidence` (manufacturer +0.4, model +0.4, firmware +0.2)
+  - `match_vulnerability_to_assets()` - Match vulnerabilità → asset (tenant-wide)
+  - `match_asset_to_vulnerabilities()` - Match asset → vulnerabilità
+  - Threshold minimo configurabile (default: 0.6)
+
+- ✅ `VulnerabilityFeedService` - Sync feed vulnerabilità
+  - `fetch_nvd_feed()` - Fetch da NVD API v2.0 (recent, modified, all)
+  - `parse_cve_json()` - Parse CVE JSON da NVD in `VulnerabilityCreate`
+  - `sync_feed()` - Sincronizza feed (fetch, parse, store/update, auto-match opzionale)
+  - Rate limiting per API esterne (NVD: 5 req/30s senza key, 50 req/30s con key)
+
+- ✅ `VulnerabilityImpactCalculator` - Calcolo impatto su risk score
+  - `calculate_risk_impact()` - Calcolo impatto (CVSS + criticality + exposure)
+  - `update_asset_vulnerability_impact()` - Aggiorna impact per singola vulnerabilità
+  - `update_all_asset_vulnerability_impacts()` - Aggiorna impact per tutte le vulnerabilità di un asset
+  - Formula: `base_impact = (CVSS_score / 10.0) * 3.0` con multiplier per severity
+
+- ✅ `VulnerabilityAutoMatch` - Auto-discovery vulnerabilità
+  - Algoritmo di matching presente
+  - Richiede trigger manuale (da automatizzare)
+
+#### API Endpoints
+- ✅ CRUD Vulnerabilities (`/api/vulnerabilities`)
+  - `GET /api/vulnerabilities` - Lista vulnerabilità (con filtri: cve_id, severity, manufacturer)
+  - `GET /api/vulnerabilities/{id}` - Dettaglio vulnerabilità
+  - `POST /api/vulnerabilities` - Crea vulnerabilità (admin only)
+
+- ✅ Asset Vulnerabilities (`/api/vulnerabilities/assets/{asset_id}`)
+  - `GET /api/vulnerabilities/assets/{asset_id}` - Vulnerabilità per asset (con filtro status)
+  - `POST /api/vulnerabilities/assets/{asset_id}` - Crea link asset-vulnerability
+  - `PUT /api/vulnerabilities/assets/{asset_id}/vulnerabilities/{asset_vulnerability_id}` - Aggiorna status
+  - `DELETE /api/vulnerabilities/assets/{asset_id}/vulnerabilities/{asset_vulnerability_id}` - Rimuovi link
+
+- ✅ Matching (`/api/vulnerabilities/{vulnerability_id}/match-assets`)
+  - `POST /api/vulnerabilities/{vulnerability_id}/match-assets` - Match vulnerabilità → asset
+  - `POST /api/vulnerabilities/assets/{asset_id}/match-vulnerabilities` - Match asset → vulnerabilità (matching manuale per asset esistenti)
+  - **Nota**: Matching automatico su creazione/aggiornamento asset, matching manuale disponibile per asset esistenti
+
+- ✅ Feed Management (`/api/vulnerability-feeds`)
+  - `GET /api/vulnerability-feeds` - Lista feed sources
+  - `POST /api/vulnerability-feeds` - Crea feed source
+  - `POST /api/vulnerability-feeds/{feed_source_id}/sync` - Sincronizza feed manualmente
+
+- ✅ Statistics (`/api/vulnerabilities/stats`)
+  - Statistiche vulnerabilità (total, by_severity, by_status, unpatched_critical/high, recent)
+
+#### UI
+- ✅ Tab "Vulnerabilities" in Asset Detail (`AssetDetailVulnerabilitiesTab.vue`)
+  - ✅ Pulsante "Cerca Vulnerabilità" per matching manuale su asset esistenti
+  - ✅ Indicatore progresso durante matching automatico
+  - ✅ Visualizzazione confidence score e match reason
+  - DataTable con vulnerabilità asset
+  - Colonne: CVE ID (link NVD), Severity (Tag), CVSS Score, Status (Tag), Match Confidence
+  - Pulsante "Cerca Vulnerabilità" per matching manuale (da rimuovere secondo design)
+  - Paginazione (20 righe)
+  - Loading states e error handling
+
+- ✅ Pagina "Vulnerabilities" (`Vulnerabilities.vue`)
+  - Lista globale vulnerabilità con filtri base
+
+- ✅ Pagina "Vulnerability Detail" (`VulnerabilityDetail.vue`)
+  - Dettaglio completo vulnerabilità
+
+- ✅ Pagina "Vulnerability Feeds" (`VulnerabilityFeeds.vue`)
+  - Gestione feed sources configurati
+
+- ✅ Dialog Edit Vulnerability Status (`VulnerabilityEditDialog.vue`)
+  - Dialog per modificare status vulnerabilità (parzialmente implementato)
+
+#### Integrazione Risk Scoring
+- ✅ Vulnerabilità considerate nel calcolo risk score (35% del peso totale)
+- ✅ Breakdown vulnerabilità nel risk breakdown:
+  - Critical vulnerabilities (+3)
+  - High vulnerabilities (+2)
+  - High CVSS score (+2)
+  - Medium CVSS score (+1)
+- ✅ Visualizzazione nel frontend (`RiskBreakdown.vue`)
+- ✅ Impact calculation implementato e integrato
 
 ### 🔄 Parzialmente Implementato
 
 - **Feed Integration**:
-  - ✅ Modello database presente
-  - ✅ API endpoints presenti
-  - 🔄 Integrazione con feed esterni (CVE database, NVD, etc.)
+  - ✅ NVD feed completamente implementato (JSON parsing)
+  - 🔄 Altri feed (ICS-CERT, CISA, vendor) non ancora implementati
+  - 🔄 Auto-sync schedulato non implementato (solo sync manuale)
+  - 🔄 Feed locali (upload file JSON/XML/CSV) non implementati
+
+- **Matching Automatico**:
+  - ✅ Algoritmo di matching presente e funzionante
+  - ✅ Fuzzy matching base implementato (manufacturer, model, firmware)
+  - 🔄 Richiede trigger manuale (da automatizzare con hook su Asset/Vulnerability create/update)
+  - 🔄 Background job periodico per re-match asset esistenti mancante
+  - 🔄 Potrebbe essere migliorato con librerie dedicate (rapidfuzz, fuzzywuzzy)
+  - 🔄 Version matching supporta pattern base, ma non range complessi (>=x.y.z,<x.y.z)
+
+- **Dialog Edit Vulnerability**:
+  - ✅ Pulsante edit presente
+  - 🔄 Dialog non completamente implementato (campi mitigation_notes, patched_date, patched_by)
+
+- **Notifiche Intelligenti**:
+  - 🔄 Notifiche per nuove vulnerabilità critiche parziali
+  - 🔄 Notifiche solo per match critici non completamente implementate
 
 ### ❌ Non Implementato
 
-- Integrazione automatica con feed CVE esterni
-- Matching automatico vulnerabilità-asset basato su prodotti
-- Alert automatici per nuove vulnerabilità critiche
+- **Matching Automatico Trasparente**:
+  - Hook su `Asset` create/update per trigger matching automatico in background
+  - Hook su `Vulnerability` create per trigger matching automatico a tutti gli asset
+  - Background job periodico per re-match asset esistenti (configurabile)
+  - Configurazione matching (min_confidence, auto-match on sync) in database
 
-## 7. Syslog Server e SIEM Forwarding
+- **Feed Management in Setup**:
+  - Tile "Vulnerability Feeds" in `Setup.vue`
+  - Pagina `VulnerabilityFeeds.vue` completa con:
+    - Lista feed sources con status (enabled/disabled)
+    - Form per aggiungere feed remoti (NVD, ICS-CERT, CISA, vendor) e locali
+    - Sync manuale con visualizzazione progress
+    - Stato sync (last sync, status, errori, count)
+  - Supporto feed locali (upload file JSON/XML/CSV con parser configurabili)
+
+- **Scheduled Sync**:
+  - Background jobs per sync automatico feed (Celery/APScheduler)
+  - Configurazione sync interval per feed source
+  - Notifiche su sync failures
+  - Retry logic per sync falliti
+
+- **Notifiche Intelligenti Complete**:
+  - Notifiche automatiche solo per match critici
+  - Notifiche per vulnerabilità critiche matchate durante sync feed
+  - Configurazione notifiche (notify_on_critical_match, notify_on_high_match)
+
+- **Bulk Operations**:
+  - Selezione multipla vulnerabilità
+  - Bulk update status
+  - Bulk matching (override automatico)
+
+- **Export**:
+  - Export vulnerabilità in CSV/JSON
+  - Export report vulnerabilità per asset
+
+### 📝 Note Design
+
+**Differenza "Vulnerability-Aware" vs "Vulnerability Management"**:
+- **Vulnerability-Aware**: Sistema di intelligence che suggerisce vulnerabilità potenzialmente rilevanti basate sui metadati degli asset. Non gestisce il ciclo di vita delle vulnerabilità, ma evidenzia solo che esistono vulnerabilità pubbliche potenzialmente rilevanti.
+- **Vulnerability Management**: Sistema completo per gestire il ciclo di vita delle vulnerabilità (discovery, assessment, remediation, tracking). Industrace NON è un sistema di vulnerability management.
+
+**Auto-Discovery vs Matching Manuale**:
+- **Auto-Discovery**: Il sistema suggerisce automaticamente vulnerabilità candidate basate su matching fuzzy di manufacturer, model e firmware. Tutte le vulnerabilità suggerite hanno stato "unreviewed" di default e devono essere verificate manualmente.
+- **Matching Manuale**: Attualmente presente ma da rimuovere in futuro. Il design prevede matching automatico trasparente in background quando si crea/aggiorna un asset o si sincronizza un feed.
+
+**Stato "Unreviewed" di Default**:
+- Tutte le vulnerabilità suggerite dal sistema hanno stato "unreviewed" finché non vengono esplicitamente verificate dall'utente.
+- L'utente può cambiare lo stato a: acknowledged, not_applicable, mitigated, false_positive.
+- Questo approccio conservativo evita falsi positivi e richiede verifica manuale.
+
+**Focus su Suggerimenti Basati su Metadati**:
+- Il sistema NON afferma che un asset ha certe vulnerabilità - suggerisce solo vulnerabilità potenzialmente rilevanti.
+- Il matching è basato su metadati asset (manufacturer, model, firmware) confrontati con `affected_manufacturers`, `affected_products`, `affected_versions` delle vulnerabilità.
+- La `match_confidence` indica quanto forte è il match, ma non garantisce che la vulnerabilità sia effettivamente applicabile.
+
+---
+
+## 7. Enterprise Authentication (SSO)
+
+**Design Document**: `docs/ENTERPRISE_AUTH_DESIGN.md`
+
+### ✅ Implementato
+
+#### Modelli Database
+- ✅ `TenantSSOConfig` - Configurazione SSO per tenant con supporto multi-provider
+  - Campi per Azure AD, Google Workspace, Okta, Generic OIDC
+  - Supporto per `authority_url`, `authorization_endpoint`, `token_endpoint`, `userinfo_endpoint`
+  - `auto_provision_enabled` (default: False - Scenario 3)
+  - `domain_restriction` per limitare accesso per dominio email
+- ✅ Estensioni `User` per SSO:
+  - `auth_provider` - Provider SSO utilizzato
+  - `external_id` - ID utente nel provider esterno
+  - `sso_email` - Email dal provider SSO
+  - `sso_metadata` - Metadata JSON dal provider
+
+#### Servizi
+- ✅ `SSOAuthService` - OAuth2/OIDC flow completo con supporto multi-provider
+  - ✅ PKCE (Proof Key for Code Exchange) per sicurezza
+  - ✅ Supporto Azure AD, Google Workspace, Okta, Generic OIDC
+  - ✅ Token exchange e user info retrieval
+  - ✅ User provisioning e linking automatico per email match
+- ✅ `SSOEncryption` - Encryption/decryption client secrets
+- ✅ `AzureADService` - Integrazione Azure AD specifica
+  - ✅ Client credentials flow per importazione utenti
+  - ✅ Microsoft Graph API integration
+  - ✅ Lista e importazione utenti Azure AD
+
+#### API Endpoints
+- ✅ SSO Configuration CRUD (`/api/auth/sso/config`)
+- ✅ SSO Login Flow:
+  - ✅ `GET /api/auth/sso/enabled` - Check SSO status (public endpoint)
+  - ✅ `GET /api/auth/sso/{provider}/authorize` - Authorization redirect
+  - ✅ `GET /api/auth/sso/callback` - OAuth callback handler
+- ✅ SSO Test Connection (`/api/auth/sso/test`)
+- ✅ Azure AD User Management:
+  - ✅ `GET /api/auth/sso/azure-ad/users` - Lista utenti Azure AD
+  - ✅ `POST /api/auth/sso/azure-ad/import` - Importazione utenti selezionati
+
+#### UI
+- ✅ Pagina "SSO Configuration" (`SSOConfig.vue`)
+  - ✅ Form configurazione multi-provider (Azure AD abilitato, altri pronti)
+  - ✅ Test connection con feedback dettagliato
+  - ✅ Guida setup Azure AD integrata (`SSO_AZURE_AD_SETUP.md`)
+  - ✅ Importazione utenti Azure AD con:
+    - ✅ Tabella utenti con filtri e ricerca
+    - ✅ Selezione multipla utenti
+    - ✅ Selezione ruolo per utenti importati
+    - ✅ Gestione errori e feedback dettagliato
+- ✅ Pagina Login (`Login.vue`):
+  - ✅ Rilevamento automatico SSO abilitato
+  - ✅ Pulsante SSO dinamico basato su provider configurato
+  - ✅ Redirect automatico al provider SSO
+- ✅ Pagine Callback SSO:
+  - ✅ `SSOSuccess.vue` - Gestione callback successo
+  - ✅ `SSOError.vue` - Gestione errori SSO
+
+#### Funzionalità Avanzate
+- ✅ **Auto-provisioning configurabile**: Scenario 3 (disabilitato di default) - solo utenti esistenti possono accedere
+- ✅ **Domain restriction**: Limitazione accesso per dominio email
+- ✅ **User linking automatico**: Collegamento automatico utenti esistenti se email corrisponde
+- ✅ **Client secret encryption**: Secrets criptati nel database
+- ✅ **Client secret preservation**: Il secret viene preservato durante aggiornamenti se non viene fornito un nuovo valore
+- ✅ **Logging dettagliato**: Tracciamento completo per troubleshooting
+- ✅ **Error handling robusto**: Gestione errori con messaggi specifici
+
+### 🔄 Parzialmente Implementato
+
+- **Altri provider SSO**: Backend supporta già Google Workspace, Okta e Generic OIDC, ma non ancora abilitati nel frontend (design pronto per abilitazione futura)
+- **Role mapping da SSO claims**: Base presente, mapping automatico da claims mancante
+
+### ❌ Non Implementato
+
+- "Connect" workflow semplificato per setup guidato
+- JIT user provisioning completo (auto-provisioning disabilitato per design)
+
+---
+
+## 8. Asset Detail Page - Nuovo Layout
+
+**Design Document**: `frontend/ASSET_DETAIL_NEW_DESIGN.md`
+
+### ✅ Implementato
+
+- ✅ Design document creato
+- ✅ Prototipo `AssetDetailNew.vue` con layout a 4 macro-sezioni:
+  - Panoramica (`AssetDetailOverviewTab.vue`)
+  - Relazioni (`AssetDetailRelationsTab.vue`)
+  - Sicurezza e Rischi (`AssetDetailSecurityTab.vue`)
+  - Gestione (`AssetDetailManagementTab.vue`)
+- ✅ Componenti base (`AssetDetailSidebar.vue`, `AssetDetailSection.vue`)
+- ✅ Accessibilità (skip links, ARIA labels, keyboard navigation)
+- ✅ Route alternativa `/assets-new/:id` per test
+
+### 🔄 In Sviluppo
+
+- Testing completo del nuovo layout
+- Migrazione da layout originale a nuovo layout
+- Aggiornamento link interni
+
+---
+
+## 9. Syslog Server e SIEM Forwarding
+
+**Design Document**: `docs/ISA62443_DESIGN.md` (sezione Syslog Server)
 
 ### ❌ Non Implementato
 
@@ -386,7 +586,13 @@
 - Forwarding a SIEM esterni
 - Dashboard syslog events
 
-## 8. BAS/CS™ Integration
+**Nota**: Design completo presente, implementazione non iniziata.
+
+---
+
+## 10. BAS/CS™ Integration
+
+**Design Document**: `docs/ISA62443_DESIGN.md` (sezione BAS/CS)
 
 ### ❌ Non Implementato
 
@@ -396,213 +602,55 @@
 - Visualizzazione BAS/CS findings
 - Integrazione con risk scoring
 
-## 9. Enterprise Authentication (EntraID / Azure AD)
+**Nota**: Design presente, status ON HOLD / FUTURE. Richiede syslog server completo.
 
-### ✅ Implementato
-
-- **Modello Database**:
-  - ✅ `SSOConfig` con campi:
-    - `tenant_id`, `provider` (azure_ad, okta, etc.)
-    - `client_id`, `client_secret` (encrypted)
-    - `tenant_domain`, `metadata_url`
-    - `enabled`, `created_at`, `updated_at`
-
-- **API Endpoints**:
-  - ✅ `GET /api/sso/config` - Configurazione SSO
-  - ✅ `POST /api/sso/config` - Crea/aggiorna configurazione
-  - ✅ `DELETE /api/sso/config` - Elimina configurazione
-  - ✅ `GET /api/sso/login` - Initiate SSO login
-  - ✅ `GET /api/sso/callback` - SSO callback
-
-- **UI**:
-  - ✅ Pagina "SSO Configuration" per configurare EntraID/Azure AD
-  - ✅ Form per inserire client ID, secret, tenant domain
-  - ✅ Test connection
-
-### 🔄 Parzialmente Implementato
-
-- **SSO Login Flow**:
-  - ✅ Configurazione presente
-  - ✅ API endpoints presenti
-  - 🔄 Integrazione completa con frontend (login button, callback handling)
-
-### ❌ Non Implementato
-
-- Supporto per altri provider SSO (Okta, Google Workspace, etc.)
-- Just-in-time (JIT) user provisioning
-- Role mapping da SSO claims
-
-## 10. Change Management Review
-
-### 🔄 Parzialmente Implementato
-
-- **Modello Database**:
-  - ✅ `AssetChange` con campi base
-  - 🔄 Review workflow non completamente implementato
-
-### ❌ Non Implementato
-
-- Workflow completo di review per cambiamenti
-- Approvazioni multi-livello
-- Notifiche per cambiamenti in attesa di approvazione
-
-## 11. Asset Detail Page - Rivisitazione UI e Accessibilità
-
-### 🔄 Problema Attuale
-
-La pagina Asset Detail (`AssetDetail.vue`) presenta alcuni problemi di usabilità e accessibilità:
-
-1. **Troppi Tab**: La pagina ha molti tab (Overview, Dependencies, Connections, etc.) che rendono difficile la navigazione
-2. **Informazioni Frammentate**: Le informazioni correlate sono separate in tab diversi
-3. **Accessibilità**: Mancano skip links, ARIA labels completi, keyboard navigation ottimale
-4. **Mobile Experience**: I tab non sono ottimali su dispositivi mobili
-
-### 🎯 Proposta di Rivisitazione
-
-#### Design Alternativo: **Layout a Sezioni Collassabili con Sidebar Navigation**
-
-**Struttura Proposta**:
-```
-Asset Detail Page
-├── Header (Asset name, status, risk score, quick actions)
-├── Sidebar Navigation (sticky)
-│   ├── Panoramica
-│   ├── Relazioni
-│   │   ├── Dipendenze
-│   │   ├── Connessioni
-│   │   └── Comunicazioni
-│   ├── Sicurezza e Rischi
-│   │   ├── Rischio
-│   │   ├── Vulnerabilità
-│   │   └── IEC 62443
-│   └── Gestione
-│       ├── Documenti
-│       ├── Contatti
-│       ├── Review
-│       └── Fornitori
-└── Content Area
-    └── Sezioni collassabili con contenuto dettagliato
-```
-
-**Vantaggi**:
-- ✅ Navigazione più chiara e organizzata
-- ✅ Informazioni correlate raggruppate logicamente
-- ✅ Migliore accessibilità (skip links, ARIA labels)
-- ✅ Migliore esperienza mobile (sidebar collassabile)
-- ✅ Meno clic per accedere alle informazioni
-
-#### Vantaggi del Nuovo Design
-
-1. **Organizzazione Logica**: Le informazioni sono raggruppate in macro-sezioni logiche
-2. **Accessibilità**: Skip links, ARIA labels, keyboard navigation
-3. **Mobile-Friendly**: Sidebar collassabile, sezioni stack verticalmente
-4. **Performance**: Lazy loading delle sezioni non visibili
-5. **Consistenza**: Stesso pattern utilizzabile per altre entità (Zone, Conduit, etc.)
-
-#### Implementazione Proposta
-
-**Componenti**:
-- `AssetDetailNew.vue` - Nuovo layout principale
-- `AssetDetailSidebar.vue` - Sidebar navigation
-- `AssetDetailSection.vue` - Sezione collassabile riutilizzabile
-- `AssetDetailOverviewTab.vue` - Sezione Panoramica
-- `AssetDetailRelationsTab.vue` - Sezione Relazioni
-- `AssetDetailSecurityTab.vue` - Sezione Sicurezza e Rischi
-- `AssetDetailManagementTab.vue` - Sezione Gestione
-
-**Route**:
-- `/assets-new/:id` - Nuovo layout (per test)
-- `/assets/:id` - Layout originale (mantenuto per retrocompatibilità)
-
-### 🔄 Stato Attuale
-
-- ✅ **Design Document**: Creato `frontend/ASSET_DETAIL_NEW_DESIGN.md`
-- ✅ **Prototipo Implementato**: `AssetDetailNew.vue` con layout a 4 macro-sezioni
-- ✅ **Componenti Base**: `AssetDetailSidebar.vue`, `AssetDetailSection.vue` creati
-- ✅ **Macro-Sezioni**: Tutte e 4 le macro-sezioni implementate
-  - ✅ Panoramica (`AssetDetailOverviewTab.vue`)
-  - ✅ Relazioni (`AssetDetailRelationsTab.vue`)
-  - ✅ Sicurezza e Rischi (`AssetDetailSecurityTab.vue`)
-  - ✅ Gestione (`AssetDetailManagementTab.vue`)
-- ✅ **Accessibilità**: Skip links, ARIA labels, keyboard navigation implementati
-- 🔄 **Testing**: In corso su route `/assets-new/:id`
-- ❌ **Migrazione**: Layout originale ancora in uso su `/assets/:id`
-
-### 📋 Task per Implementazione
-
-#### ✅ Completato (2025-01-XX)
-
-- ✅ Design document creato
-- ✅ Prototipo `AssetDetailNew.vue` implementato
-- ✅ Tutte e 4 le macro-sezioni implementate
-- ✅ Accessibilità base implementata
-- ✅ Route alternativa `/assets-new/:id` creata
-
-#### 🔄 In Sviluppo / Da Completare
-
-- 🔄 Testing completo del nuovo layout
-- 🔄 Migrazione da layout originale a nuovo layout
-- 🔄 Aggiornamento link interni per usare nuovo layout
-- 🔄 Documentazione utente per nuovo layout
-
-#### ❌ Non Implementato
-
-- Migrazione completa da layout originale
-- Rimozione layout originale (dopo periodo di transizione)
-
-### 🎯 Priorità
-
-- **Alta**: Completare testing e fix bug nel nuovo layout
-- **Media**: Migrare link interni al nuovo layout
-- **Bassa**: Rimuovere layout originale (dopo periodo di transizione)
+---
 
 ## 📋 Priorità Implementazione
 
-### ✅ Completato (2025-01-XX)
+### 🔴 Alta Priorità (Gap Critici)
 
-- ✅ Zone Membership con Ruoli
-- ✅ Risk Propagation
-- ✅ Asset Review System
-- ✅ Asset Ownership/Point-of-Contact
-- ✅ Notification System (base)
-- ✅ Vulnerability Intelligence (base)
-- ✅ Enterprise Auth (SSO) configurazione
-- ✅ Asset Detail nuovo layout (prototipo)
+1. **Notification System**:
+   - ✅ Configurazione SMTP (completato)
+   - ✅ Preferenze globali e specifiche (completato)
+   - ✅ Template editor minimo (completato)
+   - ✅ Strategia invio multi-livello (completato)
+   - Editor template avanzato con preview live
 
-### 🔴 Alta Priorità (Gap Critici Rimanenti)
+2. **Vulnerability Intelligence**:
+   - Matching automatico trasparente (hook su Asset/Vulnerability create/update)
+   - Feed management in Setup (tile in Setup.vue, pagina completa VulnerabilityFeeds.vue)
+   - Supporto feed locali (upload file JSON/XML/CSV con parser configurabili)
+   - Scheduled sync automatico (background jobs per sync feed)
+   - Notifiche intelligenti (solo per match critici)
 
-1. **ISA/IEC 62443**:
-   - 🔄 Compliance Dashboard completo
-   - 🔄 Security Requirements popolamento standard
-   - 🔄 Reporting avanzato (PDF/Excel export)
-
-2. **Asset Dependencies**:
-   - 🔄 Network Map dual layer visualization
-   - 🔄 Ottimizzazioni performance per grandi dataset
-
-3. **Notification System**:
-   - 🔄 Configurazione SMTP
-   - 🔄 Template email personalizzabili
+3. **Enterprise Auth**:
+   - Integrazione completa frontend SSO login flow
+   - JIT user provisioning completo
 
 ### 🟡 Media Priorità (Miglioramenti)
 
-1. **Vulnerability Intelligence**:
-   - 🔄 Integrazione automatica con feed CVE
-   - 🔄 Matching automatico vulnerabilità-asset
+1. **ISA/IEC 62443**:
+   - UI per gestione manuale AssetCapability
+   - Visualizzazione evidenze in Asset Detail
+   - Reporting avanzato (PDF/Excel export)
 
-2. **Asset Detail**:
-   - 🔄 Migrazione completa al nuovo layout
-   - 🔄 Rimozione layout originale
+2. **Asset Dependencies**:
+   - Network Map dual layer visualization
+   - Ottimizzazioni performance
 
-3. **Enterprise Auth**:
-   - 🔄 Supporto altri provider SSO
-   - 🔄 JIT user provisioning
+3. **Asset Detail**:
+   - Migrazione completa al nuovo layout
+   - Rimozione layout originale
 
 ### 🟢 Bassa Priorità (Futuro)
 
 1. Syslog Server e SIEM Forwarding
 2. BAS/CS™ Integration
 3. Change Management Review completo
+4. Security Requirements popolamento standard ISA/IEC 62443 completo
+
+---
 
 ## 📝 Note Implementative
 
@@ -618,202 +666,54 @@ Asset Detail Page
    - **Implementazione**: Total Risk Score = Base Risk + Risk from Dependencies
    - **Motivo**: Migliore rappresentazione del rischio reale considerando dipendenze
 
-3. **Asset Detail Layout**:
-   - **Design originale**: Layout a tab
-   - **Implementazione**: Layout a tab (originale) + Layout a sezioni collassabili (nuovo, in test)
-   - **Motivo**: Migliorare usabilità e accessibilità
+3. **Vulnerability Matching**:
+   - **Design originale**: Matching automatico completo
+   - **Implementazione**: Auto-discovery con stato "unreviewed" di default
+   - **Motivo**: Approccio più conservativo, richiede verifica manuale
 
-## ✅ Checklist Implementazione Completa
-
-### ISA/IEC 62443
-
-- ✅ Modelli database (SecurityZone, Conduit, SecurityRequirement, etc.)
-- ✅ Servizi (ISA62443ComplianceEngine, ZoneRiskCalculator)
-- ✅ API endpoints CRUD
-- ✅ UI base (Security Zones, Conduits, Compliance)
-- ✅ Zone Membership con Ruoli
-- ✅ Zone Participation Type con valori predefiniti
-- ✅ Integrazione in Asset Detail
-- 🔄 Compliance Dashboard completo
-- 🔄 Reporting avanzato
-- ❌ Security Requirements popolamento standard
-
-### Asset Dependencies
-
-- ✅ Modello database
-- ✅ API endpoints
-- ✅ UI Tab Dependencies
-- ✅ Risk Propagation
-- ✅ Connection-Dependency Cross-Visibility
-- 🔄 Network Map dual layer
-- 🔄 Ottimizzazioni performance
-
-### Asset Review
-
-- ✅ Modello database
-- ✅ API endpoints
-- ✅ UI Tab Reviews
-- 🔄 Notifiche automatiche
-
-### Notification System
-
-- ✅ Modello database
-- ✅ API endpoints
-- ✅ UI Notifications
-- 🔄 Email notifications (SMTP config)
-- ❌ Push notifications
-
-### Vulnerability Intelligence
-
-- ✅ Modello database
-- ✅ API endpoints
-- ✅ UI Tab Vulnerabilities
-- 🔄 Feed integration automatica
-- ❌ Matching automatico
-
-### 2025-01-XX - Asset Detail Page Rivisitazione UI/UX
-
-#### 🔄 Problema Identificato
-
-La pagina Asset Detail aveva troppi tab e informazioni frammentate, con problemi di accessibilità.
-
-#### 🎯 Design Implementato
-
-Layout a 4 macro-sezioni con sidebar navigation:
-- **Panoramica**: Overview asset con alert banner
-- **Relazioni**: Dipendenze, connessioni, comunicazioni
-- **Sicurezza e Rischi**: Rischio, vulnerabilità, IEC 62443
-- **Gestione**: Documenti, contatti, review, fornitori
-
-#### ✅ Implementazione Completata
-
-- ✅ Design document creato
-- ✅ Prototipo `AssetDetailNew.vue` implementato
-- ✅ Tutte e 4 le macro-sezioni implementate
-- ✅ Accessibilità implementata (skip links, ARIA labels)
-- ✅ Route alternativa `/assets-new/:id` creata
-
-#### 📋 Caratteristiche
-
-- Sidebar navigation sticky
-- Sezioni collassabili
-- Skip links per accessibilità
-- Mobile-friendly
-- Lazy loading sezioni
-
-#### 🔄 Status
-
-- ✅ Prototipo funzionante
-- 🔄 Testing in corso
-- ❌ Migrazione non ancora completata
-
-#### 📝 Note
-
-Il nuovo layout è disponibile su route alternativa `/assets-new/:id` per test. Il layout originale rimane su `/assets/:id` per retrocompatibilità.
-
-## 📝 Changelog Implementazione
-
-### 2025-01-15 - UI Visibilità Incrociata Connessioni-Dipendenze Completata
-
-#### ✅ UI Tab Connections e Dependencies Implementata
-
-**Modifiche**:
-- ✅ Badge in Tab Connections per mostrare se una connessione ha una dipendenza associata
-- ✅ Badge in Tab Dependencies per mostrare se una dipendenza ha una connessione associata
-- ✅ Funzionalità "Create Dependency from Connection" implementata
-- ✅ Tooltip informativi sui badge
-- ✅ Link cliccabili per navigare tra connessioni e dipendenze
-
-**File Modificati**:
-- ✅ `frontend/src/components/features/assets/tabs/AssetDetailConnectionsTab.vue`
-- ✅ `frontend/src/components/features/assets/tabs/AssetDetailDependenciesTab.vue`
-- ✅ `frontend/src/locales/it/assetDependencies.json`
-- ✅ `frontend/src/locales/en/assetDependencies.json`
-
-**Backend**:
-- ✅ Endpoint `GET /api/assets/{id}/connections` esteso per includere `dependency_id`
-- ✅ Endpoint `GET /api/assets/{id}/dependencies` esteso per includere `connection_id`
-
-#### 📊 Impatto
-
-- ✅ **UX Migliorata**: Gli utenti possono vedere facilmente le relazioni tra connessioni e dipendenze
-- ✅ **Efficienza**: Creazione rapida di dipendenze da connessioni esistenti
-- ✅ **Chiarezza**: Badge visivi rendono immediatamente evidenti le relazioni
-
-#### 🔄 Prossimi Passi
-
-- Network Map dual layer visualization avanzata
-- Visualizzazione grafica avanzata dipendenze
-- Integrazione completa con Risk Scoring
-
-### 2025-01-XX - Asset Detail Page - Nuovo Layout con 4 Macro-Sezioni
-
-#### ✅ Implementazione Completata
-
-**Design**:
-- Layout a 4 macro-sezioni con sidebar navigation
-- Sezioni collassabili per organizzare meglio le informazioni
-- Accessibilità implementata (skip links, ARIA labels, keyboard navigation)
-
-**Componenti**:
-- ✅ `AssetDetailNew.vue` - Layout principale
-- ✅ `AssetDetailSidebar.vue` - Sidebar navigation
-- ✅ `AssetDetailSection.vue` - Sezione collassabile riutilizzabile
-- ✅ `AssetDetailOverviewTab.vue` - Sezione Panoramica
-- ✅ `AssetDetailRelationsTab.vue` - Sezione Relazioni
-- ✅ `AssetDetailSecurityTab.vue` - Sezione Sicurezza e Rischi
-- ✅ `AssetDetailManagementTab.vue` - Sezione Gestione
-
-**Caratteristiche**:
-- ✅ Sidebar navigation sticky
-- ✅ Sezioni collassabili
-- ✅ Skip links per accessibilità
-- ✅ Mobile-friendly
-- ✅ Lazy loading sezioni
-
-#### 📊 Impatto
-
-- ✅ **UX Migliorata**: Navigazione più chiara e organizzata
-- ✅ **Accessibilità**: Skip links, ARIA labels, keyboard navigation
-- ✅ **Mobile-Friendly**: Sidebar collassabile, sezioni stack verticalmente
-
-#### 🔄 Status
-
-- ✅ Prototipo funzionante su `/assets-new/:id`
-- 🔄 Testing in corso
-- ❌ Migrazione non ancora completata
-
-#### 🔄 Prossimi Passi
-
-- Completare testing e fix bug
-- Migrare link interni al nuovo layout
-- Rimuovere layout originale (dopo periodo di transizione)
+---
 
 ## 📁 File Implementati - Riepilogo
 
-### Backend - Servizi
-
-- ✅ `backend/app/services/isa62443_compliance_engine.py`
-- ✅ `backend/app/services/zone_risk_calculator.py`
-- ✅ `backend/app/services/risk_propagation.py`
-- ✅ `backend/app/services/connection_dependency_analyzer.py` - **NUOVO (2025-01-15)**
-
 ### Backend - Modelli
-
 - ✅ `backend/app/models/security_zone.py`
 - ✅ `backend/app/models/conduit.py`
 - ✅ `backend/app/models/security_requirement.py`
-- ✅ `backend/app/models/security_requirement_compliance.py`
-- ✅ `backend/app/models/asset_zone_membership.py` - **NUOVO (2025-01-XX)**
+- ✅ `backend/app/models/asset_zone_membership.py`
 - ✅ `backend/app/models/asset_dependency.py`
 - ✅ `backend/app/models/asset_review.py`
 - ✅ `backend/app/models/asset_contact.py`
-- ✅ `backend/app/models/notification.py`
-- ✅ `backend/app/models/vulnerability_intelligence.py`
-- ✅ `backend/app/models/sso_config.py`
+- ✅ `backend/app/models/vulnerability.py`
+- ✅ `backend/app/models/tenant_sso_config.py`
+- ✅ `backend/app/models/security_capability.py`
+- ✅ `backend/app/models/sr_assessment.py`
+- ✅ `backend/app/models/asset_capability.py`
+- ✅ `backend/app/models/notification_template.py`
+- ✅ `backend/app/models/notification_preference.py`
+- ✅ `backend/app/models/notification_queue.py`
+- ✅ `backend/app/models/notification_log.py`
+- ✅ `backend/app/models/tenant_smtp_config.py`
+- ✅ `backend/app/models/user.py` (campi `notifications_enabled`, `auth_provider`, `external_id`, `sso_email`, `sso_metadata`)
+
+### Backend - Servizi
+- ✅ `backend/app/services/isa62443_compliance_engine.py`
+- ✅ `backend/app/services/zone_risk_calculator.py`
+- ✅ `backend/app/services/risk_propagation.py`
+- ✅ `backend/app/services/connection_dependency_analyzer.py`
+- ✅ `backend/app/services/vulnerability_feed.py`
+- ✅ `backend/app/services/vulnerability_matcher.py`
+- ✅ `backend/app/services/vulnerability_impact.py`
+- ✅ `backend/app/services/vulnerability_auto_match.py`
+- ✅ `backend/app/services/sso_auth.py`
+- ✅ `backend/app/services/azure_ad_service.py`
+- ✅ `backend/app/services/sso_encryption.py`
+- ✅ `backend/app/services/notification_service.py`
+- ✅ `backend/app/services/email_service.py`
+- ✅ `backend/app/services/email_queue_processor.py`
+- ✅ `backend/app/services/background_tasks.py`
+- ✅ `backend/app/services/asset_review_service.py`
 
 ### Backend - Router/API
-
 - ✅ `backend/app/routers/security_zones.py`
 - ✅ `backend/app/routers/conduits.py`
 - ✅ `backend/app/routers/compliance.py`
@@ -823,217 +723,88 @@ Il nuovo layout è disponibile su route alternativa `/assets-new/:id` per test. 
 - ✅ `backend/app/routers/vulnerabilities.py`
 - ✅ `backend/app/routers/sso.py`
 
-### Backend - CRUD
-
-- ✅ `backend/app/crud/security_zones.py`
-- ✅ `backend/app/crud/conduits.py`
-- ✅ `backend/app/crud/asset_zone_memberships.py` - **NUOVO (2025-01-XX)**
-- ✅ `backend/app/crud/asset_dependencies.py`
-- ✅ `backend/app/crud/asset_reviews.py`
-
-### Backend - Migrazioni Database
-
-- ✅ `backend/alembic/versions/create_isa62443_models.py`
-- ✅ `backend/alembic/versions/create_asset_dependencies.py`
-- ✅ `backend/alembic/versions/create_asset_reviews.py`
-- ✅ `backend/alembic/versions/create_notification_system.py`
-- ✅ `backend/alembic/versions/create_vulnerability_intelligence.py`
-- ✅ `backend/alembic/versions/add_enterprise_auth.py`
-- ✅ `backend/alembic/versions/d2b57c3dd204_add_asset_zone_memberships.py` - **NUOVO (2025-01-XX)**
-
-### Frontend - Componenti Asset Detail
-
-- ✅ `frontend/src/pages/AssetDetailNew.vue` - Nuovo layout con 4 macro-sezioni
-- ✅ `frontend/src/components/features/assets/macrosections/AssetDetailOverviewTab.vue`
-- ✅ `frontend/src/components/features/assets/macrosections/AssetDetailRelationsTab.vue`
-- ✅ `frontend/src/components/features/assets/macrosections/AssetDetailSecurityTab.vue`
-- ✅ `frontend/src/components/features/assets/macrosections/AssetDetailManagementTab.vue`
-- ✅ `frontend/src/components/features/assets/components/AssetAlertBanner.vue`
-- ✅ `frontend/src/components/features/assets/AssetDetailSidebar.vue` (prototipo)
-- ✅ `frontend/src/components/features/assets/AssetDetailSection.vue` (prototipo)
-
-### Frontend - Tab e Componenti
-
-- ✅ `frontend/src/components/features/assets/tabs/AssetDetailDependenciesTab.vue`
-- ✅ `frontend/src/components/features/assets/tabs/AssetDetailReviewTab.vue`
-- ✅ `frontend/src/components/features/assets/tabs/AssetDetailVulnerabilitiesTab.vue`
-- ✅ `frontend/src/components/features/assets/tabs/AssetDetailIEC62443Tab.vue` - **NUOVO (2025-01-XX)**
-- ✅ `frontend/src/components/features/assets/tabs/components/RiskPropagationView.vue`
-- ✅ `frontend/src/components/features/assets/AssetReviewTable.vue`
-
 ### Frontend - Pagine
-
-- ✅ `frontend/src/pages/AssetReviews.vue`
 - ✅ `frontend/src/pages/SecurityZones.vue`
 - ✅ `frontend/src/pages/SecurityZoneDetail.vue`
 - ✅ `frontend/src/pages/Conduits.vue`
 - ✅ `frontend/src/pages/Compliance.vue`
+- ✅ `frontend/src/pages/AssetReviews.vue`
 - ✅ `frontend/src/pages/Notifications.vue`
+- ✅ `frontend/src/pages/Vulnerabilities.vue`
+- ✅ `frontend/src/pages/VulnerabilityDetail.vue`
+- ✅ `frontend/src/pages/VulnerabilityFeeds.vue`
 - ✅ `frontend/src/pages/SSOConfig.vue`
+- ✅ `frontend/src/pages/SSOSuccess.vue`
+- ✅ `frontend/src/pages/SSOError.vue`
+- ✅ `frontend/src/pages/AssetDetailNew.vue` (prototipo)
 
-### Frontend - Traduzioni
+### Frontend - Componenti
+- ✅ `frontend/src/components/features/isa62443/ZoneComplianceTab.vue`
+- ✅ `frontend/src/components/features/assets/tabs/AssetDetailIEC62443Tab.vue`
+- ✅ `frontend/src/components/features/assets/tabs/AssetDetailDependenciesTab.vue`
+- ✅ `frontend/src/components/features/assets/tabs/AssetDetailVulnerabilitiesTab.vue`
+- ✅ `frontend/src/components/features/vulnerabilities/VulnerabilityEditDialog.vue`
+- ✅ `frontend/src/components/features/vulnerabilities/VulnerabilityFeedDialog.vue`
+- ✅ `frontend/src/components/features/notifications/NotificationPreferencesTab.vue`
+- ✅ `frontend/src/components/features/notifications/NotificationQueueTab.vue`
+- ✅ `frontend/src/components/features/notifications/NotificationLogsTab.vue`
+- ✅ `frontend/src/components/features/notifications/NotificationTestTab.vue`
+- ✅ `frontend/src/components/features/notifications/NotificationTemplatesTab.vue`
 
-- ✅ `frontend/src/locales/it/assetDependencies.json`
-- ✅ `frontend/src/locales/en/assetDependencies.json`
-- ✅ `frontend/src/locales/it/assetReviews.json`
-- ✅ `frontend/src/locales/en/assetReviews.json`
-- ✅ `frontend/src/locales/it/isa62443.json`
-- ✅ `frontend/src/locales/en/isa62443.json`
-- ✅ `frontend/src/locales/it/notifications.json`
-- ✅ `frontend/src/locales/en/notifications.json`
-- ✅ `frontend/src/locales/it/vulnerabilities.json`
-- ✅ `frontend/src/locales/en/vulnerabilities.json`
-- ✅ `frontend/src/locales/it/sso.json`
-- ✅ `frontend/src/locales/en/sso.json`
+---
 
-### Documentazione
+## 📝 Changelog Implementazione
 
-- ✅ `docs/IMPLEMENTATION_STATUS.md` - Questo documento
-- ✅ `docs/ISA62443_DESIGN.md` - Design ISA/IEC 62443
-- ✅ `frontend/ASSET_DETAIL_NEW_DESIGN.md` - Design nuovo layout Asset Detail
-- ✅ `frontend/ASSET_DETAIL_NEW_LAYOUT.md` - Guida test nuovo layout
-
-### 2025-01-15 - Gap Critici Asset Dependencies Risolti
-
-#### ✅ Modello AssetDependency Esteso
-
-**Campi Aggiunti**:
-- ✅ `confidence` (low, medium, high) - Fiducia nella dipendenza
-- ✅ `source` (manual, detected, imported) - Origine della dipendenza
-
-**Motivazione**:
-- Permettere agli utenti di distinguere tra dipendenze certe e incerte
-- Tracciare l'origine delle dipendenze (manuale, rilevata automaticamente, importata)
-
-#### ✅ Schemas Aggiornati
-
-- ✅ `AssetDependencyCreate` - Include `confidence` e `source`
-- ✅ `AssetDependencyUpdate` - Include `confidence` e `source`
-- ✅ `AssetDependencyRead` - Include `confidence` e `source`
-
-#### ✅ RiskPropagationService Migliorato
-
-- ✅ Considera `confidence` nel calcolo del rischio propagato
-- ✅ Dipendenze con `confidence='low'` hanno peso ridotto nel calcolo
-
-#### ✅ ConnectionDependencyAnalyzer Implementato
-
-**Nuovo Servizio**:
-- ✅ Analizza connessioni tra asset
-- ✅ Suggerisce dipendenze basate su connessioni esistenti
-- ✅ Crea dipendenze con `source='detected'` e `confidence='medium'`
-
-**Utilizzo**:
-- Endpoint `POST /api/assets/{id}/dependencies/suggest-from-connections`
-- UI: Pulsante "Suggest from Connections" in Tab Dependencies
-
-#### ✅ API Connessioni Estese
-
-**Endpoint Aggiornati**:
-- ✅ `GET /api/assets/{id}/connections` - Include `dependency_id` se esiste una dipendenza associata
-- ✅ `GET /api/assets/{id}/dependencies` - Include `connection_id` se esiste una connessione associata
-
-**Motivazione**:
-- Permettere visibilità incrociata tra connessioni e dipendenze
-- Facilitare la creazione di dipendenze da connessioni esistenti
-
-#### 📊 Impatto
-
-- ✅ **Chiarezza**: Gli utenti possono vedere l'origine e la fiducia nelle dipendenze
-- ✅ **Automazione**: Suggerimenti automatici per dipendenze basate su connessioni
-- ✅ **Visibilità**: Badge e link tra connessioni e dipendenze
-- ✅ **Precisione**: Calcolo rischio propagato considera confidence
-
-#### ✅ Completato (2025-01-15)
-
-- ✅ Modello AssetDependency esteso con `confidence` e `source`
-- ✅ Schemas aggiornati
-- ✅ RiskPropagationService migliorato
-- ✅ ConnectionDependencyAnalyzer implementato
-- ✅ API connessioni estese
-- ✅ UI visibilità incrociata implementata
-
-#### 🔄 Prossimi Passi
-
-- Network Map dual layer visualization avanzata
-- Visualizzazione grafica avanzata dipendenze
-- Integrazione completa con Risk Scoring
-
-### 2025-12-17 - SecurityZoneDetail Ristrutturazione e Zone Participation Type
-
-#### ✅ Modifiche Implementate
-
-**1. Ristrutturazione SecurityZoneDetail UI**:
+### 2025-12-17 - SecurityZoneDetail Ristrutturazione
 - ✅ Rimosso tab "Zone Memberships" separato
-- ✅ Integrata gestione memberships direttamente nel tab "Assets"
-- ✅ Tab "Assets" ora mostra:
-  - Colonna "Role" (Tipo di Partecipazione) per ogni asset nella zona corrente
-  - Colonna "Other Zones" che mostra le altre zone a cui appartiene ogni asset con i relativi ruoli
-  - Visualizzazione migliorata con label invece di valori raw
-
-**2. Dialog "Add Asset" Migliorato**:
-- ✅ Tabella degli asset selezionati con gestione individuale per ogni asset:
-  - Dropdown "Zone Participation Type" per ogni asset
-  - Campo "Interface Scope" individuale per ogni asset
-  - Campo "SL Target" individuale per ogni asset
-  - Possibilità di rimuovere asset dalla selezione prima di aggiungerli
-- ✅ Dropdown "Applica a tutti" per applicare un tipo di partecipazione predefinito a tutti gli asset selezionati
-- ✅ Validazione: il pulsante "Aggiungi" è abilitato solo quando tutti gli asset hanno un tipo di partecipazione
-
-**3. Zone Participation Type**:
-- ✅ Campo `role` rinominato concettualmente in "Zone Participation Type"
-- ✅ Implementato dropdown con valori predefiniti:
-  - `primary`: Asset core della zona, soggetto pienamente ai requisiti
-  - `supporting`: Supporta la zona ma non è il core
-  - `boundary`: Asset al confine (gateway, firewall, historian edge)
-  - `shared`: Asset condiviso tra più zone
-  - `monitoring`: Monitoraggio / visibility
-  - `maintenance`: Accesso manutenzione
-  - `safety`: Funzione safety-related
-- ✅ Ogni valore ha una descrizione mostrata all'utente nel dropdown
-- ✅ Visualizzazione con label invece di valori raw (es: "Primary" invece di "primary")
-
-**4. Backend Modifiche**:
-- ✅ Endpoint `GET /api/security-zones/{zone_id}/assets` aggiornato per includere `zone_memberships` di ogni asset
-- ✅ Endpoint `POST /api/security-zones/{zone_id}/memberships` aggiornato per gestire correttamente `security_zone_id` dall'URL
-- ✅ CRUD `create_asset_zone_membership` migliorato con validazione esplicita dei campi richiesti
-- ✅ Tabella `asset_zone_memberships` creata nel database (migrazione `d2b57c3dd204_add_asset_zone_memberships.py`)
-
-**5. Traduzioni**:
-- ✅ Aggiunte chiavi per "Zone Participation Type" (IT/EN)
-- ✅ Aggiunte descrizioni per ogni tipo di partecipazione
-- ✅ Aggiunte chiavi per "Asset selezionati", "Applica a tutti", ecc.
-
-#### 📊 File Modificati
-
-**Backend**:
-- ✅ `backend/app/routers/security_zones.py` - Endpoint aggiornati per gestire memberships
-- ✅ `backend/app/crud/asset_zone_memberships.py` - Validazione migliorata
-- ✅ `backend/app/schemas/asset_zone_membership.py` - `security_zone_id` reso opzionale nello schema Create
-- ✅ `backend/app/models/asset_zone_membership.py` - Modello già presente
-- ✅ `backend/alembic/versions/d2b57c3dd204_add_asset_zone_memberships.py` - Migrazione esistente
-
-**Frontend**:
-- ✅ `frontend/src/pages/SecurityZoneDetail.vue` - Ristrutturazione completa:
-  - Rimosso tab "Zone Memberships"
-  - Integrato gestione memberships nel tab "Assets"
-  - Dialog "Add Asset" con tabella degli asset selezionati
-  - Gestione individuale del tipo di partecipazione per ogni asset
-- ✅ `frontend/src/locales/it/isa62443.json` - Traduzioni aggiornate
-- ✅ `frontend/src/locales/en/isa62443.json` - Traduzioni aggiornate
-
-#### 📊 Impatto
-
-- ✅ **UX Migliorata**: Gestione più intuitiva delle memberships direttamente nel contesto degli asset
-- ✅ **Flessibilità**: Ogni asset può avere il proprio tipo di partecipazione, interface scope e SL target
-- ✅ **Chiarezza**: Valori predefiniti con descrizioni rendono più chiaro il significato di ogni tipo di partecipazione
-- ✅ **Conformità IEC 62443**: Il concetto di "Zone Participation Type" è più allineato allo standard
-
-#### ✅ Completato (2025-12-17)
-
-- ✅ Ristrutturazione SecurityZoneDetail completata
+- ✅ Integrata gestione memberships nel tab "Assets"
 - ✅ Zone Participation Type implementato con valori predefiniti
 - ✅ Dialog "Add Asset" con gestione individuale per ogni asset
-- ✅ Backend aggiornato per supportare correttamente le memberships
-- ✅ Traduzioni complete (IT/EN)
-- ✅ Documentazione aggiornata
+
+### 2025-01-XX - Sistema Capability-based
+- ✅ Modelli SecurityCapability, SRCapability, AssetCapability, SRAssessment implementati
+- ✅ UX capability-based per valutazione SR
+- ✅ Sistema evidenze (esplicite e inferite)
+
+### 2025-01-15 - Asset Dependencies Enhancement
+- ✅ Campi `confidence` e `source` aggiunti a AssetDependency
+- ✅ ConnectionDependencyAnalyzer implementato
+- ✅ UI visibilità incrociata Connessioni-Dipendenze
+
+### 2025-12-22 - Notification System Completion
+- ✅ Campo `notifications_enabled` aggiunto a User per preferenza globale
+- ✅ Editor template minimo implementato con supporto override tenant-specific
+- ✅ Strategia multi-livello per destinatari notifiche (owner → preferenze → admin)
+- ✅ Preferenze con `severity_min` personalizzabile (0-10) con tooltip informativi
+- ✅ Background tasks per processamento automatico coda email e controllo review
+- ✅ Integrazione notifiche rischio asset con ricalcolo automatico
+- ✅ Logging dettagliato per troubleshooting e audit
+- ✅ UI profilo utente per gestione preferenza globale notifiche
+- ✅ Migrazione database per campo `notifications_enabled`
+
+### 2025-12-23 - Enterprise SSO (Azure AD) Completion
+- ✅ Integrazione completa Azure AD SSO con OAuth2/OIDC flow
+- ✅ Supporto PKCE per sicurezza avanzata
+- ✅ Login SSO integrato nel frontend con rilevamento automatico provider
+- ✅ Importazione utenti da Azure AD con selezione multipla e gestione ruoli
+- ✅ Pagine callback SSO (success/error) con gestione token JWT
+- ✅ Guida setup Azure AD completa (`SSO_AZURE_AD_SETUP.md`)
+- ✅ Auto-provisioning configurabile (Scenario 3 - disabilitato di default)
+- ✅ Domain restriction per limitare accesso per dominio email
+- ✅ User linking automatico per email match
+- ✅ Client secret encryption per sicurezza
+- ✅ **Client secret preservation**: Fix per preservare secret esistente durante aggiornamenti (non si svuota più)
+- ✅ Logging dettagliato e error handling robusto
+- ✅ Design multi-provider: backend supporta già Google Workspace, Okta, Generic OIDC (pronti per abilitazione futura)
+- ✅ Migrazione database per estensioni User SSO
+
+### 2025-12-23 - Vulnerability Intelligence Enhancement
+- ✅ Pulsante "Cerca Vulnerabilità" aggiunto in Asset Detail per matching manuale su asset esistenti
+- ✅ Matching automatico funzionante su creazione/aggiornamento asset
+- ✅ Matching manuale disponibile per asset esistenti creati prima dell'implementazione o senza vulnerabilità nel database
+- ✅ Threshold intelligente: 0.6 default, 0.3 se solo manufacturer disponibile (no model/firmware)
+
+---
+
+**Documento aggiornato**: 2025-12-23  
+**Prossimo aggiornamento**: Dopo completamento feature in sviluppo

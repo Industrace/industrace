@@ -28,6 +28,10 @@ services:
       - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
       - ENVIRONMENT=development
       - DEBUG=true
+      # ENCRYPTION_KEY: Optional in development (temporary key will be generated and saved to logs/.encryption_key_temp)
+      # For production, set this to a persistent value:
+      # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      # - ENCRYPTION_KEY=your-encryption-key-here
     ports:
       - "8000:8000"
     depends_on:

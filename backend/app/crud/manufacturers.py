@@ -26,19 +26,28 @@ def create_manufacturer(
 
 
 def list_manufacturers(db: Session, tenant_id: uuid.UUID) -> List[Manufacturer]:
-    """List all manufacturers of a tenant"""
-    return db.query(Manufacturer).filter(Manufacturer.tenant_id == tenant_id).all()
+    """List all manufacturers of a tenant (excluding deleted)"""
+    return (
+        db.query(Manufacturer)
+        .filter(
+            Manufacturer.tenant_id == tenant_id,
+            Manufacturer.deleted_at == None
+        )
+        .all()
+    )
 
 
 def get_manufacturer(
-    db: Session, manufacturer_id: uuid.UUID, tenant_id: uuid.UUID
+    db: Session, manufacturer_id: uuid.UUID, tenant_id: uuid.UUID, include_deleted: bool = False
 ) -> Optional[Manufacturer]:
     """Retrieve a manufacturer by ID"""
-    return (
+    query = (
         db.query(Manufacturer)
         .filter(Manufacturer.id == manufacturer_id, Manufacturer.tenant_id == tenant_id)
-        .first()
     )
+    if not include_deleted:
+        query = query.filter(Manufacturer.deleted_at == None)
+    return query.first()
 
 
 def update_manufacturer(
@@ -57,10 +66,36 @@ def update_manufacturer(
 
 
 def delete_manufacturer(db: Session, manufacturer):
-    """Delete a manufacturer"""
-    if manufacturer.assets and len(manufacturer.assets) > 0:
+    """Soft delete a manufacturer"""
+    from app.models.asset import Asset
+    # Check if manufacturer has any active (non-deleted) assets
+    active_assets_count = (
+        db.query(Asset)
+        .filter(
+            Asset.manufacturer_id == manufacturer.id,
+            Asset.tenant_id == manufacturer.tenant_id,
+            Asset.deleted_at == None
+        )
+        .count()
+    )
+    if active_assets_count > 0:
         raise ErrorCodeException(
             status_code=400, error_code=ErrorCode.MANUFACTURER_LINKED_TO_ASSETS
         )
+    manufacturer.deleted_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(manufacturer)
+
+
+def restore_manufacturer(db: Session, manufacturer):
+    """Restore a soft-deleted manufacturer"""
+    manufacturer.deleted_at = None
+    db.commit()
+    db.refresh(manufacturer)
+    return manufacturer
+
+
+def hard_delete_manufacturer(db: Session, manufacturer):
+    """Permanently delete a manufacturer"""
     db.delete(manufacturer)
     db.commit()

@@ -248,6 +248,20 @@ def list_manufacturers(
     return crud_manufacturers.list_manufacturers(db, current_user.tenant_id)
 
 
+@router.get("/trash", response_model=List[ManufacturerSchema])
+def list_manufacturers_trash(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    return (
+        db.query(Manufacturer)
+        .filter(
+            Manufacturer.tenant_id == current_user.tenant_id,
+            Manufacturer.deleted_at != None
+        )
+        .all()
+    )
+
+
 @router.get("/{manufacturer_id}", response_model=ManufacturerSchema)
 def get_manufacturer(
     manufacturer_id: uuid.UUID,
@@ -299,4 +313,45 @@ def delete_manufacturer(
             status_code=404, error_code=ErrorCode.MANUFACTURER_NOT_FOUND
         )
     crud_manufacturers.delete_manufacturer(db, manufacturer)
+    return None
+
+
+@router.patch("/{manufacturer_id}/restore", response_model=ManufacturerSchema)
+@audit_log_action("restore", "Manufacturer", model_class=Manufacturer)
+def restore_manufacturer(
+    manufacturer_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    manufacturer = crud_manufacturers.get_manufacturer(
+        db, manufacturer_id, current_user.tenant_id, include_deleted=True
+    )
+    if not manufacturer:
+        raise ErrorCodeException(
+            status_code=404, error_code=ErrorCode.MANUFACTURER_NOT_FOUND
+        )
+    if manufacturer.deleted_at is None:
+        raise ErrorCodeException(
+            status_code=400, error_code=ErrorCode.MANUFACTURER_NOT_IN_TRASH
+        )
+    return crud_manufacturers.restore_manufacturer(db, manufacturer)
+
+
+@router.delete("/{manufacturer_id}/hard", status_code=status.HTTP_204_NO_CONTENT)
+@audit_log_action("hard_delete", "Manufacturer", model_class=Manufacturer)
+def hard_delete_manufacturer(
+    manufacturer_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    manufacturer = crud_manufacturers.get_manufacturer(
+        db, manufacturer_id, current_user.tenant_id, include_deleted=True
+    )
+    if not manufacturer:
+        raise ErrorCodeException(
+            status_code=404, error_code=ErrorCode.MANUFACTURER_NOT_FOUND
+        )
+    crud_manufacturers.hard_delete_manufacturer(db, manufacturer)
     return None

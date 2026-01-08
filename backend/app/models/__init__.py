@@ -39,6 +39,7 @@ from .security_zone import SecurityZone
 from .conduit import Conduit
 from .security_requirement_compliance import SecurityRequirementCompliance
 from .asset_zone_membership import AssetZoneMembership
+from .evidence import Evidence
 
 # Asset Dependencies
 from .asset_dependency import AssetDependency

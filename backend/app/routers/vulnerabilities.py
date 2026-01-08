@@ -10,6 +10,7 @@ from app.models import User, Asset
 from app.models.vulnerability import AssetVulnerability, Vulnerability
 from app.services.auth import get_current_user
 from app.services.audit_decorator import audit_log_action
+from app.services.rbac import require_permission
 from app.crud import vulnerabilities as crud_vulns
 from app.schemas.vulnerability import (
     VulnerabilityRead,
@@ -40,6 +41,7 @@ router = APIRouter(
 def list_vulnerability_feeds(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 1)),
 ):
     """List all vulnerability feed sources"""
     return crud_vulns.get_vulnerability_feed_sources(
@@ -53,11 +55,13 @@ def create_vulnerability_feed(
     feed_source: VulnerabilityFeedSourceCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 2)),
 ):
     """Create a new vulnerability feed source"""
     if feed_source.tenant_id is None:
-        # Only admins can create system-wide feeds
-        if current_user.role.name != "admin":
+        # Only users with delete permission (level 3) can create system-wide feeds
+        from app.services.rbac import get_user_permission_level
+        if get_user_permission_level(current_user, "vulnerabilities") < 3:
             raise ErrorCodeException(
                 status_code=403,
                 error_code=ErrorCode.ACCESS_DENIED,
@@ -82,6 +86,7 @@ async def upload_local_feed(
     auto_match: bool = Form(True),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 2)),
 ):
     """Upload and process a local vulnerability feed file"""
     import os
@@ -174,6 +179,7 @@ def sync_vulnerability_feed(
     auto_match: bool = Query(True),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 2)),
 ):
     """Sync a vulnerability feed manually"""
     try:
@@ -208,11 +214,17 @@ def list_vulnerabilities(
     manufacturer: Optional[str] = Query(None),
     source: Optional[str] = Query(None),
     search: Optional[str] = Query(None, description="Global search across CVE ID, title, and description"),
+    published_from: Optional[str] = Query(None, description="Filter vulnerabilities published from this date (ISO format)"),
+    published_to: Optional[str] = Query(None, description="Filter vulnerabilities published until this date (ISO format)"),
+    cvss_min: Optional[float] = Query(None, ge=0.0, le=10.0, description="Minimum CVSS score (v3 or v2)"),
+    cvss_max: Optional[float] = Query(None, ge=0.0, le=10.0, description="Maximum CVSS score (v3 or v2)"),
     sort_field: Optional[str] = Query(None, description="Field to sort by (cve_id, title, severity, cvss_v3_score, published_date, affected_assets_count)"),
     sort_order: Optional[str] = Query("desc", description="Sort order: asc or desc"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 1)),
 ):
     """List all vulnerabilities with optional filters and affected assets count
     
@@ -224,6 +236,8 @@ def list_vulnerabilities(
     result = crud_vulns.get_vulnerabilities(
         db, skip=skip, limit=limit, cve_id=cve_id, severity=severity, 
         manufacturer=manufacturer, source=source, search=search,
+        published_from=published_from, published_to=published_to,
+        cvss_min=cvss_min, cvss_max=cvss_max,
         sort_field=sort_field, sort_order=sort_order
     )
     return result
@@ -233,6 +247,7 @@ def list_vulnerabilities(
 def get_vulnerability_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 1)),
 ):
     """Get vulnerability statistics"""
     from sqlalchemy import func
@@ -256,15 +271,12 @@ def get_vulnerability_stats(
         ).count()
         by_status[status] = count
     
-    # Unpatched critical/high
+    # Unpatched critical/high (only unreviewed and acknowledged)
     unpatched_critical = db.query(AssetVulnerability).join(
         Vulnerability, AssetVulnerability.vulnerability_id == Vulnerability.id
     ).filter(
         AssetVulnerability.tenant_id == current_user.tenant_id,
-        or_(
-            AssetVulnerability.status == "unreviewed",
-            AssetVulnerability.status == "acknowledged"
-        ),  # Include both unreviewed and acknowledged
+        AssetVulnerability.status.in_(["unreviewed", "acknowledged"]),  # Only active vulnerabilities
         Vulnerability.severity == "critical"
     ).count()
     
@@ -272,10 +284,7 @@ def get_vulnerability_stats(
         Vulnerability, AssetVulnerability.vulnerability_id == Vulnerability.id
     ).filter(
         AssetVulnerability.tenant_id == current_user.tenant_id,
-        or_(
-            AssetVulnerability.status == "unreviewed",
-            AssetVulnerability.status == "acknowledged"
-        ),  # Include both unreviewed and acknowledged
+        AssetVulnerability.status.in_(["unreviewed", "acknowledged"]),  # Only active vulnerabilities
         Vulnerability.severity == "high"
     ).count()
     
@@ -330,7 +339,9 @@ def get_vulnerability_stats(
 @router.get("/{vulnerability_id}", response_model=VulnerabilityRead)
 def get_vulnerability(
     vulnerability_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 1)),
 ):
     """Get a single vulnerability by ID"""
     vulnerability = crud_vulns.get_vulnerability(db, vulnerability_id)
@@ -349,14 +360,9 @@ def create_vulnerability(
     vulnerability: VulnerabilityCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 2)),
 ):
-    """Create a new vulnerability (admin only)"""
-    if current_user.role.name != "admin":
-        raise ErrorCodeException(
-            status_code=403,
-            error_code=ErrorCode.ACCESS_DENIED,
-            detail="Only admins can create vulnerabilities"
-        )
+    """Create a new vulnerability"""
     new_vulnerability = crud_vulns.create_vulnerability(db, vulnerability)
     
     # Auto-match vulnerabilità a tutti gli asset in background
@@ -373,6 +379,7 @@ def get_asset_vulnerabilities(
     status: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 1)),
 ):
     """Get all vulnerabilities for an asset"""
     asset_vulns = crud_vulns.get_asset_vulnerabilities(
@@ -419,6 +426,7 @@ def get_vulnerability_affected_assets(
     status: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 1)),
 ):
     """Get all assets affected by a vulnerability"""
     from sqlalchemy.orm import joinedload
@@ -474,6 +482,7 @@ def create_asset_vulnerability(
     asset_vulnerability: AssetVulnerabilityCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 2)),
 ):
     """Create a new asset-vulnerability link"""
     try:
@@ -489,32 +498,202 @@ def create_asset_vulnerability(
 
 
 @router.put("/assets/{asset_id}/vulnerabilities/{asset_vulnerability_id}", response_model=AssetVulnerabilityRead)
-@audit_log_action("update", "AssetVulnerability")
 def update_asset_vulnerability(
     asset_id: uuid.UUID,
     asset_vulnerability_id: uuid.UUID,
     asset_vulnerability_update: AssetVulnerabilityUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 2)),
 ):
     """Update an asset-vulnerability status"""
-    asset_vuln = crud_vulns.update_asset_vulnerability(
-        db, asset_vulnerability_id, current_user.tenant_id, asset_vulnerability_update
-    )
-    if not asset_vuln:
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"Updating asset vulnerability {asset_vulnerability_id} for asset {asset_id} by user {current_user.id}")
+        
+        # Get old status before update to detect changes
+        old_asset_vuln = db.query(AssetVulnerability).filter(
+            AssetVulnerability.id == asset_vulnerability_id,
+            AssetVulnerability.tenant_id == current_user.tenant_id
+        ).first()
+        old_status = old_asset_vuln.status if old_asset_vuln else None
+        
+        asset_vuln = crud_vulns.update_asset_vulnerability(
+            db, asset_vulnerability_id, current_user.tenant_id, asset_vulnerability_update
+        )
+        if not asset_vuln:
+            logger.warning(f"Asset vulnerability {asset_vulnerability_id} not found for tenant {current_user.tenant_id}")
+            raise ErrorCodeException(
+                status_code=404,
+                error_code=ErrorCode.ASSET_NOT_FOUND,
+                detail="Asset vulnerability not found"
+            )
+        
+        # Check if status changed (and if it's a status that affects risk calculation)
+        status_changed = (
+            asset_vulnerability_update.status and 
+            asset_vulnerability_update.status != old_status
+        )
+        
+        # Update impact if status changed
+        if asset_vulnerability_update.status:
+            try:
+                logger.debug(f"Updating risk impact for asset vulnerability {asset_vulnerability_id}")
+                VulnerabilityImpactCalculator.update_asset_vulnerability_impact(
+                    db, asset_vulnerability_id, current_user.tenant_id
+                )
+            except Exception as impact_error:
+                logger.error(f"Error updating risk impact for asset vulnerability {asset_vulnerability_id}: {impact_error}", exc_info=True)
+                # Non bloccare l'update se il calcolo dell'impatto fallisce
+        
+        # Recalculate asset risk score if status changed (status changes affect which vulnerabilities are considered)
+        if status_changed:
+            try:
+                from app.services.risk_scoring import CompositeRiskScoringEngine
+                from datetime import datetime
+                
+                # Get the asset (Asset is already imported at the top of the file)
+                asset = db.query(Asset).filter(
+                    Asset.id == asset_id,
+                    Asset.tenant_id == current_user.tenant_id
+                ).first()
+                
+                if asset:
+                    logger.info(f"Recalculating risk score for asset {asset_id} after vulnerability status change from '{old_status}' to '{asset_vulnerability_update.status}'")
+                    
+                    # Store old risk score
+                    old_risk_score = asset.risk_score
+                    
+                    # Recalculate risk
+                    risk_engine = CompositeRiskScoringEngine()
+                    breakdown = risk_engine.calculate(asset)
+                    new_risk_score = breakdown["final_score"]
+                    
+                    # Update asset risk score if calculated
+                    if new_risk_score is not None:
+                        asset.risk_score = new_risk_score
+                        asset.last_risk_assessment = datetime.utcnow()
+                        db.commit()
+                        
+                        logger.info(
+                            f"Asset {asset_id} risk score recalculated: {old_risk_score} -> {new_risk_score} "
+                            f"(vulnerability status changed from '{old_status}' to '{asset_vulnerability_update.status}')"
+                        )
+                        
+                        # Optionally send notification if risk changed significantly
+                        if old_risk_score is not None and abs(new_risk_score - old_risk_score) >= 1.0:
+                            try:
+                                from app.services.notification_service import NotificationService
+                                risk_level = "high" if new_risk_score >= 7 else ("medium" if new_risk_score >= 4 else "low")
+                                NotificationService.send_risk_alert(db, asset_id, new_risk_score, risk_level)
+                            except Exception as notify_error:
+                                logger.warning(f"Failed to send risk notification for asset {asset_id}: {notify_error}")
+                    else:
+                        logger.warning(f"Could not calculate risk score for asset {asset_id}")
+                else:
+                    logger.warning(f"Asset {asset_id} not found for risk recalculation")
+            except Exception as risk_error:
+                logger.error(f"Error recalculating risk score for asset {asset_id} after vulnerability status change: {risk_error}", exc_info=True)
+                # Non bloccare l'update se il ricalcolo del rischio fallisce
+        
+        # Refresh per assicurarsi di avere i dati aggiornati
+        db.refresh(asset_vuln)
+        
+        # Convert to response format
+        from sqlalchemy.orm import joinedload
+        asset_vuln_with_relations = db.query(AssetVulnerability).options(
+            joinedload(AssetVulnerability.vulnerability),
+            joinedload(AssetVulnerability.asset)
+        ).filter(AssetVulnerability.id == asset_vulnerability_id).first()
+        
+        if not asset_vuln_with_relations:
+            raise ErrorCodeException(
+                status_code=404,
+                error_code=ErrorCode.ASSET_NOT_FOUND,
+                detail="Asset vulnerability not found after update"
+            )
+        
+        # Build response dict manually to ensure proper serialization
+        vulnerability_dict = None
+        if asset_vuln_with_relations.vulnerability:
+            vuln = asset_vuln_with_relations.vulnerability
+            vulnerability_dict = {
+                'id': str(vuln.id),
+                'cve_id': vuln.cve_id,
+                'advisory_id': vuln.advisory_id,
+                'title': vuln.title,
+                'description': vuln.description,
+                'cvss_v3_score': vuln.cvss_v3_score,
+                'cvss_v3_vector': vuln.cvss_v3_vector,
+                'cvss_v2_score': vuln.cvss_v2_score,
+                'cvss_v2_vector': vuln.cvss_v2_vector,
+                'severity': vuln.severity,
+                'affected_manufacturers': vuln.affected_manufacturers,
+                'affected_products': vuln.affected_products,
+                'affected_versions': vuln.affected_versions,
+                'published_date': vuln.published_date.isoformat() if vuln.published_date else None,
+                'modified_date': vuln.modified_date.isoformat() if vuln.modified_date else None,
+                'references': vuln.references,
+                'vendor_advisory_url': vuln.vendor_advisory_url,
+                'patch_url': vuln.patch_url,
+                'source': vuln.source,
+                'source_url': vuln.source_url,
+                'created_at': vuln.created_at.isoformat() if vuln.created_at else None,
+                'updated_at': vuln.updated_at.isoformat() if vuln.updated_at else None
+            }
+        
+        response_dict = {
+            'id': asset_vuln_with_relations.id,
+            'tenant_id': asset_vuln_with_relations.tenant_id,
+            'asset_id': asset_vuln_with_relations.asset_id,
+            'vulnerability_id': asset_vuln_with_relations.vulnerability_id,
+            'match_confidence': asset_vuln_with_relations.match_confidence,
+            'match_reason': asset_vuln_with_relations.match_reason,
+            'status': asset_vuln_with_relations.status,
+            'mitigation_notes': asset_vuln_with_relations.mitigation_notes,
+            'risk_impact': asset_vuln_with_relations.risk_impact,
+            'patched_date': asset_vuln_with_relations.patched_date.isoformat() if asset_vuln_with_relations.patched_date else None,
+            'patched_by': asset_vuln_with_relations.patched_by,
+            'detected_at': asset_vuln_with_relations.detected_at.isoformat() if asset_vuln_with_relations.detected_at else None,
+            'updated_at': asset_vuln_with_relations.updated_at.isoformat() if asset_vuln_with_relations.updated_at else None,
+            'vulnerability': vulnerability_dict,
+            'asset': {
+                'id': str(asset_vuln_with_relations.asset.id) if asset_vuln_with_relations.asset else None,
+                'name': asset_vuln_with_relations.asset.name if asset_vuln_with_relations.asset else None,
+                'tag': asset_vuln_with_relations.asset.tag if asset_vuln_with_relations.asset else None
+            } if asset_vuln_with_relations.asset else None
+        }
+        
+        # Create audit log manually
+        try:
+            from app.services.audit_log import create_audit_log
+            create_audit_log(
+                db=db,
+                user_id=current_user.id,
+                tenant_id=current_user.tenant_id,
+                action="update",
+                entity="AssetVulnerability",
+                entity_id=asset_vulnerability_id,
+                description=f"Updated asset vulnerability status to {asset_vuln_with_relations.status}",
+                commit=True
+            )
+        except Exception as audit_error:
+            logger.warning(f"Failed to create audit log: {audit_error}")
+        
+        logger.info(f"Successfully updated asset vulnerability {asset_vulnerability_id}")
+        return response_dict
+        
+    except ErrorCodeException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error updating asset vulnerability {asset_vulnerability_id}: {e}", exc_info=True)
         raise ErrorCodeException(
-            status_code=404,
-            error_code=ErrorCode.ASSET_NOT_FOUND,
-            detail="Asset vulnerability not found"
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_ERROR,
+            detail=f"Error updating asset vulnerability: {str(e)}"
         )
-    
-    # Update impact if status changed
-    if asset_vulnerability_update.status:
-        VulnerabilityImpactCalculator.update_asset_vulnerability_impact(
-            db, asset_vulnerability_id, current_user.tenant_id
-        )
-    
-    return asset_vuln
 
 
 @router.delete("/assets/{asset_id}/vulnerabilities/{asset_vulnerability_id}", status_code=204)
@@ -524,6 +703,7 @@ def delete_asset_vulnerability(
     asset_vulnerability_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 3)),
 ):
     """Delete an asset-vulnerability link"""
     success = crud_vulns.delete_asset_vulnerability(
@@ -544,6 +724,7 @@ def match_vulnerability_to_assets(
     min_confidence: float = Query(0.6, ge=0.0, le=1.0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 2)),
 ):
     """Match a vulnerability to assets automatically"""
     matches = VulnerabilityMatcher.match_vulnerability_to_assets(
@@ -561,6 +742,7 @@ def match_asset_to_vulnerabilities(
     min_confidence: float = Query(0.6, ge=0.0, le=1.0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 2)),
 ):
     """Match an asset to vulnerabilities automatically"""
     matches = VulnerabilityMatcher.match_asset_to_vulnerabilities(
@@ -580,6 +762,7 @@ def update_vulnerability_feed(
     feed_source_update: VulnerabilityFeedSourceUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 2)),
 ):
     """Update a vulnerability feed source"""
     feed_source = crud_vulns.update_vulnerability_feed_source(
@@ -600,6 +783,7 @@ def delete_vulnerability_feed(
     feed_source_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("vulnerabilities", 3)),
 ):
     """Delete a vulnerability feed source"""
     success = crud_vulns.delete_vulnerability_feed_source(

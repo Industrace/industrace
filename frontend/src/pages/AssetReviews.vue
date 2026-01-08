@@ -4,6 +4,7 @@
       <h1>{{ t('assetReviews.title') }}</h1>
       <div class="header-actions">
         <Button 
+          v-if="canDelete('asset_reviews')"
           :label="t('assetReviews.recalculateDates')" 
           icon="pi pi-refresh" 
           @click="recalculateDates"
@@ -221,6 +222,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useRouter } from 'vue-router'
+import { usePermissions } from '@/composables/usePermissions'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import TabView from 'primevue/tabview'
@@ -235,6 +237,7 @@ import api from '@/api/api'
 const { t } = useI18n()
 const toast = useToast()
 const router = useRouter()
+const { canWrite, canDelete } = usePermissions()
 
 const overdueAssets = ref([])
 const dueAssets = ref([])

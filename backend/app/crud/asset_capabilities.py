@@ -6,7 +6,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 import uuid
 from app.models.asset_capability import AssetCapability
-from app.schemas.asset_capability import AssetCapabilityCreate, AssetCapabilityUpdate
+from app.schemas.asset_capability import AssetCapabilityCreate, AssetCapabilityUpdate, AssetCapabilityBase
 
 
 def get_asset_capability(
@@ -63,7 +63,7 @@ def get_asset_capabilities_by_asset(
 
 def create_asset_capability(
     db: Session,
-    capability_in: AssetCapabilityCreate,
+    capability_in: AssetCapabilityBase,
     tenant_id: uuid.UUID
 ) -> AssetCapability:
     """Create a new AssetCapability"""

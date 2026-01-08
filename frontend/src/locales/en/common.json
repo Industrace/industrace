@@ -44,15 +44,14 @@
     "bulkEdit": "Bulk Edit",
     "bulkEditInfo": "Bulk edit {count} contacts",
     "emptyTrash": "Empty Trash",
-    "emptyTrashConfirm": "Are you sure you want to empty the trash?",
-    "emptyTrashWarning": "This action cannot be undone",
     "trashEmptied": "Trash emptied successfully",
     "emptyTrashError": "Error emptying trash",
     "advancedFilters": "Advanced Filters",
     "moveToTrash": "Move to Trash",
     "show": "Show",
     "hide": "Hide",
-    "print": "Print"
+    "print": "Print",
+    "clearAll": "Clear all"
   },
   "fields": {
     "name": "Name",
@@ -94,7 +93,9 @@
     "error": "Error",
     "warning": "Warning",
     "info": "Information",
-    "confirmDelete": "Are you sure you want to delete this item?",
+    "deleteConfirm": "Are you sure you want to delete this item?",
+    "deleteWarning": "This action will move the item to trash",
+    "confirmHardDelete": "Are you sure you want to permanently delete {name}? This action cannot be undone.",
     "noData": "No data available",
     "selectOption": "Select an option",
     "required": "Required field",
@@ -115,8 +116,6 @@
     "emptyTrashConfirm": "Are you sure you want to empty the trash?",
     "emptyTrashWarning": "This action cannot be undone",
     "trashEmptied": "Trash emptied successfully",
-    "emptyTrashError": "Error emptying trash",
-    "warningDelete": "Are you sure you want to delete this item?",
-    "warningEmptyTrash": "Are you sure you want to empty the trash?"
+    "emptyTrashError": "Error emptying trash"
   }
 }

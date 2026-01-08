@@ -6,6 +6,20 @@ const api = axios.create({
   withCredentials: true 
 })
 
+// Request interceptor to add token from localStorage
+api.interceptors.request.use(
+  config => {
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  error => {
+    return Promise.reject(error)
+  }
+)
+
 api.interceptors.response.use(
   response => response,
   error => {
@@ -24,6 +38,10 @@ export default {
     formData.append('password', password)
     
     const response = await api.post('/login', formData)
+    // Save token if present in response
+    if (response.data.access_token) {
+      localStorage.setItem('access_token', response.data.access_token)
+    }
     return response.data
   },
   getCurrentUser() {
@@ -150,6 +168,15 @@ export default {
   getComplianceSummary() {
     return api.get('/dashboard/compliance-summary')
   },
+  getExposureSummary() {
+    return api.get('/dashboard/exposure')
+  },
+  getRecentChanges(limit = 10) {
+    return api.get('/dashboard/recent-changes', { params: { limit } })
+  },
+  getEvidenceMissing() {
+    return api.get('/dashboard/evidence-missing')
+  },
   getAssetConnections(id) {
     return api.get(`/assets/${id}/connections`)
   },
@@ -212,6 +239,9 @@ export default {
   getManufacturers() {
     return api.get('/manufacturers')
   },
+  getManufacturersTrash(params = {}) {
+    return api.get('/manufacturers/trash', { params })
+  },
   getManufacturer(id) {
     return api.get(`/manufacturers/${id}`)
   },
@@ -223,6 +253,12 @@ export default {
   },
   deleteManufacturer(id) {
     return api.delete(`/manufacturers/${id}`)
+  },
+  restoreManufacturer(id) {
+    return api.patch(`/manufacturers/${id}/restore`)
+  },
+  hardDeleteManufacturer(id) {
+    return api.delete(`/manufacturers/${id}/hard`)
   },
   getAssetType(id) {
     return api.get(`/asset-types/${id}`)
@@ -373,6 +409,18 @@ export default {
   // Notifications
   getNotificationTemplates() {
     return api.get('/notifications/templates')
+  },
+  getNotificationTemplate(templateCode) {
+    return api.get(`/notifications/templates/${templateCode}`)
+  },
+  createTemplateOverride(templateCode) {
+    return api.post(`/notifications/templates/${templateCode}/override`)
+  },
+  deleteTemplateOverride(templateCode) {
+    return api.delete(`/notifications/templates/${templateCode}/override`)
+  },
+  updateNotificationTemplate(templateCode, data) {
+    return api.put(`/notifications/templates/${templateCode}`, data)
   },
   getNotificationPreferences() {
     return api.get('/notifications/preferences')
@@ -598,7 +646,41 @@ export default {
       }
     })
   },
+  // Asset Capabilities
+  getAssetCapabilities(assetId) {
+    return api.get(`/assets/${assetId}/capabilities`)
+  },
+  createAssetCapability(assetId, data) {
+    return api.post(`/assets/${assetId}/capabilities`, data)
+  },
+  updateAssetCapability(assetId, capabilityId, data) {
+    return api.put(`/assets/${assetId}/capabilities/${capabilityId}`, data)
+  },
+  deleteAssetCapability(assetId, capabilityId) {
+    return api.delete(`/assets/${assetId}/capabilities/${capabilityId}`)
+  },
+  bulkUpdateAssetCapabilities(assetId, data) {
+    return api.post(`/assets/${assetId}/capabilities/bulk`, data)
+  },
+
+  // Evidence API
+  getEvidences(params = {}) {
+    return api.get('/evidence', { params })
+  },
+  createEvidence(data) {
+    return api.post('/evidence', data)
+  },
+  updateEvidence(evidenceId, data) {
+    return api.put(`/evidence/${evidenceId}`, data)
+  },
+  deleteEvidence(evidenceId) {
+    return api.delete(`/evidence/${evidenceId}`)
+  },
   // Enterprise Auth (SSO)
+  checkSSOEnabled(tenantId = null) {
+    const params = tenantId ? { tenant_id: tenantId } : {}
+    return api.get('/auth/sso/enabled', { params })
+  },
   getSSOConfig() {
     return api.get('/auth/sso/config')
   },
@@ -858,7 +940,10 @@ export default {
     return api.get('/suppliers')
   },
   changePassword(passwordData) {
-    return api.post('/users/change-password', passwordData)
+    return api.post('/users/reset-password', passwordData)
+  },
+  updateNotificationsPreference(notificationsEnabled) {
+    return api.patch('/users/me/notifications', { notifications_enabled: notificationsEnabled })
   },
 
   // Printed Kit API

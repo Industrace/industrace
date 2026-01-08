@@ -202,47 +202,41 @@ def get_vulnerabilities_summary(
     from app.models.vulnerability import AssetVulnerability, Vulnerability
     from sqlalchemy import func, and_
     
-    # Critical unpatched vulnerabilities
+    # Critical unpatched vulnerabilities (only unreviewed and acknowledged)
     critical_unpatched = (
         db.query(func.count(AssetVulnerability.id))
         .join(Vulnerability, AssetVulnerability.vulnerability_id == Vulnerability.id)
         .filter(
             and_(
                 AssetVulnerability.tenant_id == current_user.tenant_id,
-                or_(
-                    AssetVulnerability.status == "unreviewed",
-                    AssetVulnerability.status == "acknowledged"
-                ),  # Include both unreviewed and acknowledged
+                AssetVulnerability.status.in_(["unreviewed", "acknowledged"]),  # Only active vulnerabilities
                 Vulnerability.severity == "critical"
             )
         )
         .scalar()
     ) or 0
     
-    # High unpatched vulnerabilities
+    # High unpatched vulnerabilities (only unreviewed and acknowledged)
     high_unpatched = (
         db.query(func.count(AssetVulnerability.id))
         .join(Vulnerability, AssetVulnerability.vulnerability_id == Vulnerability.id)
         .filter(
             and_(
                 AssetVulnerability.tenant_id == current_user.tenant_id,
-                or_(
-                    AssetVulnerability.status == "unreviewed",
-                    AssetVulnerability.status == "acknowledged"
-                ),  # Include both unreviewed and acknowledged
+                AssetVulnerability.status.in_(["unreviewed", "acknowledged"]),  # Only active vulnerabilities
                 Vulnerability.severity == "high"
             )
         )
         .scalar()
     ) or 0
     
-    # Total unpatched
+    # Total unpatched (only unreviewed and acknowledged - "unpatched" is not a valid status)
     total_unpatched = (
         db.query(func.count(AssetVulnerability.id))
         .filter(
             and_(
                 AssetVulnerability.tenant_id == current_user.tenant_id,
-                AssetVulnerability.status == "unpatched"
+                AssetVulnerability.status.in_(["unreviewed", "acknowledged"])  # Only active vulnerabilities
             )
         )
         .scalar()
@@ -255,19 +249,91 @@ def get_vulnerabilities_summary(
     }
 
 
+@router.get("/exposure")
+def get_exposure_summary(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get exposure summary with overall exposure score"""
+    from app.services.exposure_calculator import ExposureCalculator
+    
+    exposure_data = ExposureCalculator.calculate_exposure_score(
+        db, current_user.tenant_id
+    )
+    
+    return clean_float_values(exposure_data)
+
+
+@router.get("/recent-changes")
+def get_recent_changes(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    limit: int = 10
+):
+    """Get recent changes - list of recently added/updated assets"""
+    from datetime import datetime, timedelta
+    from sqlalchemy import and_
+    
+    # Limit to last 7 days
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    
+    # Limit max results
+    limit = min(limit, 50)
+    
+    recent_assets = (
+        db.query(Asset)
+        .filter(
+            and_(
+                Asset.tenant_id == current_user.tenant_id,
+                Asset.deleted_at == None,
+                or_(
+                    Asset.created_at >= seven_days_ago,
+                    Asset.updated_at >= seven_days_ago
+                )
+            )
+        )
+        .order_by(Asset.updated_at.desc(), Asset.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    
+    changes = []
+    for asset in recent_assets:
+        change_type = "created" if asset.created_at >= seven_days_ago and (
+            not asset.updated_at or asset.updated_at == asset.created_at
+        ) else "updated"
+        
+        changes.append({
+            "asset_id": str(asset.id),
+            "asset_name": asset.name,
+            "change_type": change_type,
+            "timestamp": asset.updated_at.isoformat() if asset.updated_at else asset.created_at.isoformat(),
+            "created_at": asset.created_at.isoformat() if asset.created_at else None,
+            "updated_at": asset.updated_at.isoformat() if asset.updated_at else None
+        })
+    
+    return changes
+
+
 @router.get("/compliance-summary")
 def get_compliance_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get summary statistics for ISA/IEC 62443 compliance"""
-    from app.models import SecurityZone, SecurityRequirementCompliance
+    from app.models import SecurityZone
+    from app.models.sr_assessment import SRAssessment
     from sqlalchemy import func, and_, case
     
-    # Total zones
+    # Total zones (excluding deleted)
     total_zones = (
         db.query(SecurityZone)
-        .filter(SecurityZone.tenant_id == current_user.tenant_id)
+        .filter(
+            and_(
+                SecurityZone.tenant_id == current_user.tenant_id,
+                SecurityZone.deleted_at.is_(None)
+            )
+        )
         .count()
     )
     
@@ -276,42 +342,62 @@ def get_compliance_summary(
             "total_zones": 0,
             "non_compliant_zones": 0,
             "partial_compliant_zones": 0,
-            "compliant_zones": 0
+            "compliant_zones": 0,
+            "coverage_percentage": 0.0,
+            "sl_gap_summary": {
+                "zones_with_gap": 0,
+                "average_gap": 0.0,
+                "max_gap": 0
+            }
         }
     
-    # Get all zones for tenant
+    # Get all zones for tenant (excluding deleted)
     zones = (
         db.query(SecurityZone)
-        .filter(SecurityZone.tenant_id == current_user.tenant_id)
+        .filter(
+            and_(
+                SecurityZone.tenant_id == current_user.tenant_id,
+                SecurityZone.deleted_at.is_(None)
+            )
+        )
         .all()
     )
     
     non_compliant_zones = set()
     partial_zones = set()
     compliant_zones = set()
+    assessed_zones = set()
     
-    # For each zone, check its compliance records
+    # SL Gap tracking
+    zones_with_gap = 0
+    total_gap = 0.0
+    max_gap = 0
+    
+    # For each zone, check its SRAssessment records
     for zone in zones:
-        # Get all compliance records for this zone
-        compliance_records = (
-            db.query(SecurityRequirementCompliance)
+        # Get all SRAssessment records for this zone
+        assessments = (
+            db.query(SRAssessment)
             .filter(
                 and_(
-                    SecurityRequirementCompliance.tenant_id == current_user.tenant_id,
-                    SecurityRequirementCompliance.zone_id == zone.id
+                    SRAssessment.tenant_id == current_user.tenant_id,
+                    SRAssessment.object_type == "zone",
+                    SRAssessment.object_id == zone.id
                 )
             )
             .all()
         )
         
-        if not compliance_records:
-            # No compliance records = not assessed
+        if not assessments:
+            # No assessments = not assessed
             continue
         
+        assessed_zones.add(zone.id)
+        
         # Check if zone has any non_compliant records
-        has_non_compliant = any(r.compliance_status == "non_compliant" for r in compliance_records)
-        has_partial = any(r.compliance_status == "partial" for r in compliance_records)
-        all_compliant = all(r.compliance_status == "compliant" for r in compliance_records)
+        has_non_compliant = any(r.status == "non_compliant" for r in assessments)
+        has_partial = any(r.status == "partial" for r in assessments)
+        all_compliant = all(r.status == "compliant" for r in assessments)
         
         if has_non_compliant:
             non_compliant_zones.add(zone.id)
@@ -319,10 +405,44 @@ def get_compliance_summary(
             partial_zones.add(zone.id)
         elif all_compliant:
             compliant_zones.add(zone.id)
+        
+        # Calculate SL gap (SL-T - SL-A)
+        # Use security_level_target and security_level_achieved from SecurityZone
+        if zone.security_level_target is not None and zone.security_level_achieved is not None:
+            gap = zone.security_level_target - zone.security_level_achieved
+            if gap > 0:
+                zones_with_gap += 1
+                total_gap += gap
+                max_gap = max(max_gap, gap)
+    
+    # Calculate coverage percentage
+    coverage_percentage = (len(assessed_zones) / total_zones * 100) if total_zones > 0 else 0.0
+    
+    # Calculate average gap
+    average_gap = (total_gap / zones_with_gap) if zones_with_gap > 0 else 0.0
     
     return {
         "total_zones": total_zones,
         "non_compliant_zones": len(non_compliant_zones),
         "partial_compliant_zones": len(partial_zones),
-        "compliant_zones": len(compliant_zones)
+        "compliant_zones": len(compliant_zones),
+        "coverage_percentage": round(coverage_percentage, 1),
+        "sl_gap_summary": {
+            "zones_with_gap": zones_with_gap,
+            "average_gap": round(average_gap, 1),
+            "max_gap": max_gap
+        }
+    }
+
+
+@router.get("/evidence-missing")
+def get_evidence_missing(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get count of missing evidence (placeholder for future implementation)"""
+    # Placeholder: returns 0 for now
+    # Future: count SR assessments or capabilities without evidence
+    return {
+        "missing_evidence_count": 0
     }

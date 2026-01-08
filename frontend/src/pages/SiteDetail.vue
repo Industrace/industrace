@@ -25,7 +25,7 @@
     <DataTable :value="locations" :loading="loadingLocations" emptyMessage="No locations found">
       <Column field="name" :header="t('common.fields.name')" sortable />
       <Column field="description" :header="t('common.fields.description')" />
-      <Column field="area" :header="t('sites.area')" />
+      <Column field="area" :header="t('common.fields.area')" />
 <Column header="Planimetria">
   <template #body="{ data }">
     <div v-if="data.floorplan">
@@ -48,7 +48,7 @@
 
 <Dialog 
   v-model:visible="editLocationDialog" 
-  :header="editingLocation ? t('common.actions.edit') : t('common.actions.new')" 
+  :header="editingLocation ? t('common.actions.edit') : t('common.actions.create')" 
   :modal="true" 
   :style="{ width: '40vw' }"
 >

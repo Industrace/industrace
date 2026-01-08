@@ -12,7 +12,16 @@
       <span>{{ t('vulnerabilities.autoDiscoveryInProgress') }}</span>
     </div>
 
-    <h3 class="mb-3">{{ t('vulnerabilities.potentiallyRelevant') }}</h3>
+    <div class="flex justify-content-between align-items-center mb-3">
+      <h3 class="m-0">{{ t('vulnerabilities.potentiallyRelevant') }}</h3>
+      <Button 
+        :label="t('vulnerabilities.matchVulnerabilities')" 
+        icon="pi pi-search" 
+        :loading="matchingInProgress"
+        @click="matchVulnerabilities"
+        v-if="canWrite"
+      />
+    </div>
 
     <DataTable 
       :value="vulnerabilities" 
@@ -158,7 +167,29 @@ async function fetchVulnerabilities() {
   }
 }
 
-// Matching automatico - funzione rimossa, matching avviene in background automaticamente
+async function matchVulnerabilities() {
+  matchingInProgress.value = true
+  try {
+    await api.matchVulnerabilitiesToAsset(props.assetId)
+    toast.add({ 
+      severity: 'success', 
+      summary: t('common.messages.success'), 
+      detail: t('vulnerabilities.matchSuccess') 
+    })
+    // Ricarica le vulnerabilità dopo il matching
+    await fetchVulnerabilities()
+    emit('updated')
+  } catch (error) {
+    console.error('Error matching vulnerabilities:', error)
+    toast.add({ 
+      severity: 'error', 
+      summary: t('common.errors.error'), 
+      detail: t('vulnerabilities.errorMatching') 
+    })
+  } finally {
+    matchingInProgress.value = false
+  }
+}
 
 function editVulnerability(vuln) {
   selectedVulnerability.value = vuln

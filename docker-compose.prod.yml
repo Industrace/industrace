@@ -48,6 +48,10 @@ services:
       - DEBUG=false
       - SECURE_COOKIES=true
       - SAME_SITE_COOKIES=strict
+      # ENCRYPTION_KEY: REQUIRED in production for SSO to work properly
+      # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      # Set in your .env file or environment variables
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
     depends_on:
       - db
     networks:

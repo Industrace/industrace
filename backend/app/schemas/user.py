@@ -4,6 +4,7 @@ from datetime import datetime
 import uuid
 from typing import Optional
 from .role import RoleRead
+from .tenant import Tenant
 
 
 class UserCreate(BaseModel):
@@ -26,9 +27,12 @@ class UserRead(BaseModel):
     tenant_id: uuid.UUID
     email: EmailStr
     name: str
+    full_name: Optional[str] = None  # Alias for name, populated from name in endpoint
     role_id: Optional[uuid.UUID] = None
     role: Optional[RoleRead] = None
+    tenant: Optional[Tenant] = None
     is_active: bool
+    notifications_enabled: bool = True
     created_at: datetime
     last_login: Optional[datetime] = None
 

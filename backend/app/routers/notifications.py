@@ -3,7 +3,7 @@ import uuid
 from typing import List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Body
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models import User, NotificationPreference, NotificationQueue, NotificationLog, NotificationTemplate
 from app.services.auth import get_current_user
 from app.services.audit_decorator import audit_log_action
+from app.services.rbac import require_permission
 from app.services.email_queue_processor import EmailQueueProcessor
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -91,6 +92,7 @@ class TestNotificationRequest(BaseModel):
 def list_notification_templates(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 1)),
 ):
     """List available notification templates"""
     templates = (
@@ -104,20 +106,343 @@ def list_notification_templates(
         .all()
     )
     
+    # Group templates by template_code and prioritize tenant-specific overrides
+    template_map = {}
+    for t in templates:
+        key = t.template_code
+        # If we already have this template_code, prefer tenant-specific override
+        if key in template_map:
+            # Keep tenant-specific if current is tenant-specific, otherwise replace with tenant-specific
+            if t.tenant_id == current_user.tenant_id:
+                template_map[key] = t
+            # If current in map is system-wide and we have tenant-specific, replace
+            elif template_map[key].tenant_id is None and t.tenant_id == current_user.tenant_id:
+                template_map[key] = t
+        else:
+            template_map[key] = t
+    
     return [
         {
             "template_code": t.template_code,
             "name": t.name,
-            "description": t.description
+            "description": t.description,
+            "tenant_id": str(t.tenant_id) if t.tenant_id else None
         }
-        for t in templates
+        for t in template_map.values()
     ]
+
+
+@router.get("/templates/{template_code}", response_model=dict)
+def get_notification_template(
+    template_code: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 1)),
+):
+    """Get notification template details - prioritizes tenant-specific override if exists"""
+    # First try to get tenant-specific override
+    template = (
+        db.query(NotificationTemplate)
+        .filter(
+            NotificationTemplate.template_code == template_code,
+            NotificationTemplate.tenant_id == current_user.tenant_id
+        )
+        .first()
+    )
+    
+    # If no tenant-specific override, get system-wide template
+    if not template:
+        template = (
+            db.query(NotificationTemplate)
+            .filter(
+                NotificationTemplate.template_code == template_code,
+                NotificationTemplate.tenant_id.is_(None)
+            )
+            .first()
+        )
+    
+    if not template:
+        raise ErrorCodeException(
+            status_code=404,
+            error_code=ErrorCode.ASSET_NOT_FOUND,
+            detail=f"Template {template_code} not found"
+        )
+    
+    return {
+        "id": str(template.id),
+        "template_code": template.template_code,
+        "name": template.name,
+        "description": template.description,
+        "subject_template": template.subject_template,
+        "body_template_html": template.body_template_html,
+        "body_template_text": template.body_template_text,
+        "variables": template.variables or [],
+        "enabled": template.enabled,
+        "tenant_id": str(template.tenant_id) if template.tenant_id else None,
+        "created_at": template.created_at.isoformat() if template.created_at else None,
+        "updated_at": template.updated_at.isoformat() if template.updated_at else None
+    }
+
+
+@router.post("/templates/{template_code}/override", response_model=dict)
+def create_template_override(
+    template_code: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 3)),
+):
+    """Create a tenant-specific override of a system-wide template"""
+    # Check if override already exists - if so, return it
+    existing_override = (
+        db.query(NotificationTemplate)
+        .filter(
+            NotificationTemplate.template_code == template_code,
+            NotificationTemplate.tenant_id == current_user.tenant_id
+        )
+        .first()
+    )
+    
+    if existing_override:
+        # Return existing override instead of error
+        return {
+            "id": str(existing_override.id),
+            "template_code": existing_override.template_code,
+            "name": existing_override.name,
+            "description": existing_override.description,
+            "subject_template": existing_override.subject_template,
+            "body_template_html": existing_override.body_template_html,
+            "body_template_text": existing_override.body_template_text,
+            "variables": existing_override.variables or [],
+            "enabled": existing_override.enabled,
+            "tenant_id": str(existing_override.tenant_id) if existing_override.tenant_id else None,
+            "created_at": existing_override.created_at.isoformat() if existing_override.created_at else None,
+            "updated_at": existing_override.updated_at.isoformat() if existing_override.updated_at else None
+        }
+    
+    # Find system-wide template
+    # Note: Due to unique constraint on template_code, we need to check if there's ANY template with this code
+    # and if it's system-wide (tenant_id is None)
+    system_template = (
+        db.query(NotificationTemplate)
+        .filter(
+            NotificationTemplate.template_code == template_code,
+            NotificationTemplate.tenant_id.is_(None)
+        )
+        .first()
+    )
+    
+    if not system_template:
+        # Check if template exists but is tenant-specific (might be from another tenant)
+        any_template = (
+            db.query(NotificationTemplate)
+            .filter(NotificationTemplate.template_code == template_code)
+            .first()
+        )
+        if any_template:
+            raise ErrorCodeException(
+                status_code=400,
+                error_code=ErrorCode.ASSET_NOT_FOUND,
+                detail=f"Template {template_code} exists but is not a system template. Cannot create override."
+            )
+        raise ErrorCodeException(
+            status_code=404,
+            error_code=ErrorCode.ASSET_NOT_FOUND,
+            detail=f"System template {template_code} not found"
+        )
+    
+    # Create tenant-specific override
+    # Add "(Override)" suffix to name to indicate it's a tenant-specific override
+    override_name = f"{system_template.name} (Override)"
+    
+    try:
+        template = NotificationTemplate(
+            tenant_id=current_user.tenant_id,
+            template_code=system_template.template_code,
+            name=override_name,
+            description=system_template.description,
+            subject_template=system_template.subject_template,
+            body_template_html=system_template.body_template_html,
+            body_template_text=system_template.body_template_text,
+            variables=system_template.variables,
+            enabled=system_template.enabled
+        )
+        db.add(template)
+        db.commit()
+        db.refresh(template)
+    except Exception as e:
+        db.rollback()
+        # If it's a unique constraint violation, check if override was created by another request
+        if "already exists" in str(e).lower() or "unique" in str(e).lower():
+            # Try to fetch the override that might have been created
+            existing_override = (
+                db.query(NotificationTemplate)
+                .filter(
+                    NotificationTemplate.template_code == template_code,
+                    NotificationTemplate.tenant_id == current_user.tenant_id
+                )
+                .first()
+            )
+            if existing_override:
+                return {
+                    "id": str(existing_override.id),
+                    "template_code": existing_override.template_code,
+                    "name": existing_override.name,
+                    "description": existing_override.description,
+                    "subject_template": existing_override.subject_template,
+                    "body_template_html": existing_override.body_template_html,
+                    "body_template_text": existing_override.body_template_text,
+                    "variables": existing_override.variables or [],
+                    "enabled": existing_override.enabled,
+                    "tenant_id": str(existing_override.tenant_id) if existing_override.tenant_id else None,
+                    "created_at": existing_override.created_at.isoformat() if existing_override.created_at else None,
+                    "updated_at": existing_override.updated_at.isoformat() if existing_override.updated_at else None
+                }
+        raise ErrorCodeException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_ERROR,
+            detail=f"Failed to create override: {str(e)}"
+        )
+    
+    return {
+        "id": str(template.id),
+        "template_code": template.template_code,
+        "name": template.name,
+        "description": template.description,
+        "subject_template": template.subject_template,
+        "body_template_html": template.body_template_html,
+        "body_template_text": template.body_template_text,
+        "variables": template.variables or [],
+        "enabled": template.enabled,
+        "tenant_id": str(template.tenant_id) if template.tenant_id else None,
+        "created_at": template.created_at.isoformat() if template.created_at else None,
+        "updated_at": template.updated_at.isoformat() if template.updated_at else None
+    }
+
+
+@router.delete("/templates/{template_code}/override", status_code=204)
+def delete_template_override(
+    template_code: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 3)),
+):
+    """Delete a tenant-specific template override (only tenant-specific templates can be deleted)"""
+    # Find tenant-specific override
+    template = (
+        db.query(NotificationTemplate)
+        .filter(
+            NotificationTemplate.template_code == template_code,
+            NotificationTemplate.tenant_id == current_user.tenant_id
+        )
+        .first()
+    )
+    
+    if not template:
+        raise ErrorCodeException(
+            status_code=404,
+            error_code=ErrorCode.ASSET_NOT_FOUND,
+            detail=f"Tenant-specific override for template {template_code} not found"
+        )
+    
+    # Only allow deletion of tenant-specific templates (not system-wide)
+    if template.tenant_id is None:
+        raise ErrorCodeException(
+            status_code=400,
+            error_code=ErrorCode.ASSET_NOT_FOUND,
+            detail="Cannot delete system-wide templates. Only tenant-specific overrides can be deleted."
+        )
+    
+    db.delete(template)
+    db.commit()
+    
+    return None
+
+
+@router.put("/templates/{template_code}", response_model=dict)
+def update_notification_template(
+    template_code: str,
+    template_data: dict = Body(...),  # Accept dict as JSON body
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 3)),
+):
+    """Update notification template (only tenant-specific templates can be updated)"""
+    template = (
+        db.query(NotificationTemplate)
+        .filter(
+            NotificationTemplate.template_code == template_code,
+            # Only allow updating tenant-specific templates
+            NotificationTemplate.tenant_id == current_user.tenant_id
+        )
+        .first()
+    )
+    
+    if not template:
+        # Try to find system-wide template to create tenant override
+        system_template = (
+            db.query(NotificationTemplate)
+            .filter(
+                NotificationTemplate.template_code == template_code,
+                NotificationTemplate.tenant_id.is_(None)
+            )
+            .first()
+        )
+        
+        if not system_template:
+            raise ErrorCodeException(
+                status_code=404,
+                error_code=ErrorCode.ASSET_NOT_FOUND,
+                detail=f"Template {template_code} not found"
+            )
+        
+        # Create tenant-specific override
+        from app.schemas.notification_template import NotificationTemplateCreate
+        template = NotificationTemplate(
+            tenant_id=current_user.tenant_id,
+            template_code=system_template.template_code,
+            name=system_template.name,
+            description=system_template.description,
+            subject_template=system_template.subject_template,
+            body_template_html=system_template.body_template_html,
+            body_template_text=system_template.body_template_text,
+            variables=system_template.variables,
+            enabled=system_template.enabled
+        )
+        db.add(template)
+    
+    # Update fields
+    update_fields = ['name', 'description', 'subject_template', 'body_template_html', 
+                     'body_template_text', 'variables', 'enabled']
+    for field in update_fields:
+        if field in template_data:
+            setattr(template, field, template_data[field])
+    
+    from datetime import datetime
+    template.updated_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(template)
+    
+    return {
+        "id": str(template.id),
+        "template_code": template.template_code,
+        "name": template.name,
+        "description": template.description,
+        "subject_template": template.subject_template,
+        "body_template_html": template.body_template_html,
+        "body_template_text": template.body_template_text,
+        "variables": template.variables or [],
+        "enabled": template.enabled,
+        "tenant_id": str(template.tenant_id) if template.tenant_id else None,
+        "updated_at": template.updated_at.isoformat() if template.updated_at else None
+    }
 
 
 @router.get("/preferences", response_model=List[NotificationPreferenceResponse])
 def list_notification_preferences(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 1)),
 ):
     """List notification preferences for current user"""
     preferences = (
@@ -137,6 +462,7 @@ def create_notification_preference(
     preference_data: NotificationPreferenceCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 2)),
 ):
     """Create notification preference"""
     # Check if already exists
@@ -175,6 +501,7 @@ def update_notification_preference(
     preference_data: NotificationPreferenceUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 2)),
 ):
     """Update notification preference"""
     preference = (
@@ -206,6 +533,7 @@ def delete_notification_preference(
     preference_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 2)),
 ):
     """Delete notification preference"""
     preference = (
@@ -236,6 +564,7 @@ def list_notification_queue(
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 3)),
 ):
     """List notification queue (admin only - filtered by tenant)"""
     query = (
@@ -256,6 +585,7 @@ def retry_notification(
     queue_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 3)),
 ):
     """Retry sending a failed notification"""
     queue_entry = (
@@ -295,6 +625,7 @@ def cancel_notification(
     queue_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 3)),
 ):
     """Cancel a pending notification"""
     queue_entry = (
@@ -331,6 +662,7 @@ def list_notification_logs(
     limit: int = Query(100, ge=1, le=500),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 1)),
 ):
     """List notification logs"""
     query = (
@@ -360,12 +692,27 @@ def test_notification(
     test_data: TestNotificationRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 2)),
 ):
-    """Send test notification email"""
+    """Send test notification email - prioritizes tenant-specific override if exists"""
+    # First try to get tenant-specific override
     template = (
         db.query(NotificationTemplate)
         .filter(
             NotificationTemplate.template_code == test_data.template_code,
+            NotificationTemplate.tenant_id == current_user.tenant_id,
+            NotificationTemplate.enabled == True
+        )
+        .first()
+    )
+    
+    # If no tenant-specific override, get system-wide template
+    if not template:
+        template = (
+            db.query(NotificationTemplate)
+            .filter(
+                NotificationTemplate.template_code == test_data.template_code,
+                NotificationTemplate.tenant_id.is_(None),
             NotificationTemplate.enabled == True
         )
         .first()
@@ -429,6 +776,20 @@ def test_notification(
         rendered['body_html']
     )
     
+    # Create log entry for test notification
+    from datetime import datetime
+    log_entry = NotificationLog(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        notification_type=test_data.template_code,
+        status='sent' if success else 'failed',
+        sent_at=datetime.utcnow() if success else None,
+        error_message=None if success else "Failed to send test email",
+        context_data=context
+    )
+    db.add(log_entry)
+    db.commit()
+    
     if success:
         return {"message": "Test email sent successfully", "email": test_data.email}
     else:
@@ -444,6 +805,7 @@ def process_notification_queue(
     batch_size: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 3)),
 ):
     """Manually trigger notification queue processing (admin)"""
     stats = EmailQueueProcessor.process_queue(db, batch_size)
@@ -451,5 +813,23 @@ def process_notification_queue(
     return {
         "message": "Queue processed",
         "stats": stats
+    }
+
+
+@router.post("/check-reviews", status_code=200)
+def check_asset_reviews(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("notifications", 3)),
+):
+    """Manually trigger asset review check and send notifications (admin)"""
+    from app.services.background_tasks import check_asset_reviews_manual
+    
+    # Check reviews for current tenant only
+    results = check_asset_reviews_manual(tenant_id=current_user.tenant_id)
+    
+    return {
+        "message": "Asset reviews checked",
+        "results": results
     }
 

@@ -22,27 +22,114 @@
         </div>
 
         <!-- Permessi -->
-        <div class="permissions-grid">
-          <Card v-for="section in sections" :key="section.key" class="permission-card">
-            <template #title>{{ section.label }}</template>
-            <template #content>
-              <div class="flex align-items-center gap-3">
-                <Dropdown
-                  v-model="role.permissions[section.key]"
-                  :options="levels"
-                  optionLabel="label"
-                  optionValue="value"
-                  class="w-full"
-                  :disabled="loading"
-                />
-                <Tag 
-                  :value="levelLabel(role.permissions[section.key])" 
-                  :severity="levelSeverity(role.permissions[section.key])"
-                  class="min-w-8rem"
-                />
-              </div>
-            </template>
-          </Card>
+        <div class="permissions-container">
+          <!-- Categoria: Inventario -->
+          <div class="permission-category">
+            <h3 class="category-title">{{ t('roles.categories.inventory') }}</h3>
+            <div class="permissions-grid">
+              <Card v-for="section in sections.filter(s => s.category === 'inventory')" :key="section.key" class="permission-card">
+                <template #title>{{ section.label }}</template>
+                <template #content>
+                  <div class="flex align-items-center gap-3">
+                    <Dropdown
+                      v-model="role.permissions[section.key]"
+                      :options="levels"
+                      optionLabel="label"
+                      optionValue="value"
+                      class="w-full"
+                      :disabled="loading"
+                    />
+                    <Tag 
+                      :value="levelLabel(role.permissions[section.key] || 0)" 
+                      :severity="levelSeverity(role.permissions[section.key] || 0)"
+                      class="min-w-8rem"
+                    />
+                  </div>
+                </template>
+              </Card>
+            </div>
+          </div>
+
+          <!-- Categoria: Gestione Asset -->
+          <div class="permission-category">
+            <h3 class="category-title">{{ t('roles.categories.asset_management') }}</h3>
+            <div class="permissions-grid">
+              <Card v-for="section in sections.filter(s => s.category === 'asset_management')" :key="section.key" class="permission-card">
+                <template #title>{{ section.label }}</template>
+                <template #content>
+                  <div class="flex align-items-center gap-3">
+                    <Dropdown
+                      v-model="role.permissions[section.key]"
+                      :options="levels"
+                      optionLabel="label"
+                      optionValue="value"
+                      class="w-full"
+                      :disabled="loading"
+                    />
+                    <Tag 
+                      :value="levelLabel(role.permissions[section.key] || 0)" 
+                      :severity="levelSeverity(role.permissions[section.key] || 0)"
+                      class="min-w-8rem"
+                    />
+                  </div>
+                </template>
+              </Card>
+            </div>
+          </div>
+
+          <!-- Categoria: Compliance -->
+          <div class="permission-category">
+            <h3 class="category-title">{{ t('roles.categories.compliance') }}</h3>
+            <div class="permissions-grid">
+              <Card v-for="section in sections.filter(s => s.category === 'compliance')" :key="section.key" class="permission-card">
+                <template #title>{{ section.label }}</template>
+                <template #content>
+                  <div class="flex align-items-center gap-3">
+                    <Dropdown
+                      v-model="role.permissions[section.key]"
+                      :options="levels"
+                      optionLabel="label"
+                      optionValue="value"
+                      class="w-full"
+                      :disabled="loading"
+                    />
+                    <Tag 
+                      :value="levelLabel(role.permissions[section.key] || 0)" 
+                      :severity="levelSeverity(role.permissions[section.key] || 0)"
+                      class="min-w-8rem"
+                    />
+                  </div>
+                </template>
+              </Card>
+            </div>
+          </div>
+
+          <!-- Categoria: Sistema -->
+          <div class="permission-category">
+            <h3 class="category-title">{{ t('roles.categories.system') }}</h3>
+            <div class="permissions-grid">
+              <Card v-for="section in sections.filter(s => s.category === 'system')" :key="section.key" class="permission-card">
+                <template #title>{{ section.label }}</template>
+                <template #content>
+                  <div class="flex align-items-center gap-3">
+                    <Dropdown
+                      v-model="role.permissions[section.key]"
+                      :options="levels"
+                      optionLabel="label"
+                      optionValue="value"
+                      class="w-full"
+                      :disabled="loading"
+                    />
+                    <Tag 
+                      :value="levelLabel(role.permissions[section.key] || 0)" 
+                      :severity="levelSeverity(role.permissions[section.key] || 0)"
+                      class="min-w-8rem"
+                    />
+                  </div>
+                </template>
+              </Card>
+            </div>
+          </div>
         </div>
 
         <!-- Azioni -->
@@ -90,20 +177,41 @@ const role = ref({ name: '', permissions: {} })
 const loading = ref(false)
 
 const sections = [
-  { key: 'assets', label: t('roles.sections.assets') },
-  { key: 'sites', label: t('roles.sections.sites') },
-  { key: 'locations', label: t('roles.sections.locations') },
-  { key: 'suppliers', label: t('roles.sections.suppliers') },
-  { key: 'contacts', label: t('roles.sections.contacts') },
-  { key: 'manufacturers', label: t('roles.sections.manufacturers') },
-  { key: 'asset_types', label: t('roles.sections.asset_types') },
-  { key: 'asset_statuses', label: t('roles.sections.asset_statuses') },
-  { key: 'users', label: t('roles.sections.users') },
-  { key: 'audit_logs', label: t('roles.sections.audit_logs') },
-  { key: 'utility', label: t('roles.sections.utility') },
-  { key: 'asset_documents', label: t('roles.sections.asset_documents') },
-  { key: 'asset_photos', label: t('roles.sections.asset_photos') },
-  { key: 'locations_floormap', label: t('roles.sections.locations_floormap') },
+  // Sezioni esistenti - Inventario
+  { key: 'assets', label: t('roles.sections.assets'), category: 'inventory' },
+  { key: 'sites', label: t('roles.sections.sites'), category: 'inventory' },
+  { key: 'areas', label: t('roles.sections.areas'), category: 'inventory' },
+  { key: 'locations', label: t('roles.sections.locations'), category: 'inventory' },
+  { key: 'suppliers', label: t('roles.sections.suppliers'), category: 'inventory' },
+  { key: 'contacts', label: t('roles.sections.contacts'), category: 'inventory' },
+  { key: 'manufacturers', label: t('roles.sections.manufacturers'), category: 'inventory' },
+  { key: 'asset_types', label: t('roles.sections.asset_types'), category: 'inventory' },
+  { key: 'asset_statuses', label: t('roles.sections.asset_statuses'), category: 'inventory' },
+  { key: 'asset_documents', label: t('roles.sections.asset_documents'), category: 'inventory' },
+  { key: 'asset_photos', label: t('roles.sections.asset_photos'), category: 'inventory' },
+  { key: 'locations_floormap', label: t('roles.sections.locations_floormap'), category: 'inventory' },
+  
+  // Sezioni esistenti - Sistema
+  { key: 'users', label: t('roles.sections.users'), category: 'system' },
+  { key: 'roles', label: t('roles.sections.roles'), category: 'system' },
+  { key: 'audit_logs', label: t('roles.sections.audit_logs'), category: 'system' },
+  { key: 'utility', label: t('roles.sections.utility'), category: 'system' },
+  { key: 'reset_user_password', label: t('roles.sections.reset_user_password'), category: 'system' },
+  
+  // Nuove sezioni - Gestione Asset
+  { key: 'vulnerabilities', label: t('roles.sections.vulnerabilities'), category: 'asset_management' },
+  { key: 'asset_reviews', label: t('roles.sections.asset_reviews'), category: 'asset_management' },
+  { key: 'asset_dependencies', label: t('roles.sections.asset_dependencies'), category: 'asset_management' },
+  
+  // Nuove sezioni - Compliance
+  { key: 'compliance', label: t('roles.sections.compliance'), category: 'compliance' },
+  { key: 'security_zones', label: t('roles.sections.security_zones'), category: 'compliance' },
+  { key: 'evidence', label: t('roles.sections.evidence'), category: 'compliance' },
+  
+  // Nuove sezioni - Sistema
+  { key: 'notifications', label: t('roles.sections.notifications'), category: 'system' },
+  { key: 'sso', label: t('roles.sections.sso'), category: 'system' },
+  { key: 'api_keys', label: t('roles.sections.api_keys'), category: 'system' },
 ]
 
 const levels = [
@@ -152,6 +260,13 @@ onMounted(async () => {
       permissions: Object.fromEntries(sections.map(s => [s.key, 0]))
     }
   }
+  
+  // Assicurati che tutti i permessi siano inizializzati
+  sections.forEach(section => {
+    if (!(section.key in role.value.permissions)) {
+      role.value.permissions[section.key] = 0
+    }
+  })
 })
 
 async function saveRole() {
@@ -191,6 +306,27 @@ function cancel() {
 .page-header {
   border-bottom: 1px solid var(--surface-border);
   padding-bottom: 1rem;
+}
+
+.permissions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.permission-category {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.category-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--surface-border);
 }
 
 .permissions-grid {

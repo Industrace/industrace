@@ -30,6 +30,7 @@ from app.models import (
 )
 from app.services.auth import get_current_user
 from app.services.audit_decorator import audit_log_action
+from app.services.rbac import require_permission
 from app.services.isa62443_compliance_engine import ISA62443ComplianceEngine
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -50,6 +51,7 @@ def get_zone_foundation_requirements(
     zone_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
 ):
     """Get Foundation Requirements (FR) grouped with compliance statistics for a zone"""
     zone = (
@@ -233,6 +235,7 @@ def get_zone_security_requirements_by_fr(
     fr_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
 ):
     """Get Security Requirements for a specific Foundation Requirement"""
     zone = (
@@ -324,6 +327,7 @@ def get_sr_involved_assets(
     sr_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
 ):
     """Get assets involved in a Security Requirement (legacy endpoint)"""
     zone = (
@@ -360,6 +364,7 @@ def get_sr_involved_conduits(
     sr_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
 ):
     """Get conduits involved in a Security Requirement (legacy endpoint)"""
     zone = (
@@ -396,6 +401,7 @@ def get_zone_compliance_summary(
     zone_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
 ):
     """Get compliance summary for a zone (using SRAssessment)"""
     zone = (
@@ -467,6 +473,7 @@ def get_sr_assessment_assist(
     sr_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
 ):
     """
     Get assisted SR assessment view.
@@ -855,6 +862,7 @@ def create_or_update_sr_assessment(
     assessment_data: dict,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 2)),
 ):
     """
     Create or update SR assessment for a zone.
@@ -949,4 +957,166 @@ def create_or_update_sr_assessment(
         'status': assessment.status,
         'justification': assessment.justification,
         'evidence_count': len(evidence_list)
+    }
+
+
+# ============================================================================
+# COMPLIANCE OVERVIEW ENDPOINTS
+# ============================================================================
+
+@router.get("/requirements", response_model=List[dict])
+def get_security_requirements(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
+):
+    """Get all security requirements"""
+    requirements = (
+        db.query(SecurityRequirement)
+        .order_by(SecurityRequirement.requirement_id)
+        .all()
+    )
+    
+    result = []
+    for req in requirements:
+        result.append({
+            'requirement_id': req.requirement_id,
+            'title': req.title,
+            'description': req.description,
+            'requirement_category': req.requirement_category,
+            'applies_to_zones': req.applies_to_zones,
+            'applies_to_conduits': req.applies_to_conduits,
+            'applies_to_assets': req.applies_to_assets,
+            'min_security_level': req.min_security_level,
+            'max_security_level': req.max_security_level,
+        })
+    
+    return result
+
+
+@router.get("/gap-analysis", response_model=dict)
+def get_gap_analysis(
+    zone_id: Optional[uuid.UUID] = Query(None, description="Filter by zone ID"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
+):
+    """Get gap analysis for all zones or a specific zone"""
+    # Build query for zones - filter out deleted zones
+    query = (
+        db.query(SecurityZone)
+        .filter(
+            SecurityZone.tenant_id == current_user.tenant_id,
+            SecurityZone.deleted_at.is_(None)
+        )
+    )
+    
+    if zone_id:
+        query = query.filter(SecurityZone.id == zone_id)
+    
+    zones = query.all()
+    
+    if not zones:
+        return {
+            'zones': [],
+            'summary': {
+                'total': 0,
+                'compliant': 0,
+                'partial': 0,
+                'non_compliant': 0,
+                'not_assessed': 0
+            }
+        }
+    
+    # Get all SR assessments for these zones
+    zone_ids = [zone.id for zone in zones]
+    try:
+        assessments = (
+            db.query(SRAssessment)
+            .filter(
+                SRAssessment.object_type == 'zone',
+                SRAssessment.object_id.in_(zone_ids),
+                SRAssessment.tenant_id == current_user.tenant_id
+            )
+            .all()
+        )
+        
+        # Group assessments by zone
+        assessments_by_zone = {}
+        for assessment in assessments:
+            zone_id_str = str(assessment.object_id)
+            if zone_id_str not in assessments_by_zone:
+                assessments_by_zone[zone_id_str] = []
+            assessments_by_zone[zone_id_str].append(assessment)
+    except Exception as e:
+        logger.warning(f"Error loading SR assessments for gap analysis: {e}")
+        assessments_by_zone = {}
+    
+    result_zones = []
+    summary = {
+        'total': 0,
+        'compliant': 0,
+        'partial': 0,
+        'non_compliant': 0,
+        'not_assessed': 0
+    }
+    
+    for zone in zones:
+        zone_id_str = str(zone.id)
+        zone_assessments = assessments_by_zone.get(zone_id_str, [])
+        
+        # Count assessments by status
+        compliant_count = sum(1 for a in zone_assessments if a.status == 'compliant')
+        partial_count = sum(1 for a in zone_assessments if a.status == 'partial')
+        non_compliant_count = sum(1 for a in zone_assessments if a.status == 'non_compliant')
+        not_applicable_count = sum(1 for a in zone_assessments if a.status == 'not_applicable')
+        
+        # Use the compliance_status from the zone model if available, otherwise calculate it
+        # This ensures consistency with the security zones page
+        if zone.compliance_status and zone.compliance_status != 'not_assessed':
+            compliance_status = zone.compliance_status
+        else:
+            # Calculate compliance status based on assessments
+            total_assessed = len(zone_assessments)
+            if total_assessed == 0:
+                compliance_status = 'not_assessed'
+            elif non_compliant_count > 0:
+                compliance_status = 'non_compliant'
+            elif partial_count > 0:
+                compliance_status = 'partial'
+            elif compliant_count == total_assessed and compliant_count > 0:
+                compliance_status = 'compliant'
+            else:
+                compliance_status = 'not_assessed'
+        
+        # Calculate gap
+        gap = None
+        if zone.security_level_target and zone.security_level_achieved:
+            gap = zone.security_level_target - zone.security_level_achieved
+        
+        result_zones.append({
+            'zone_id': str(zone.id),
+            'zone_name': zone.name,
+            'security_level_target': zone.security_level_target,
+            'security_level_achieved': zone.security_level_achieved,
+            'gap': gap,
+            'compliance_status': compliance_status,
+            'non_compliant_count': non_compliant_count,
+            'missing_requirements_count': 0  # Could be calculated based on total SRs vs assessed
+        })
+        
+        # Update summary
+        summary['total'] += 1
+        if compliance_status == 'compliant':
+            summary['compliant'] += 1
+        elif compliance_status == 'partial':
+            summary['partial'] += 1
+        elif compliance_status == 'non_compliant':
+            summary['non_compliant'] += 1
+        else:
+            summary['not_assessed'] += 1
+    
+    return {
+        'zones': result_zones,
+        'summary': summary
     }

@@ -67,3 +67,6 @@ def downgrade() -> None:
     op.drop_column('asset_dependencies', 'confidence')
 
 
+
+
+

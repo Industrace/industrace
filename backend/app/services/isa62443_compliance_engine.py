@@ -12,6 +12,9 @@ from app.models import (
     SecurityRequirementCompliance,
     AssetZoneMembership
 )
+from app.models.security_capability import SecurityCapability
+from app.models.asset_capability import AssetCapability
+from app.models.sr_capability import SRCapability
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,11 +31,14 @@ class ISA62443ComplianceEngine:
         """
         Calculate Security Level Achieved (SL-A) for a Security Zone.
         
+        ISA/IEC 62443 Compliance: SL-A is the highest SL where ALL requirements
+        for that SL are compliant. Requirements are cumulative (SL-2 includes SL-1, etc.).
+        
         Logic:
         1. Get all compliance records for the zone
-        2. For each Security Requirement applicable to the zone's target SL
-        3. Calculate compliance percentage
-        4. SL-A is the highest SL where all requirements are met
+        2. For each Security Level (1 to SL-T), get ALL requirements (cumulative)
+        3. SL-A is the highest SL where ALL requirements are compliant
+        4. No requirement can be "partial" or "non_compliant" to achieve an SL
         
         Returns: SL-A (1-4) or None if not calculable
         """
@@ -41,21 +47,16 @@ class ISA62443ComplianceEngine:
         
         target_sl = zone.security_level_target
         
-        # Get all requirements applicable to zones for the target SL
-        requirements = (
+        # Get all requirements applicable to zones
+        all_requirements = (
             db.query(SecurityRequirement)
             .filter(
-                SecurityRequirement.applies_to_zones == True,
-                SecurityRequirement.min_security_level <= target_sl,
-                or_(
-                    SecurityRequirement.max_security_level.is_(None),
-                    SecurityRequirement.max_security_level >= target_sl
-                )
+                SecurityRequirement.applies_to_zones == True
             )
             .all()
         )
         
-        if not requirements:
+        if not all_requirements:
             return None
         
         # Get compliance records for this zone
@@ -74,13 +75,18 @@ class ISA62443ComplianceEngine:
             for record in compliance_records
         }
         
-        # Calculate compliance for each Security Level (1 to target_sl)
-        sl_compliance = {}
+        # Calculate SL-A: highest SL where ALL requirements are compliant
+        # Requirements are cumulative: SL-2 includes all SL-1 requirements, etc.
+        achieved_sl = None
         
-        for sl in range(1, target_sl + 1):
-            # Get requirements for this SL
+        for sl in range(target_sl, 0, -1):
+            # Get ALL requirements for this SL (cumulative)
+            # SL-1: requirements with min_security_level = 1
+            # SL-2: requirements with min_security_level <= 2 (includes SL-1)
+            # SL-3: requirements with min_security_level <= 3 (includes SL-1, SL-2)
+            # SL-4: requirements with min_security_level <= 4 (includes all)
             sl_requirements = [
-                req for req in requirements
+                req for req in all_requirements
                 if req.min_security_level <= sl and (
                     req.max_security_level is None or req.max_security_level >= sl
                 )
@@ -89,31 +95,28 @@ class ISA62443ComplianceEngine:
             if not sl_requirements:
                 continue
             
-            # Check compliance for each requirement
-            compliant_count = 0
-            total_count = len(sl_requirements)
+            # Check if ALL requirements for this SL are compliant
+            all_compliant = True
+            missing_requirements = []
             
             for req in sl_requirements:
                 compliance = compliance_map.get(req.id)
-                if compliance:
-                    if compliance.compliance_status == 'compliant':
-                        compliant_count += 1
-                    elif compliance.compliance_status == 'partial':
-                        # Count partial as 0.5
-                        compliant_count += 0.5
-                else:
+                if not compliance:
                     # Not assessed = not compliant
-                    pass
+                    all_compliant = False
+                    missing_requirements.append(req.requirement_id)
+                elif compliance.compliance_status != 'compliant':
+                    # Partial or non_compliant = not compliant
+                    all_compliant = False
+                    missing_requirements.append(req.requirement_id)
             
-            compliance_percentage = (compliant_count / total_count) * 100 if total_count > 0 else 0
-            sl_compliance[sl] = compliance_percentage
-        
-        # SL-A is the highest SL where compliance >= 80%
-        achieved_sl = None
-        for sl in range(target_sl, 0, -1):
-            if sl in sl_compliance and sl_compliance[sl] >= 80.0:
+            if all_compliant:
+                # All requirements for this SL are compliant
                 achieved_sl = sl
+                logger.debug(f"Zone {zone.id}: SL-A = {sl} (all {len(sl_requirements)} requirements compliant)")
                 break
+            else:
+                logger.debug(f"Zone {zone.id}: SL-{sl} not achieved - {len(missing_requirements)} requirements not compliant")
         
         return achieved_sl
     
@@ -207,26 +210,34 @@ class ISA62443ComplianceEngine:
             for record in compliance_records
         }
         
-        # Calculate compliance
-        compliant_count = 0
-        total_count = len(requirements)
+        # Calculate SL-A: highest SL where ALL requirements are compliant (cumulative)
+        achieved_sl = None
         
-        for req in requirements:
-            compliance = compliance_map.get(req.id)
-            if compliance and compliance.compliance_status == 'compliant':
-                compliant_count += 1
+        for sl in range(target_sl, 0, -1):
+            # Get ALL requirements for this SL (cumulative)
+            sl_requirements = [
+                req for req in requirements
+                if req.min_security_level <= sl and (
+                    req.max_security_level is None or req.max_security_level >= sl
+                )
+            ]
+            
+            if not sl_requirements:
+                continue
+            
+            # Check if ALL requirements for this SL are compliant
+            all_compliant = True
+            for req in sl_requirements:
+                compliance = compliance_map.get(req.id)
+                if not compliance or compliance.compliance_status != 'compliant':
+                    all_compliant = False
+                    break
+            
+            if all_compliant:
+                achieved_sl = sl
+                break
         
-        compliance_percentage = (compliant_count / total_count) * 100 if total_count > 0 else 0
-        
-        # SL-A based on compliance percentage
-        if compliance_percentage >= 80:
-            return target_sl
-        elif compliance_percentage >= 60:
-            return max(1, target_sl - 1)
-        elif compliance_percentage >= 40:
-            return max(1, target_sl - 2)
-        else:
-            return 1
+        return achieved_sl
     
     @staticmethod
     def calculate_conduit_security_level_achieved(
@@ -272,19 +283,48 @@ class ISA62443ComplianceEngine:
             .all()
         )
         
+        # Check compliance records for conduit requirements
         if compliance_records:
-            compliant_count = sum(
-                1 for record in compliance_records
-                if record.compliance_status == 'compliant'
+            # Get all requirements applicable to conduits
+            conduit_requirements = (
+                db.query(SecurityRequirement)
+                .filter(
+                    SecurityRequirement.applies_to_conduits == True,
+                    SecurityRequirement.min_security_level <= target_sl
+                )
+                .all()
             )
-            total_count = len(compliance_records)
             
-            if total_count > 0:
-                compliance_percentage = (compliant_count / total_count) * 100
-                if compliance_percentage >= 80:
-                    sl_a = target_sl
-                elif compliance_percentage >= 60:
-                    sl_a = max(1, target_sl - 1)
+            if conduit_requirements:
+                compliance_map = {
+                    record.requirement_id: record
+                    for record in compliance_records
+                }
+                
+                # Calculate SL-A: highest SL where ALL requirements are compliant
+                for sl in range(target_sl, 0, -1):
+                    sl_requirements = [
+                        req for req in conduit_requirements
+                        if req.min_security_level <= sl and (
+                            req.max_security_level is None or req.max_security_level >= sl
+                        )
+                    ]
+                    
+                    if not sl_requirements:
+                        continue
+                    
+                    # Check if ALL requirements for this SL are compliant
+                    all_compliant = True
+                    for req in sl_requirements:
+                        compliance = compliance_map.get(req.id)
+                        if not compliance or compliance.compliance_status != 'compliant':
+                            all_compliant = False
+                            break
+                    
+                    if all_compliant:
+                        # Use the higher between property-based SL-A and compliance-based SL-A
+                        sl_a = max(sl_a, sl)
+                        break
         
         return min(sl_a, target_sl)
     
@@ -337,19 +377,155 @@ class ISA62443ComplianceEngine:
             return 'non_compliant'
     
     @staticmethod
+    def calculate_zone_security_level_capability(
+        db: Session,
+        zone: SecurityZone
+    ) -> Optional[int]:
+        """
+        Calculate Security Level Capability (SL-C) for a Security Zone.
+        
+        SL-C represents the maximum capability of the system based on available
+        Security Capabilities. It is calculated by checking if all required
+        capabilities for each SL are available (explicit or inferred with high confidence).
+        
+        Logic:
+        1. Get all Security Requirements for the zone's target SL
+        2. Get all required Security Capabilities (via SRCapability mappings)
+        3. For each SL (1 to SL-T), check if all required capabilities are available
+        4. SL-C = highest SL where all required capabilities are available
+        
+        Returns: SL-C (1-4) or None if not calculable
+        """
+        if not zone.security_level_target:
+            return None
+        
+        target_sl = zone.security_level_target
+        
+        # Get all requirements applicable to zones
+        all_requirements = (
+            db.query(SecurityRequirement)
+            .filter(
+                SecurityRequirement.applies_to_zones == True
+            )
+            .all()
+        )
+        
+        if not all_requirements:
+            return None
+        
+        # Get all assets in the zone (via memberships)
+        zone_assets = (
+            db.query(Asset)
+            .join(AssetZoneMembership, Asset.id == AssetZoneMembership.asset_id)
+            .filter(
+                AssetZoneMembership.security_zone_id == zone.id,
+                AssetZoneMembership.tenant_id == zone.tenant_id,
+                AssetZoneMembership.deleted_at.is_(None),
+                Asset.deleted_at.is_(None)
+            )
+            .all()
+        )
+        
+        if not zone_assets:
+            # No assets in zone, cannot determine capabilities
+            return None
+        
+        # Get all AssetCapabilities for zone assets
+        asset_ids = [asset.id for asset in zone_assets]
+        asset_capabilities = (
+            db.query(AssetCapability)
+            .filter(
+                AssetCapability.asset_id.in_(asset_ids),
+                AssetCapability.tenant_id == zone.tenant_id
+            )
+            .all()
+        )
+        
+        # Create map of available capabilities (explicit only, with support_level = 'supported')
+        available_capabilities = set()
+        for ac in asset_capabilities:
+            if ac.support_level == 'supported':
+                available_capabilities.add(ac.capability_id)
+        
+        # Also check inferred capabilities (from asset_type matching typical_roles)
+        # For now, we only count explicit capabilities as "available" for SL-C
+        # Inferred capabilities with high confidence could be considered in future
+        
+        # Calculate SL-C: highest SL where all required capabilities are available
+        achieved_sl_c = None
+        
+        for sl in range(target_sl, 0, -1):
+            # Get ALL requirements for this SL (cumulative)
+            sl_requirements = [
+                req for req in all_requirements
+                if req.min_security_level <= sl and (
+                    req.max_security_level is None or req.max_security_level >= sl
+                )
+            ]
+            
+            if not sl_requirements:
+                continue
+            
+            # Get all required capabilities for these requirements
+            requirement_ids = [req.id for req in sl_requirements]
+            required_capabilities = (
+                db.query(SRCapability)
+                .filter(SRCapability.sr_id.in_(requirement_ids))
+                .all()
+            )
+            
+            if not required_capabilities:
+                # No capabilities required for this SL, consider it achievable
+                achieved_sl_c = sl
+                break
+            
+            # Check if ALL required capabilities are available
+            required_capability_ids = {rc.capability_id for rc in required_capabilities}
+            all_available = required_capability_ids.issubset(available_capabilities)
+            
+            if all_available:
+                achieved_sl_c = sl
+                logger.debug(f"Zone {zone.id}: SL-C = {sl} (all {len(required_capability_ids)} required capabilities available)")
+                break
+            else:
+                missing = required_capability_ids - available_capabilities
+                logger.debug(f"Zone {zone.id}: SL-{sl} not achievable - {len(missing)} capabilities missing")
+        
+        return achieved_sl_c
+    
+    @staticmethod
     def update_zone_security_levels(
         db: Session,
         zone_id: str
     ) -> SecurityZone:
         """
-        Recalculate and update SL-A and compliance status for a zone.
+        Recalculate and update SL-A, SL-C, and compliance status for a zone.
+        Validates that SL-A ≤ SL-C ≤ SL-T.
         """
         zone = db.query(SecurityZone).filter(SecurityZone.id == zone_id).first()
         if not zone:
             raise ValueError(f"Zone {zone_id} not found")
         
-        # Calculate SL-A
+        # Calculate SL-C first (capability level)
+        sl_c = ISA62443ComplianceEngine.calculate_zone_security_level_capability(db, zone)
+        zone.security_level_capability = sl_c
+        
+        # Calculate SL-A (achieved level)
         sl_a = ISA62443ComplianceEngine.calculate_zone_security_level_achieved(db, zone)
+        
+        # Validate: SL-A cannot exceed SL-C
+        if sl_c is not None and sl_a is not None:
+            if sl_a > sl_c:
+                logger.warning(f"Zone {zone.id}: SL-A ({sl_a}) > SL-C ({sl_c}), capping SL-A to SL-C")
+                sl_a = sl_c
+            # Also validate: SL-C cannot exceed SL-T
+            if sl_c > zone.security_level_target:
+                logger.warning(f"Zone {zone.id}: SL-C ({sl_c}) > SL-T ({zone.security_level_target}), capping SL-C to SL-T")
+                sl_c = min(sl_c, zone.security_level_target)
+                # Re-cap SL-A if needed
+                if sl_a > sl_c:
+                    sl_a = sl_c
+        
         zone.security_level_achieved = sl_a
         
         # Calculate compliance status

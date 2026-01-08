@@ -94,6 +94,8 @@ from app.routers import compliance
 from app.routers import asset_dependencies
 from app.routers import vulnerabilities
 from app.routers import sso
+from app.routers import asset_capabilities
+from app.routers import evidence
 from app.crud import sso as crud_sso
 from app.setup_system import setup_system
 from app.database import SessionLocal
@@ -138,6 +140,8 @@ app.include_router(conduits.router, tags=["conduits"])
 app.include_router(compliance.router, tags=["compliance"])
 app.include_router(asset_dependencies.router, tags=["asset_dependencies"])
 app.include_router(vulnerabilities.router, tags=["vulnerabilities"])
+app.include_router(asset_capabilities.router, tags=["asset-capabilities"])
+app.include_router(evidence.router, tags=["evidence"])
 app.include_router(sso.router, tags=["sso"])
 app.include_router(asset_photos.router, tags=["asset_photo"])
 app.include_router(asset_documents.router, tags=["asset_document"])
@@ -253,9 +257,30 @@ async def startup_event():
                     print(f"📊 Demo data already exists ({asset_count} assets found)")
         
         db.close()
+        
+        # Start background tasks for notifications
+        try:
+            from app.services.background_tasks import BackgroundTaskManager
+            BackgroundTaskManager.start()
+            print("✅ Background tasks started (email queue processor, asset review checker)")
+        except Exception as e:
+            print(f"⚠️  Failed to start background tasks: {e}")
+            import traceback
+            traceback.print_exc()
     except Exception as e:
         print(f"Error during database initialization: {e}")
         # Non blocchiamo l'avvio dell'app in caso di errore
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    try:
+        from app.services.background_tasks import BackgroundTaskManager
+        BackgroundTaskManager.stop()
+        print("Background tasks stopped")
+    except Exception as e:
+        print(f"Error stopping background tasks: {e}")
 
 
 from app.errors.validation_errors import ValidationError, InvalidVATNumberError, InvalidTaxCodeError, InvalidURLError, InvalidPhoneError, InvalidEmailError, InvalidIPAddressError, InvalidMACAddressError, InvalidVLANError, InvalidImpactValueError, InvalidPurdueLevelError, InvalidRiskScoreError, InvalidBusinessCriticalityError, InvalidRemoteAccessTypeError, InvalidPhysicalAccessEaseError, InvalidTenantSlugError, InvalidPasswordError
@@ -436,6 +461,10 @@ async def login(
     if not user:
         raise ErrorCodeException(status_code=401, error_code="INVALID_CREDENTIALS")
     
+    # Check if user is deleted
+    if user.deleted_at is not None:
+        raise ErrorCodeException(status_code=401, error_code="INVALID_CREDENTIALS")
+    
     # Check if user has password (SSO-only users cannot login with password)
     if not user.password_hash:
         # Check if SSO is configured and enabled for this tenant
@@ -459,6 +488,13 @@ async def login(
     # Check if user is active
     if not user.is_active:
         raise ErrorCodeException(status_code=401, error_code="INVALID_CREDENTIALS")
+    
+    # Update last_login
+    from datetime import datetime
+    user.last_login = datetime.utcnow()
+    db.commit()
+    db.refresh(user)
+    
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id), "tenant_id": str(user.tenant_id)},
@@ -550,7 +586,16 @@ async def logout(
     request: Request = None,
     access_token_cookie: Optional[str] = Cookie(None)
 ):
-    response.delete_cookie("access_token_cookie", path="/")
+    # Delete cookie with same settings as when it was created
+    # This ensures it's properly deleted regardless of cookie settings
+    response.delete_cookie(
+        key="access_token_cookie",
+        path="/",
+        domain=None,  # Don't specify domain to match cookie creation
+        secure=settings.SECURE_COOKIES,
+        samesite=settings.SAME_SITE_COOKIES,
+        httponly=True
+    )
     
     # Try to get current user for audit log, but don't fail if token is invalid
     current_user = None

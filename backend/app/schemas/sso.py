@@ -136,5 +136,5 @@ class ImportUsersResponse(BaseModel):
     imported: int
     skipped: int
     errors: List[Dict[str, Any]]
-    users: List[Dict[str, Any]]  # List of imported user IDs
+    users: List[str]  # List of imported user IDs (as strings)
 

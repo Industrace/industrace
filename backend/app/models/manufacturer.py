@@ -27,6 +27,7 @@ class Manufacturer(Base):
     updated_at = Column(
         DateTime, default=func.now(), onupdate=func.now(), nullable=False
     )
+    deleted_at = Column(DateTime, nullable=True)
     assets = relationship(
         "Asset", back_populates="manufacturer", cascade="all, delete-orphan"
     )

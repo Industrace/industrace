@@ -13,6 +13,7 @@ from app.models import User, Asset
 from app.services.auth import get_current_user
 from app.services.audit_decorator import audit_log_action
 from app.services.asset_review_service import AssetReviewService
+from app.services.rbac import require_permission
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.schemas.asset import AssetRead as AssetSchema
@@ -58,6 +59,7 @@ def get_asset_review_status(
     asset_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_reviews", 1)),
 ):
     """Get review status for an asset"""
     asset = (
@@ -101,6 +103,7 @@ def mark_asset_as_reviewed(
     review_data: AssetReviewRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_reviews", 2)),
 ):
     """Mark an asset as reviewed"""
     asset = (
@@ -129,6 +132,7 @@ def skip_asset_review(
     skip_data: AssetReviewSkipRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_reviews", 2)),
 ):
     """Skip review for an asset"""
     asset = (
@@ -155,6 +159,7 @@ def get_assets_due_for_review(
     days_ahead: Optional[int] = Query(None, ge=0, le=365, description="Days ahead to check (uses tenant default if not provided)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_reviews", 1)),
 ):
     """Get assets that need review within the next N days (includes overdue).
     If days_ahead is not provided, uses tenant configuration."""
@@ -171,6 +176,7 @@ def get_assets_due_for_review(
 def get_overdue_assets(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_reviews", 1)),
 ):
     """Get assets with overdue reviews"""
     assets = AssetReviewService.get_overdue_assets(
@@ -186,6 +192,7 @@ def get_upcoming_reviews(
     days: Optional[int] = Query(None, ge=1, le=365, description="Days to look ahead (uses tenant default if not provided)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_reviews", 1)),
 ):
     """Get assets with reviews coming up in the next N days.
     If days is not provided, uses tenant configuration."""
@@ -264,6 +271,7 @@ def bulk_mark_as_reviewed(
     bulk_data: BulkReviewRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_reviews", 3)),
 ):
     """Mark multiple assets as reviewed"""
     # Verify all assets belong to tenant
@@ -298,6 +306,7 @@ def bulk_mark_as_reviewed(
 def recalculate_all_review_dates(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_reviews", 3)),
 ):
     """Recalculate next_review_date for all assets in tenant"""
     updated_count = AssetReviewService.recalculate_all_next_review_dates(

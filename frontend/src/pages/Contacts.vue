@@ -155,7 +155,7 @@
             <label class="block text-sm font-medium mb-2">{{ t('common.fields.notes') }}</label>
             <InputText
               v-model="bulkData.notes"
-              :placeholder="t('common.strings.notes_placeholder')"
+              :placeholder="t('contacts.strings.notes_placeholder')"
               class="w-full"
             />
           </div>
@@ -370,7 +370,7 @@ async function saveBulkEdit() {
     closeBulkDialog()
     await fetchContacts()
   }, {
-    successMessage: t('common.actions.bulkUpdated'),
+    successMessage: t('common.messages.bulkupdated'),
     errorContext: t('contacts.messages.bulkUpdateError')
   })
 }
@@ -383,7 +383,7 @@ async function saveContact(data) {
       close()
       await fetchContacts()
     }, {
-      successMessage: t('common.actions.updated'),
+      successMessage: t('common.messages.updated'),
       errorContext: t('contacts.messages.updateError')
     })
   } else {
@@ -393,7 +393,7 @@ async function saveContact(data) {
       close()
       await fetchContacts()
     }, {
-      successMessage: t('common.actions.created'),
+      successMessage: t('common.messages.created'),
       errorContext: t('contacts.messages.createError')
     })
   }
@@ -401,14 +401,14 @@ async function saveContact(data) {
 
 async function deleteContact(id) {
   await confirmDelete(
-    t('common.actions.deleteConfirm'),
-    t('common.actions.deleteWarning'),
+    t('common.messages.deleteConfirm'),
+    t('common.messages.deleteWarning'),
     async () => {
       await execute(async () => {
         await api.deleteContact(id)
         await fetchContacts()
       }, {
-        successMessage: t('common.actions.deleted'),
+        successMessage: t('common.messages.deleted'),
         errorContext: t('contacts.messages.deleteError')
       })
     }
@@ -443,7 +443,7 @@ async function restoreContact(id) {
     await api.restoreContact(id)
     await fetchContacts()
   }, {
-    successMessage: t('common.actions.restored'),
+    successMessage: t('common.messages.restored'),
     errorContext: t('contacts.messages.restoreError')
   })
 }
@@ -453,7 +453,7 @@ async function hardDeleteContact(id) {
     await api.hardDeleteContact(id)
     await fetchContacts()
   }, {
-    successMessage: t('common.actions.hardDeleted'),
+    successMessage: t('common.messages.hardDeleted'),
     errorContext: t('contacts.messages.hardDeleteError')
   })
 }
@@ -465,15 +465,15 @@ async function emptyTrash() {
     }
     await fetchContacts()
   }, {
-    successMessage: t('common.actions.trashEmptied'),
+    successMessage: t('common.messages.trashEmptied'),
     errorContext: t('contacts.messages.emptyTrashError')
   })
 }
 
 async function handleEmptyTrash() {
   await confirmEmptyTrash(
-    t('common.actions.emptyTrashConfirm'),
-    t('common.actions.emptyTrashWarning'),
+    t('common.messages.emptyTrashConfirm'),
+    t('common.messages.emptyTrashWarning'),
     emptyTrash
   )
 }

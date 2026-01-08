@@ -89,13 +89,16 @@
     "customFieldsAllKeysMustBeUnique": "Le chiavi devono essere uniche",
     "customFieldsNoCustomFields": "Nessun campo personalizzato",
     "fetchSitesError": "Errore nel caricamento dei siti",
-    "noInterfaces": "Nessuna interfaccia di rete configurata"
+    "noInterfaces": "Nessuna interfaccia di rete configurata",
+    "noteSaved": "Note salvate con successo",
+    "noteSaveError": "Errore nel salvataggio delle note"
   },
   "strings": {
     "totalAssets": "Totale dispositivi",
     "filterbyStatus": "Filtra per stato",
     "filterbySite": "Filtra per sito",
     "filterbyArea": "Filtra per area",
+    "filterbyLocation": "Filtra per posizione",
     "advancedFilters": "Filtri avanzati",
     "networkInterfacesSummary": "Interfacce di Rete ({count})",
     "networkConnection": "Connessione di Rete",
@@ -113,6 +116,9 @@
     "remoteAccessTypeAttended": "Accesso Remoto Atteso",
     "remoteAccessTypeUnattended": "Accesso Remoto Non Atteso",
     "remoteAccessTypeNone": "Nessun Accesso Remoto",
+    "remoteAccessNone": "Nessun Accesso Remoto",
+    "remoteAccessAttended": "Atteso",
+    "remoteAccessUnattended": "Non Atteso",
     "physicalAccessEaseEasy": "Facile",
     "physicalAccessEaseMedium": "Media",
     "physicalAccessEaseHard": "Difficile",
@@ -121,6 +127,12 @@
     "physicalAccessInternal": "Interno",
     "physicalAccessDMZ": "DMZ",
     "physicalAccessExternal": "Esterno",
+    "physicalAccessUnrestricted": "Non Ristretto (pubblico/esterno)",
+    "physicalAccessControlled": "Controllato (Ufficio/area condivisa)",
+    "physicalAccessRestricted": "Ristretto (badge/armadietto chiuso/area produzione)",
+    "physicalAccessUnrestrictedTooltip": "Accesso pubblico o esterno senza restrizioni",
+    "physicalAccessControlledTooltip": "Accesso in ufficio o area condivisa con controllo base",
+    "physicalAccessRestrictedTooltip": "Accesso ristretto con badge, armadietto chiuso o area di produzione protetta",
     "riskLevelUndefined": "Non definito",
     "riskLevelLow": "Basso",
     "riskLevelMedium": "Media",
@@ -132,7 +144,11 @@
     "chooseField": "Scegli campo",
     "floorplan": "Vedi Planimetria",
     "riskScoreMin": "Punteggio di Rischio Minimo",
-    "riskScoreMax": "Punteggio di Rischio Massimo"
+    "riskScoreMax": "Punteggio di Rischio Massimo",
+    "activeFilters": "Filtri attivi",
+    "filters": {
+      "hasCriticalVulns": "Con Vulnerabilità Critiche"
+    }
   },
   "detail": {
     "navigation": "Navigazione",
@@ -201,7 +217,7 @@
     "risk": "Rischio",
     "documents": "Documenti",
     "contacts": "Contatti",
-    "review": "Review",
+    "review": "Revisione",
     "dependencies": "Dipendenze",
     "vulnerabilities": "Vulnerabilità",
     "communications": "Comunicazioni",

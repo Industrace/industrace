@@ -420,6 +420,16 @@
                     </small>
                   </div>
 
+                  <!-- Evidence Section -->
+                  <div class="assessment-evidence-section mt-4">
+                    <EvidenceList
+                      :sr-assessment-id="assessmentData?.current_assessment?.id"
+                      :zone-id="zone.id"
+                      :can-write="true"
+                      @evidence-updated="handleEvidenceUpdated"
+                    />
+                  </div>
+
                   <!-- Save Button -->
                   <div class="assessment-actions mt-4">
                     <Button 
@@ -545,6 +555,7 @@ import Textarea from 'primevue/textarea'
 import Tag from 'primevue/tag'
 import Divider from 'primevue/divider'
 import api from '@/api/api'
+import EvidenceList from './EvidenceList.vue'
 
 const props = defineProps({
   zone: {
@@ -892,6 +903,13 @@ async function selectSecurityRequirement(sr) {
     assessmentData.value = null
   } finally {
     loadingAssessmentData.value = false
+  }
+}
+
+function handleEvidenceUpdated() {
+  // Refresh assessment data when evidence is updated
+  if (selectedSR.value) {
+    selectSecurityRequirement(selectedSR.value)
   }
 }
 

@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import User, Asset
 from app.services.auth import get_current_user
 from app.services.audit_decorator import audit_log_action
+from app.services.rbac import require_permission
 from app import crud
 from app.crud import asset_dependencies as crud_dependencies
 from app.schemas.asset_dependency import (
@@ -37,6 +38,7 @@ def list_asset_dependencies(
     limit: int = Query(100, ge=1, le=1000),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 1)),
 ):
     """List all asset dependencies with optional filters"""
     dependencies = crud_dependencies.get_asset_dependencies(
@@ -55,6 +57,7 @@ def get_asset_dependency(
     dependency_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 1)),
 ):
     """Get a single asset dependency by ID"""
     dependency = crud_dependencies.get_asset_dependency(
@@ -75,6 +78,7 @@ def create_asset_dependency(
     dependency: AssetDependencyCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 2)),
 ):
     """Create a new asset dependency"""
     try:
@@ -103,6 +107,7 @@ def update_asset_dependency(
     dependency_update: AssetDependencyUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 2)),
 ):
     """Update an existing asset dependency"""
     # Recupera la dipendenza prima di aggiornarla per invalidare la cache
@@ -134,6 +139,7 @@ def delete_asset_dependency(
     dependency_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 3)),
 ):
     """Delete an asset dependency"""
     # Recupera la dipendenza prima di eliminarla per invalidare la cache
@@ -163,6 +169,7 @@ def get_asset_dependencies_as_dependent(
     dependency_type: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 1)),
 ):
     """Get all dependencies where this asset depends on others"""
     # Verify asset exists and belongs to tenant
@@ -215,6 +222,7 @@ def get_asset_dependencies_as_dependency(
     dependency_type: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 1)),
 ):
     """Get all dependencies where other assets depend on this one"""
     # Verify asset exists and belongs to tenant
@@ -267,6 +275,7 @@ def get_risk_propagation(
     max_depth: int = Query(5, ge=1, le=10),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 4)),
 ):
     """Calculate risk propagation from an asset through dependencies"""
     # Verify asset exists
@@ -299,6 +308,7 @@ def get_risk_from_dependencies(
     asset_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 4)),
 ):
     """
     Calculate how much of this asset's risk comes from its dependencies.
@@ -399,6 +409,7 @@ def get_impact_analysis(
     max_depth: int = Query(5, ge=1, le=10),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 4)),
 ):
     """Analyze impact if this asset fails"""
     # Verify asset exists
@@ -432,6 +443,7 @@ def get_dependency_chain(
     max_depth: int = Query(10, ge=1, le=20),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 1)),
 ):
     """Get dependency chain starting from an asset"""
     # Verify asset exists
@@ -458,6 +470,7 @@ def get_affected_assets(
     max_depth: int = Query(5, ge=1, le=10),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 4)),
 ):
     """Get all assets that would be affected if this asset fails"""
     # Verify asset exists
@@ -483,6 +496,7 @@ def get_dependency_connection_status(
     dependency_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_dependencies", 1)),
 ):
     """Get connection status for a dependency (if there's a corresponding AssetConnection)"""
     dependency = crud_dependencies.get_asset_dependency(

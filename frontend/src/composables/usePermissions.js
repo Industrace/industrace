@@ -90,8 +90,15 @@ export function usePermissions() {
   // Ottieni tutti i permessi con informazioni dettagliate
   const allPermissionsInfo = computed(() => {
     const allSections = [
+      // Sezioni esistenti
       'users', 'roles', 'assets', 'locations', 'sites', 'areas',
-      'suppliers', 'manufacturers', 'contacts', 'audit_logs'
+      'suppliers', 'manufacturers', 'contacts', 'audit_logs',
+      'asset_types', 'asset_statuses', 'asset_documents', 'asset_photos',
+      'locations_floormap', 'utility', 'reset_user_password',
+      // Nuove sezioni
+      'vulnerabilities', 'asset_reviews', 'asset_dependencies',
+      'compliance', 'security_zones', 'notifications', 'sso',
+      'api_keys', 'evidence'
     ]
     
     return allSections.map(section => getPermissionInfo(section))

@@ -23,335 +23,192 @@
       </div>
     </div>
 
-    <!-- Metriche principali -->
-    <div class="metrics-grid">
-      <div class="metric-card total-assets">
-        <div class="metric-icon">
-          <i class="pi pi-database"></i>
-        </div>
-        <div class="metric-content">
-          <div class="metric-value">{{ stats.total_assets || 0 }}</div>
-          <div class="metric-label">{{ t('dashboard.stats.totalAssets') }}</div>
-        </div>
-      </div>
-
-      <div class="metric-card critical-assets">
-        <div class="metric-icon">
-          <i class="pi pi-exclamation-triangle"></i>
-        </div>
-        <div class="metric-content">
-          <div class="metric-value">{{ stats.critical_assets || 0 }}</div>
-          <div class="metric-label">{{ t('dashboard.stats.criticalAssets') }}</div>
-        </div>
-      </div>
-
-      <div class="metric-card risky-assets">
-        <div class="metric-icon">
-          <i class="pi pi-shield"></i>
-        </div>
-        <div class="metric-content">
-          <div class="metric-value">{{ stats.assets_at_risk || 0 }}</div>
-          <div class="metric-label">{{ t('dashboard.stats.assetsAtRisk') }}</div>
-        </div>
-      </div>
-
-      <div class="metric-card recent-changes">
-        <div class="metric-icon">
-          <i class="pi pi-clock"></i>
-        </div>
-        <div class="metric-content">
-          <div class="metric-value">{{ stats.recent_changes || 0 }}</div>
-          <div class="metric-label">{{ t('dashboard.stats.recentChanges') }}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Grafici e analisi -->
-    <div class="charts-section">
-      <div class="chart-row">
-        <!-- Distribuzione per tipo -->
-        <div class="simple-card">
-          <div class="card-title">
-            <i class="pi pi-chart-pie"></i>
-            {{ t('dashboard.charts.assetsByType') }}
-          </div>
-          <div class="chart-container" v-if="assetTypeChartData.labels.length > 0">
-            <Doughnut 
-              :key="`asset-type-${chartKey}`"
-              :data="assetTypeChartData" 
-              :options="doughnutOptions" 
-              class="chart"
-            />
-          </div>
-          <div v-else class="no-data">
-            {{ t('common.messages.noData') }}
-          </div>
-        </div>
-
-        <!-- Distribuzione per stato -->
-        <div class="simple-card">
-          <div class="card-title">
-            <i class="pi pi-chart-bar"></i>
-            {{ t('dashboard.charts.assetsByStatus') }}
-          </div>
-          <div class="chart-container" v-if="statusChartData.labels.length > 0">
-            <Bar 
-              :key="`status-${chartKey}`"
-              :data="statusChartData" 
-              :options="barOptions" 
-              class="chart"
-            />
-          </div>
-          <div v-else class="no-data">
-            {{ t('common.messages.noData') }}
-          </div>
-        </div>
+    <!-- 1. EXPOSURE - "Dove sono esposto" -->
+    <div class="dashboard-section">
+      <SectionHeader
+        :title="t('dashboard.exposure.title')"
+        :description="t('dashboard.exposure.description')"
+        icon="pi pi-exclamation-triangle"
+      />
+      <div class="cards-grid">
+        <DashboardCard
+          :value="exposureData.overall_exposure_score || 0"
+          :label="t('dashboard.exposure.overallExposure')"
+          :subtitle="t('dashboard.exposure.overallExposureSubtitle')"
+          icon="pi pi-shield"
+          :severity="getExposureSeverity(exposureData.overall_exposure_score)"
+          click-action="/assets"
+        />
+        <DashboardCard
+          :value="exposureData.assets_at_risk || 0"
+          :label="t('dashboard.exposure.assetsAtRisk')"
+          :subtitle="t('dashboard.exposure.assetsAtRiskSubtitle')"
+          icon="pi pi-exclamation-triangle"
+          severity="warning"
+          click-action="/assets?risk_score_min=5"
+        />
+        <DashboardCard
+          :value="exposureData.critical_assets || 0"
+          :label="t('dashboard.exposure.criticalAssets')"
+          :subtitle="t('dashboard.exposure.criticalAssetsSubtitle')"
+          icon="pi pi-exclamation-circle"
+          severity="danger"
+          click-action="/assets?business_criticality=critical,high"
+        />
+        <DashboardCard
+          :value="exposureData.assets_with_critical_vulns || 0"
+          :label="t('dashboard.exposure.assetsWithCriticalVulns')"
+          :subtitle="t('dashboard.exposure.assetsWithCriticalVulnsSubtitle')"
+          icon="pi pi-exclamation-triangle"
+          severity="danger"
+          click-action="/assets?has_critical_vulns=true"
+        />
       </div>
     </div>
 
-    <!-- Tabelle informative -->
-    <div class="tables-section">
-      <div class="table-row">
-        <!-- Asset più a rischio -->
-        <div class="simple-card">
-          <div class="card-title">
-            <i class="pi pi-exclamation-triangle"></i>
-            {{ t('dashboard.tables.topRiskyAssets') }}
-          </div>
-          <div v-if="riskyAssets.length === 0" class="no-data">
-            {{ t('common.messages.noData') }}
-          </div>
-          <DataTable 
-            v-else
-            :value="riskyAssets" 
-            :rows="5" 
-            responsiveLayout="scroll"
-            class="dashboard-table"
-          >
-            <Column field="name" :header="t('common.fields.name')" sortable>
-              <template #body="{ data }">
-                <router-link :to="`/assets/${data.id}`" class="asset-link">
-                  {{ data.name }}
-                </router-link>
-              </template>
-            </Column>
-            <Column field="risk_score" :header="t('common.fields.riskScore')" sortable>
-              <template #body="{ data }">
-                <Tag 
-                  :value="data.risk_score" 
-                  :severity="getRiskSeverity(data.risk_score)"
-                />
-              </template>
-            </Column>
-            <Column field="business_criticality" :header="t('common.fields.businessCriticality')" sortable>
-              <template #body="{ data }">
-                <CriticalityBadge :value="data.business_criticality" />
-              </template>
-            </Column>
-            <Column field="asset_type_name" :header="t('common.fields.type')" />
-            <Column field="status_name" :header="t('common.fields.status')" />
-            <Column field="site_name" :header="t('common.fields.site')" />
-          </DataTable>
-        </div>
-
-        <!-- Ultimi asset -->
-        <div class="simple-card">
-          <div class="card-title">
-            <i class="pi pi-clock"></i>
-            {{ t('dashboard.tables.latestAssets') }}
-          </div>
-          <div v-if="recentAssets.length === 0" class="no-data">
-            {{ t('common.messages.noData') }}
-          </div>
-          <DataTable 
-            v-else
-            :value="recentAssets" 
-            :rows="5" 
-            responsiveLayout="scroll"
-            class="dashboard-table"
-          >
-            <Column field="name" :header="t('common.fields.name')" sortable>
-              <template #body="{ data }">
-                <router-link :to="`/assets/${data.id}`" class="asset-link">
-                  {{ data.name }}
-                </router-link>
-              </template>
-            </Column>
-            <Column field="asset_type.name" :header="t('common.fields.type')" />
-            <Column field="status.name" :header="t('common.fields.status')" />
-            <Column field="site.name" :header="t('common.fields.site')" />
-            <Column field="created_at" :header="t('common.fields.createdAt')" sortable>
-              <template #body="{ data }">
-                {{ formatDate(data.created_at) }}
-              </template>
-            </Column>
-          </DataTable>
-        </div>
+    <!-- 2. ATTENTION - "Cosa devo guardare oggi" -->
+    <div class="dashboard-section">
+      <SectionHeader
+        :title="t('dashboard.attention.title')"
+        :description="t('dashboard.attention.description')"
+        icon="pi pi-bell"
+      />
+      <div class="cards-grid">
+        <DashboardCard
+          :value="reviewsSummary.overdue_count || 0"
+          :label="t('dashboard.attention.reviewsOverdue')"
+          :subtitle="t('dashboard.attention.reviewsOverdueSubtitle')"
+          icon="pi pi-calendar-times"
+          :severity="reviewsSummary.overdue_count > 0 ? 'warning' : 'success'"
+          click-action="/asset-reviews?status=overdue"
+        />
+        <DashboardCard
+          :value="(complianceSummary.non_compliant_zones || 0) + (complianceSummary.partial_compliant_zones || 0)"
+          :label="t('dashboard.attention.complianceGaps')"
+          :subtitle="t('dashboard.attention.complianceGapsSubtitle')"
+          icon="pi pi-times-circle"
+          :severity="(complianceSummary.non_compliant_zones || 0) + (complianceSummary.partial_compliant_zones || 0) > 0 ? 'warning' : 'success'"
+          click-action="/compliance"
+        />
+        <DashboardCard
+          :value="dependenciesSummary.missing_dependencies_count || 0"
+          :label="t('dashboard.attention.missingDependencies')"
+          :subtitle="t('dashboard.attention.missingDependenciesSubtitle')"
+          icon="pi pi-sitemap"
+          :severity="dependenciesSummary.missing_dependencies_count > 0 ? 'warning' : 'success'"
+          click-action="/assets"
+        />
+        <DashboardCard
+          :value="evidenceMissing || 0"
+          :label="t('dashboard.attention.evidenceMissing')"
+          :subtitle="t('dashboard.attention.evidenceMissingSubtitle')"
+          icon="pi pi-file"
+          :severity="evidenceMissing > 0 ? 'warning' : 'success'"
+          click-action="/compliance"
+        />
       </div>
     </div>
 
-    <!-- Widget Feature Integrate -->
-    <div class="feature-widgets-section">
-      <div class="widget-row">
-        <!-- Asset Reviews Widget -->
-        <div class="simple-card">
-          <div class="card-title">
-            <i class="pi pi-calendar-check"></i>
-            {{ t('dashboard.widgets.assetReviews') }}
-            <Button 
-              v-if="reviewsSummary.overdue_count > 0 || reviewsSummary.due_count > 0"
-              :label="t('dashboard.actions.viewAll')" 
-              icon="pi pi-external-link" 
-              class="p-button-text p-button-sm ml-auto"
-              @click="$router.push('/asset-reviews')"
-            />
+    <!-- 3. CHANGE - "Cosa è cambiato di recente" -->
+    <div class="dashboard-section">
+      <SectionHeader
+        :title="t('dashboard.change.title')"
+        :description="t('dashboard.change.description')"
+        icon="pi pi-clock"
+      />
+      <div class="change-section">
+        <div class="change-card">
+          <div class="change-card-header">
+            <h3>{{ t('dashboard.change.recentChanges') }}</h3>
+            <p class="change-card-subtitle">{{ t('dashboard.change.recentChangesSubtitle') }}</p>
           </div>
-          <div class="widget-content" v-if="!loadingSummaries">
-            <div class="widget-metrics">
-              <div class="widget-metric" :class="{ 'has-issues': reviewsSummary.overdue_count > 0 }">
-                <div class="widget-metric-value">{{ reviewsSummary.overdue_count || 0 }}</div>
-                <div class="widget-metric-label">{{ t('dashboard.widgets.overdueReviews') }}</div>
-              </div>
-              <div class="widget-metric" :class="{ 'has-issues': reviewsSummary.due_count > 0 }">
-                <div class="widget-metric-value">{{ reviewsSummary.due_count || 0 }}</div>
-                <div class="widget-metric-label">{{ t('dashboard.widgets.dueReviews') }}</div>
-              </div>
-            </div>
-            <div v-if="reviewsSummary.overdue_assets && reviewsSummary.overdue_assets.length > 0" class="widget-list">
-              <div class="widget-list-title">{{ t('dashboard.widgets.recentOverdue') }}</div>
-              <div v-for="asset in reviewsSummary.overdue_assets.slice(0, 3)" :key="asset.id" class="widget-list-item">
-                <router-link :to="`/assets/${asset.id}`" class="asset-link">{{ asset.name }}</router-link>
-              </div>
-            </div>
-          </div>
-          <div v-else class="widget-loading">
-            <i class="pi pi-spin pi-spinner"></i>
-          </div>
+          <RecentChangesList
+            :changes="recentChanges"
+            :loading="loadingRecentChanges"
+          />
         </div>
-
-        <!-- Missing Dependencies Widget -->
-        <div class="simple-card">
-          <div class="card-title">
-            <i class="pi pi-sitemap"></i>
-            {{ t('dashboard.widgets.missingDependencies') }}
-          </div>
-          <div class="widget-content" v-if="!loadingSummaries">
-            <div class="widget-metrics">
-              <div class="widget-metric" :class="{ 'has-issues': dependenciesSummary.missing_dependencies_count > 0 }">
-                <div class="widget-metric-value">{{ dependenciesSummary.missing_dependencies_count || 0 }}</div>
-                <div class="widget-metric-label">{{ t('dashboard.widgets.missingDeps') }}</div>
-              </div>
-              <div class="widget-metric" :class="{ 'has-issues': dependenciesSummary.critical_missing_count > 0 }">
-                <div class="widget-metric-value">{{ dependenciesSummary.critical_missing_count || 0 }}</div>
-                <div class="widget-metric-label">{{ t('dashboard.widgets.criticalMissing') }}</div>
-              </div>
-            </div>
-            <div class="widget-info">
-              <small>{{ t('dashboard.widgets.totalConnections') }}: {{ dependenciesSummary.total_connections || 0 }}</small>
-            </div>
-          </div>
-          <div v-else class="widget-loading">
-            <i class="pi pi-spin pi-spinner"></i>
-          </div>
-        </div>
-
-        <!-- Vulnerabilities Widget -->
-        <div class="simple-card">
-          <div class="card-title">
-            <i class="pi pi-shield"></i>
-            {{ t('dashboard.widgets.vulnerabilities') }}
-            <Button 
-              v-if="vulnerabilitiesSummary.critical_unpatched > 0 || vulnerabilitiesSummary.high_unpatched > 0"
-              :label="t('dashboard.actions.viewAll')" 
-              icon="pi pi-external-link" 
-              class="p-button-text p-button-sm ml-auto"
-              @click="$router.push('/vulnerabilities')"
-            />
-          </div>
-          <div class="widget-content" v-if="!loadingSummaries">
-            <div class="widget-metrics">
-              <div class="widget-metric critical" :class="{ 'has-issues': vulnerabilitiesSummary.critical_unpatched > 0 }">
-                <div class="widget-metric-value">{{ vulnerabilitiesSummary.critical_unpatched || 0 }}</div>
-                <div class="widget-metric-label">{{ t('dashboard.widgets.criticalUnpatched') }}</div>
-              </div>
-              <div class="widget-metric warning" :class="{ 'has-issues': vulnerabilitiesSummary.high_unpatched > 0 }">
-                <div class="widget-metric-value">{{ vulnerabilitiesSummary.high_unpatched || 0 }}</div>
-                <div class="widget-metric-label">{{ t('dashboard.widgets.highUnpatched') }}</div>
-              </div>
-            </div>
-            <div class="widget-info">
-              <small>{{ t('dashboard.widgets.totalUnpatched') }}: {{ vulnerabilitiesSummary.total_unpatched || 0 }}</small>
-            </div>
-          </div>
-          <div v-else class="widget-loading">
-            <i class="pi pi-spin pi-spinner"></i>
-          </div>
-        </div>
-
-        <!-- Compliance Widget -->
-        <div class="simple-card">
-          <div class="card-title">
-            <i class="pi pi-check-circle"></i>
-            {{ t('dashboard.widgets.compliance') }}
-            <Button 
-              v-if="complianceSummary.non_compliant_zones > 0 || complianceSummary.partial_compliant_zones > 0"
-              :label="t('dashboard.actions.viewAll')" 
-              icon="pi pi-external-link" 
-              class="p-button-text p-button-sm ml-auto"
-              @click="$router.push('/compliance')"
-            />
-          </div>
-          <div class="widget-content" v-if="!loadingSummaries">
-            <div class="widget-metrics">
-              <div class="widget-metric" :class="{ 'has-issues': complianceSummary.non_compliant_zones > 0 }">
-                <div class="widget-metric-value">{{ complianceSummary.non_compliant_zones || 0 }}</div>
-                <div class="widget-metric-label">{{ t('dashboard.widgets.nonCompliantZones') }}</div>
-              </div>
-              <div class="widget-metric" :class="{ 'has-issues': complianceSummary.partial_compliant_zones > 0 }">
-                <div class="widget-metric-value">{{ complianceSummary.partial_compliant_zones || 0 }}</div>
-                <div class="widget-metric-label">{{ t('dashboard.widgets.partialCompliantZones') }}</div>
-              </div>
-            </div>
-            <div class="widget-info">
-              <small>{{ t('dashboard.widgets.totalZones') }}: {{ complianceSummary.total_zones || 0 }} | 
-              {{ t('dashboard.widgets.compliantZones') }}: {{ complianceSummary.compliant_zones || 0 }}</small>
-            </div>
-          </div>
-          <div v-else class="widget-loading">
-            <i class="pi pi-spin pi-spinner"></i>
-          </div>
-        </div>
+        <DashboardCard
+          :value="recentChanges.length || 0"
+          :label="t('dashboard.change.newlyAddedAssets')"
+          :subtitle="t('dashboard.change.newlyAddedAssetsSubtitle')"
+          icon="pi pi-plus-circle"
+          severity="info"
+          click-action="/assets?sort=created_at&order=desc"
+        />
       </div>
     </div>
 
-    <!-- Sezione avvisi e notifiche -->
-    <div class="alerts-section">
-      <div class="simple-card">
-        <div class="card-title">
+    <!-- 4. POSTURE - "Sono difendibile?" -->
+    <div class="dashboard-section">
+      <SectionHeader
+        :title="t('dashboard.posture.title')"
+        :description="t('dashboard.posture.description')"
+        icon="pi pi-check-circle"
+      />
+      <div class="cards-grid">
+        <DashboardCard
+          :value="getPostureScore()"
+          :label="t('dashboard.posture.securityPosture')"
+          :subtitle="t('dashboard.posture.securityPostureSubtitle')"
+          icon="pi pi-shield"
+          :severity="getPostureSeverity()"
+          click-action="/compliance"
+        />
+        <DashboardCard
+          :value="`${complianceSummary.coverage_percentage || 0}%`"
+          :label="t('dashboard.posture.iec62443Coverage')"
+          :subtitle="t('dashboard.posture.iec62443CoverageSubtitle')"
+          icon="pi pi-percentage"
+          :severity="(complianceSummary.coverage_percentage || 0) >= 80 ? 'success' : 'warning'"
+          click-action="/compliance"
+        />
+        <DashboardCard
+          :value="complianceSummary.non_compliant_zones || 0"
+          :label="t('dashboard.posture.nonCompliantZones')"
+          :subtitle="t('dashboard.posture.nonCompliantZonesSubtitle')"
+          icon="pi pi-times-circle"
+          :severity="(complianceSummary.non_compliant_zones || 0) > 0 ? 'danger' : 'success'"
+          click-action="/compliance"
+        />
+        <DashboardCard
+          :value="complianceSummary.sl_gap_summary?.zones_with_gap || 0"
+          :label="t('dashboard.posture.slGapSummary')"
+          :subtitle="t('dashboard.posture.slGapSummarySubtitle')"
+          icon="pi pi-chart-line"
+          :severity="(complianceSummary.sl_gap_summary?.zones_with_gap || 0) > 0 ? 'warning' : 'success'"
+          click-action="/compliance"
+        />
+      </div>
+    </div>
+
+    <!-- Action Center (solo se ci sono problemi) -->
+    <div v-if="hasIssues" class="action-center">
+      <div class="action-center-card">
+        <div class="action-center-header">
           <i class="pi pi-bell"></i>
-          {{ t('dashboard.alerts') }}
+          <h3>{{ t('dashboard.alerts') }}</h3>
         </div>
-        <div class="alerts-content">
-          <div v-if="stats.assets_at_risk > 0" class="alert-item warning">
-            <i class="pi pi-exclamation-triangle"></i>
-            <span>{{ stats.assets_at_risk }} {{ t('dashboard.stats.assetsAtRisk') }}</span>
+        <div class="action-center-content">
+          <div v-if="exposureData.assets_at_risk > 0" class="alert-badge warning">
+            {{ exposureData.assets_at_risk }} {{ t('dashboard.exposure.assetsAtRisk') }}
           </div>
-          <div v-if="stats.critical_assets > 0" class="alert-item critical">
-            <i class="pi pi-exclamation-circle"></i>
-            <span>{{ stats.critical_assets }} {{ t('dashboard.stats.criticalAssets') }}</span>
+          <div v-if="exposureData.critical_assets > 0" class="alert-badge danger">
+            {{ exposureData.critical_assets }} {{ t('dashboard.exposure.criticalAssets') }}
           </div>
-          <div v-if="reviewsSummary.overdue_count > 0" class="alert-item warning">
-            <i class="pi pi-calendar-times"></i>
-            <span>{{ reviewsSummary.overdue_count }} {{ t('dashboard.widgets.overdueReviews') }}</span>
+          <div v-if="reviewsSummary.overdue_count > 0" class="alert-badge warning">
+            {{ reviewsSummary.overdue_count }} {{ t('dashboard.attention.reviewsOverdue') }}
           </div>
-          <div v-if="vulnerabilitiesSummary.critical_unpatched > 0" class="alert-item critical">
-            <i class="pi pi-shield"></i>
-            <span>{{ vulnerabilitiesSummary.critical_unpatched }} {{ t('dashboard.widgets.criticalUnpatched') }}</span>
+          <div v-if="exposureData.assets_with_critical_vulns > 0" class="alert-badge danger">
+            {{ exposureData.assets_with_critical_vulns }} {{ t('dashboard.exposure.assetsWithCriticalVulns') }}
           </div>
-          <div v-if="stats.assets_at_risk === 0 && stats.critical_assets === 0 && reviewsSummary.overdue_count === 0 && vulnerabilitiesSummary.critical_unpatched === 0" class="alert-item success">
-            <i class="pi pi-check-circle"></i>
-            <span>{{ t('dashboard.messages.allSystemsOperational') }}</span>
-          </div>
+        </div>
+      </div>
+    </div>
+    <div v-else class="action-center">
+      <div class="action-center-card success">
+        <div class="action-center-content">
+          <i class="pi pi-check-circle"></i>
+          <span>{{ t('dashboard.messages.allSystemsOperational') }}</span>
         </div>
       </div>
     </div>
@@ -359,21 +216,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import { Doughnut, Bar } from 'vue-chartjs'
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js'
-
-// Registra i componenti necessari per Chart.js
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement)
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Button from 'primevue/button'
-import Tag from 'primevue/tag'
-import Card from 'primevue/card'
-import CriticalityBadge from '../components/common/CriticalityBadge.vue'
+import DashboardCard from '../components/dashboard/DashboardCard.vue'
+import SectionHeader from '../components/dashboard/SectionHeader.vue'
+import RecentChangesList from '../components/dashboard/RecentChangesList.vue'
 import api from '../api/api'
 
 const { t } = useI18n()
@@ -381,76 +231,64 @@ const router = useRouter()
 const toast = useToast()
 
 // Reactive data
-const stats = ref({})
-const assetTypes = ref([])
-const recentAssets = ref([])
-const riskyAssets = ref([])
 const recalculatingRiskScores = ref(false)
-const reviewsSummary = ref({ overdue_count: 0, due_count: 0, overdue_assets: [], due_assets: [] })
-const dependenciesSummary = ref({ total_connections: 0, missing_dependencies_count: 0, critical_missing_count: 0 })
-const vulnerabilitiesSummary = ref({ critical_unpatched: 0, high_unpatched: 0, total_unpatched: 0 })
-const complianceSummary = ref({ total_zones: 0, non_compliant_zones: 0, partial_compliant_zones: 0, compliant_zones: 0 })
-const loadingSummaries = ref(false)
+const exposureData = ref({
+  overall_exposure_score: 0,
+  assets_at_risk: 0,
+  critical_assets: 0,
+  high_risk_vulnerabilities: 0,
+  assets_with_critical_vulns: 0,
+  missing_critical_dependencies: 0
+})
+const reviewsSummary = ref({ overdue_count: 0, due_count: 0 })
+const dependenciesSummary = ref({ missing_dependencies_count: 0, critical_missing_count: 0 })
+const complianceSummary = ref({
+  total_zones: 0,
+  non_compliant_zones: 0,
+  partial_compliant_zones: 0,
+  compliant_zones: 0,
+  coverage_percentage: 0,
+  sl_gap_summary: { zones_with_gap: 0, average_gap: 0, max_gap: 0 }
+})
+const recentChanges = ref([])
+const loadingRecentChanges = ref(false)
+const evidenceMissing = ref(0)
 
-// Chart data
-const assetTypeChartData = ref({ labels: [], datasets: [] })
-const statusChartData = ref({ labels: [], datasets: [] })
-const chartKey = ref(0) // Per forzare il re-render dei grafici
-
-// Chart options
-const doughnutOptions = ref({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: { 
-      display: true,
-      position: 'bottom'
-    }
-  }
+// Computed
+const hasIssues = computed(() => {
+  return (
+    exposureData.value.assets_at_risk > 0 ||
+    exposureData.value.critical_assets > 0 ||
+    reviewsSummary.value.overdue_count > 0 ||
+    exposureData.value.assets_with_critical_vulns > 0
+  )
 })
 
-const barOptions = ref({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: { display: false }
-  },
-  scales: {
-    y: {
-      beginAtZero: true
-    }
-  }
-})
-
-// Computed functions
-const getRiskSeverity = (score) => {
-  if (score >= 8) return 'danger'
-  if (score >= 6) return 'warning'
+// Functions
+const getExposureSeverity = (score) => {
+  if (score >= 7) return 'danger'
+  if (score >= 4) return 'warning'
   return 'info'
 }
 
-const getCriticalitySeverity = (level) => {
-  if (level >= 4) return 'danger'
-  if (level >= 3) return 'warning'
-  return 'info'
+const getPostureScore = () => {
+  const total = complianceSummary.value.total_zones || 1
+  const compliant = complianceSummary.value.compliant_zones || 0
+  return Math.round((compliant / total) * 10)
 }
 
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  return new Date(dateString).toLocaleDateString()
+const getPostureSeverity = () => {
+  const score = getPostureScore()
+  if (score >= 8) return 'success'
+  if (score >= 5) return 'warning'
+  return 'danger'
 }
 
-// Funzione per ricalcolare i risk score
 const recalculateRiskScores = async () => {
   recalculatingRiskScores.value = true
   try {
     const response = await api.recalculateAllRiskScores()
-    console.log('Risk scores ricalcolati:', response.data)
-    
-    // Ricarica i dati della dashboard
     await loadDashboardData()
-    
-    // Mostra messaggio di successo
     toast.add({
       severity: 'success',
       summary: t('common.messages.success'),
@@ -470,111 +308,40 @@ const recalculateRiskScores = async () => {
   }
 }
 
-// Watcher per reagire ai cambiamenti dei dati
-watch(() => stats.value, (newStats) => {
-  if (newStats && (newStats.type_stats || newStats.status_stats)) {
-    prepareChartData()
-  }
-}, { deep: true })
-
-// Funzione per caricare i dati della dashboard
 const loadDashboardData = async () => {
   try {
-    // Carica statistiche
-    const statsRes = await api.getDashboardStats()
-    stats.value = statsRes.data
-
-    // Carica asset a rischio
-    const riskyRes = await api.getRiskyAssets(5)
-    riskyAssets.value = Array.isArray(riskyRes.data) ? riskyRes.data : []
-
-    // Carica ultimi asset
-    const recentRes = await api.getAssets({ limit: 5 })
-    recentAssets.value = Array.isArray(recentRes.data) ? recentRes.data : []
-
-    // Prepara dati per i grafici
-    prepareChartData()
-    
-    // Carica summary per nuove feature
-    await loadSummaries()
-  } catch (error) {
-    console.error('Error loading dashboard data:', error.response?.data || error  )
-  }
-}
-
-// Funzione per caricare i summary
-const loadSummaries = async () => {
-  loadingSummaries.value = true
-  try {
-    const [reviewsRes, depsRes, vulnsRes, complianceRes] = await Promise.all([
-      api.getReviewsSummary().catch(() => ({ data: { overdue_count: 0, due_count: 0, overdue_assets: [], due_assets: [] } })),
-      api.getDependenciesSummary().catch(() => ({ data: { total_connections: 0, missing_dependencies_count: 0, critical_missing_count: 0 } })),
-      api.getVulnerabilitiesSummary().catch(() => ({ data: { critical_unpatched: 0, high_unpatched: 0, total_unpatched: 0 } })),
-      api.getComplianceSummary().catch(() => ({ data: { total_zones: 0, non_compliant_zones: 0, partial_compliant_zones: 0, compliant_zones: 0 } }))
+    // Load all data in parallel
+    const [
+      exposureRes,
+      reviewsRes,
+      depsRes,
+      complianceRes,
+      changesRes,
+      evidenceRes
+    ] = await Promise.all([
+      api.getExposureSummary().catch(() => ({ data: exposureData.value })),
+      api.getReviewsSummary().catch(() => ({ data: { overdue_count: 0, due_count: 0 } })),
+      api.getDependenciesSummary().catch(() => ({ data: { missing_dependencies_count: 0, critical_missing_count: 0 } })),
+      api.getComplianceSummary().catch(() => ({ data: complianceSummary.value })),
+      api.getRecentChanges(10).catch(() => ({ data: [] })),
+      api.getEvidenceMissing().catch(() => ({ data: { missing_evidence_count: 0 } }))
     ])
     
+    exposureData.value = exposureRes.data
     reviewsSummary.value = reviewsRes.data
     dependenciesSummary.value = depsRes.data
-    vulnerabilitiesSummary.value = vulnsRes.data
     complianceSummary.value = complianceRes.data
+    recentChanges.value = changesRes.data
+    evidenceMissing.value = evidenceRes.data.missing_evidence_count || 0
   } catch (error) {
-    console.error('Error loading summaries:', error)
-  } finally {
-    loadingSummaries.value = false
+    console.error('Error loading dashboard data:', error)
   }
 }
 
-// Load data
+// Load data on mount
 onMounted(async () => {
   await loadDashboardData()
 })
-
-const prepareChartData = () => {
-  // Incrementa la key per forzare il re-render
-  chartKey.value++
-  
-  // Grafico asset per tipo
-  if (stats.value.type_stats && Array.isArray(stats.value.type_stats) && stats.value.type_stats.length > 0) {
-    // Filtra solo i tipi con asset_count > 0
-    const validTypes = stats.value.type_stats.filter(t => t.asset_count > 0)
-    
-    if (validTypes.length > 0) {
-      assetTypeChartData.value = {
-        labels: validTypes.map(t => t.name),
-        datasets: [{
-          label: 'Asset per tipo',
-          data: validTypes.map(t => t.asset_count),
-          backgroundColor: [
-            '#42A5F5', '#66BB6A', '#FFA726', '#AB47BC', '#FF7043', 
-            '#26A69A', '#D4E157', '#FFCA28', '#8D6E63', '#789262'
-          ],
-          borderWidth: 2,
-          borderColor: '#fff'
-        }]
-      }
-    } else {
-      assetTypeChartData.value = { labels: [], datasets: [] }
-    }
-  } else {
-    assetTypeChartData.value = { labels: [], datasets: [] }
-  }
-
-  // Grafico asset per stato
-  if (stats.value.status_stats && Array.isArray(stats.value.status_stats) && stats.value.status_stats.length > 0) {
-    statusChartData.value = {
-      labels: stats.value.status_stats.map(s => s.name),
-      datasets: [{
-        label: t('dashboard.stats.totalAssets'),
-        data: stats.value.status_stats.map(s => s.count),
-        backgroundColor: stats.value.status_stats.map(s => s.color || '#42A5F5'),
-        borderWidth: 1,
-        borderColor: '#fff'
-      }]
-    }
-  } else {
-    statusChartData.value = { labels: [], datasets: [] }
-  }
-}
 </script>
 
 <style scoped>
@@ -613,320 +380,114 @@ const prepareChartData = () => {
   gap: 1rem;
 }
 
-.metrics-grid {
+.dashboard-section {
+  margin-bottom: 3rem;
+}
+
+.cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
-  margin-bottom: 2rem;
 }
 
-.metric-card {
-  background: white;
-  border-radius: 1rem;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-}
-
-.metric-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  color: white;
-}
-
-.total-assets .metric-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.critical-assets .metric-icon {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.risky-assets .metric-icon {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-}
-
-.recent-changes .metric-icon {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-}
-
-.metric-content {
-  flex: 1;
-}
-
-.metric-value {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #2c3e50;
-  line-height: 1;
-  margin-bottom: 0.5rem;
-}
-
-.metric-label {
-  color: #6c757d;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.charts-section {
-  margin-bottom: 2rem;
-}
-
-.chart-row {
+.change-section {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  grid-template-columns: 2fr 1fr;
   gap: 1.5rem;
 }
 
-.simple-card {
-  flex: 1;
-  min-width: 0;
+.change-card {
   background: white;
-  border-radius: 1rem;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  overflow: hidden;
 }
 
-.card-title {
-  padding: 1.5rem 1.5rem 1rem 1.5rem;
-  font-size: 1.2rem;
+.change-card-header h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
   font-weight: 600;
   color: #2c3e50;
-  border-bottom: 1px solid #f0f0f0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
 }
 
-.chart-container {
-  padding: 1rem;
-  min-height: 300px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.chart {
-  width: 100%;
-  height: 300px;
-  min-height: 300px;
-}
-
-
-
-.no-data {
-  text-align: center;
-  padding: 2rem;
+.change-card-subtitle {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
   color: #6c757d;
-  font-style: italic;
 }
 
-.tables-section {
-  margin-bottom: 2rem;
+.action-center {
+  margin-top: 3rem;
 }
 
-.table-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-  gap: 1.5rem;
-}
-
-.table-card {
+.action-center-card {
   background: white;
-  border-radius: 1rem;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
-.table-card :deep(.p-card-title) {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #2c3e50;
-  font-weight: 600;
+.action-center-card.success {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  border: 1px solid #c3e6cb;
 }
 
-.dashboard-table {
-  font-size: 0.9rem;
-}
-
-.asset-link {
-  color: #007bff;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.asset-link:hover {
-  text-decoration: underline;
-}
-
-.alerts-section {
-  margin-bottom: 2rem;
-}
-
-.alerts-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.alert-item {
+.action-center-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  font-weight: 500;
+  margin-bottom: 1rem;
 }
 
-.alert-item.warning {
+.action-center-header i {
+  font-size: 1.5rem;
+  color: #667eea;
+}
+
+.action-center-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.action-center-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.action-center-card.success .action-center-content {
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  color: #155724;
+  font-weight: 600;
+}
+
+.action-center-card.success .action-center-content i {
+  font-size: 1.5rem;
+}
+
+.alert-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.alert-badge.warning {
   background: #fff3cd;
   color: #856404;
   border: 1px solid #ffeaa7;
 }
 
-.alert-item.critical {
+.alert-badge.danger {
   background: #f8d7da;
   color: #721c24;
   border: 1px solid #f5c6cb;
 }
 
-.alert-item.success {
-  background: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
-}
-
-.alert-item i {
-  font-size: 1.2rem;
-}
-
-/* Feature Widgets Section */
-.feature-widgets-section {
-  margin-bottom: 2rem;
-}
-
-.widget-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-}
-
-.widget-content {
-  padding: 1.5rem;
-}
-
-.widget-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.widget-metric {
-  text-align: center;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 0.5rem;
-  transition: all 0.2s;
-}
-
-.widget-metric.has-issues {
-  background: #fff3cd;
-  border: 1px solid #ffc107;
-}
-
-.widget-metric.critical.has-issues {
-  background: #f8d7da;
-  border: 1px solid #dc3545;
-}
-
-.widget-metric.warning.has-issues {
-  background: #fff3cd;
-  border: 1px solid #ffc107;
-}
-
-.widget-metric-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #2c3e50;
-  line-height: 1;
-  margin-bottom: 0.5rem;
-}
-
-.widget-metric.has-issues .widget-metric-value {
-  color: #856404;
-}
-
-.widget-metric.critical.has-issues .widget-metric-value {
-  color: #721c24;
-}
-
-.widget-metric-label {
-  font-size: 0.85rem;
-  color: #6c757d;
-  font-weight: 500;
-}
-
-.widget-list {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #f0f0f0;
-}
-
-.widget-list-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 0.5rem;
-}
-
-.widget-list-item {
-  padding: 0.5rem 0;
-  font-size: 0.9rem;
-}
-
-.widget-info {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #f0f0f0;
-  text-align: center;
-  color: #6c757d;
-}
-
-.widget-loading {
-  padding: 2rem;
-  text-align: center;
-  color: #6c757d;
-}
-
-.widget-loading i {
-  font-size: 2rem;
-}
-
-.card-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.ml-auto {
-  margin-left: auto;
-}
-
-/* Responsive design */
 @media (max-width: 768px) {
   .dashboard {
     padding: 1rem;
@@ -942,21 +503,12 @@ const prepareChartData = () => {
     justify-content: center;
   }
   
-  .metrics-grid {
+  .cards-grid {
     grid-template-columns: 1fr;
   }
   
-  .chart-row,
-  .table-row {
+  .change-section {
     grid-template-columns: 1fr;
-  }
-  
-  .metric-card {
-    padding: 1.5rem;
-  }
-  
-  .metric-value {
-    font-size: 2rem;
   }
 }
 </style>

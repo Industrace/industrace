@@ -28,15 +28,15 @@ export function useConfirm() {
     } = options
 
     const defaultMessage = hardDelete 
-      ? t('common.confirmHardDelete', { name: itemName })
-      : t('common.confirmDelete', { name: itemName })
+      ? t('common.messages.confirmHardDelete', { name: itemName })
+      : t('common.messages.deleteConfirm', { name: itemName })
 
     confirmData.value = {
       type: 'delete',
       item,
       itemName,
       message: message || defaultMessage,
-      successMessage: successMessage || t('common.deleted'),
+      successMessage: successMessage || t('common.messages.deleted'),
       errorContext,
       onConfirm,
       hardDelete
@@ -91,7 +91,7 @@ export function useConfirm() {
       closeConfirmDialog()
     } catch (error) {
       const errorCode = error.response?.data?.error_code
-      const message = errorCode ? t(`errors.${errorCode}`) : t('errors.generic')
+      const message = errorCode ? (t(`core.${errorCode}`) !== `core.${errorCode}` ? t(`core.${errorCode}`) : t('core.generic')) : t('core.generic')
       const fullMessage = errorContext ? `${errorContext}: ${message}` : message
 
       toast.add({

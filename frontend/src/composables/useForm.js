@@ -122,11 +122,12 @@ export function useForm(initialData = {}, validationSchema = null) {
            validationErrors.forEach(error => {
              const field = error.field.split(' -> ').pop() // Prendi solo l'ultimo campo
              // Se abbiamo un error_code, usiamo la traduzione
-             if (error.error_code) {
-               errors.value[field] = t(`errors.${error.error_code}`)
-             } else {
-               errors.value[field] = error.message || t('errors.generic')
-             }
+            if (error.error_code) {
+              const translated = t(`core.${error.error_code}`)
+              errors.value[field] = translated !== `core.${error.error_code}` ? translated : error.message || t('core.generic')
+            } else {
+              errors.value[field] = error.message || t('core.generic')
+            }
            })
          } else if (err.response?.data?.errors) {
         errors.value = err.response.data.errors
@@ -137,11 +138,12 @@ export function useForm(initialData = {}, validationSchema = null) {
            const validationErrors = err.response.data.validation_errors
            const errorMessages = validationErrors.map(error => {
              // Se abbiamo un error_code, usiamo la traduzione
-             if (error.error_code) {
-               return `${error.field}: ${t(`errors.${error.error_code}`)}`
-             }
-             // Altrimenti usiamo il messaggio originale
-             return `${error.field}: ${error.message || t('errors.generic')}`
+            if (error.error_code) {
+              const translated = t(`core.${error.error_code}`)
+              return `${error.field}: ${translated !== `core.${error.error_code}` ? translated : error.message || t('core.generic')}`
+            }
+            // Altrimenti usiamo il messaggio originale
+            return `${error.field}: ${error.message || t('core.generic')}`
            }).join('\n')
 
            toast.add({
@@ -152,7 +154,8 @@ export function useForm(initialData = {}, validationSchema = null) {
            })
          } else {
         const errorCode = err.response?.data?.error_code
-        const message = errorCode ? t(`errors.${errorCode}`) : t('errors.generic')
+        const translated = errorCode ? t(`core.${errorCode}`) : null
+        const message = translated && translated !== `core.${errorCode}` ? translated : (errorCode ? t('core.generic') : t('core.generic'))
         const fullMessage = errorContext ? `${errorContext}: ${message}` : message
 
         toast.add({

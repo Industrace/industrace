@@ -533,8 +533,8 @@ async function saveLocation(data) {
 
 async function deleteLocation(id) {
   await confirmDelete(
-    t('common.actions.confirmDelete'),
-    t('common.actions.warningDelete'),
+    t('common.messages.deleteConfirm'),
+    t('common.messages.deleteWarning'),
     async () => {
       await execute(async () => {
         await api.deleteLocation(id)

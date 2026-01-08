@@ -41,6 +41,7 @@
 
         <div class="mb-3 flex justify-content-end">
           <Button 
+            v-if="canWrite('security_zones')"
             :label="t('isa62443.securityZones.addAsset')" 
             icon="pi pi-plus" 
             @click="showAddAssetDialog = true"
@@ -118,6 +119,7 @@
                   :title="t('common.actions.view')"
                 />
                 <Button 
+                  v-if="canWrite('security_zones')"
                   icon="pi pi-times" 
                   class="p-button-text p-button-sm p-button-danger"
                   @click="removeAssetFromZone(data.id)"
@@ -139,6 +141,7 @@
 
         <div class="mb-3 flex justify-content-end">
           <Button 
+            v-if="canWrite('compliance')"
             :label="t('isa62443.securityZones.addConduit')" 
             icon="pi pi-plus" 
             @click="showAddConduitDialog = true"
@@ -406,6 +409,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { usePermissions } from '@/composables/usePermissions'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import TabView from 'primevue/tabview'
@@ -426,6 +430,7 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const { canWrite, canDelete } = usePermissions()
 
 const zone = ref(null)
 const activeTabIndex = ref(0) // 0=Assets, 1=Conduits, 2=Compliance

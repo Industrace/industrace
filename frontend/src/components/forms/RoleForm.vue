@@ -76,35 +76,155 @@
         </div>
 
         <!-- Direct permissions -->
-        <div class="permissions-grid">
-          <div v-for="(section, sectionKey) in permissionSections" :key="sectionKey" class="permission-section">
-            <div class="permission-header">
-              <h4>{{ t(`roles.permissions.${sectionKey}`) }}</h4>
-              <div class="permission-summary">
-                <Tag 
-                  :value="getPermissionLabel(form.permissions[sectionKey] || 0)" 
-                  :severity="getPermissionSeverity(form.permissions[sectionKey] || 0)"
-                />
-                <span v-if="isInherited(sectionKey)" class="inherited-badge">
-                  <i class="pi pi-arrow-down"></i> {{ t('roles.strings.inherited') }}
-                </span>
+        <div class="permissions-container">
+          <!-- Categoria: Inventario -->
+          <div class="permission-category">
+            <h4 class="category-title">{{ t('roles.categories.inventory') }}</h4>
+            <div class="permissions-grid">
+              <div v-for="(section, sectionKey) in getSectionsByCategory('inventory')" :key="sectionKey" class="permission-section">
+                <div class="permission-header">
+                  <h4>{{ t(`roles.permissions.${sectionKey}`) }}</h4>
+                  <div class="permission-summary">
+                    <Tag 
+                      :value="getPermissionLabel(form.permissions[sectionKey] || 0)" 
+                      :severity="getPermissionSeverity(form.permissions[sectionKey] || 0)"
+                    />
+                    <span v-if="isInherited(sectionKey)" class="inherited-badge">
+                      <i class="pi pi-arrow-down"></i> {{ t('roles.strings.inherited') }}
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="permission-levels">
+                  <div v-for="level in section.levels" :key="level.value" class="permission-level">
+                    <RadioButton 
+                      :id="`${sectionKey}_${level.value}`"
+                      :value="level.value"
+                      v-model="form.permissions[sectionKey]"
+                      :disabled="isInherited(sectionKey) && level.value <= inheritedLevel(sectionKey)"
+                    />
+                    <label :for="`${sectionKey}_${level.value}`" class="ml-2">
+                      {{ level.label }}
+                    </label>
+                    <small v-if="level.description" class="level-description">
+                      {{ level.description }}
+                    </small>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div class="permission-levels">
-              <div v-for="level in section.levels" :key="level.value" class="permission-level">
-                <RadioButton 
-                  :id="`${sectionKey}_${level.value}`"
-                  :value="level.value"
-                  v-model="form.permissions[sectionKey]"
-                  :disabled="isInherited(sectionKey) && level.value <= inheritedLevel(sectionKey)"
-                />
-                <label :for="`${sectionKey}_${level.value}`" class="ml-2">
-                  {{ level.label }}
-                </label>
-                <small v-if="level.description" class="level-description">
-                  {{ level.description }}
-                </small>
+          </div>
+
+          <!-- Categoria: Gestione Asset -->
+          <div class="permission-category">
+            <h4 class="category-title">{{ t('roles.categories.asset_management') }}</h4>
+            <div class="permissions-grid">
+              <div v-for="(section, sectionKey) in getSectionsByCategory('asset_management')" :key="sectionKey" class="permission-section">
+                <div class="permission-header">
+                  <h4>{{ t(`roles.permissions.${sectionKey}`) }}</h4>
+                  <div class="permission-summary">
+                    <Tag 
+                      :value="getPermissionLabel(form.permissions[sectionKey] || 0)" 
+                      :severity="getPermissionSeverity(form.permissions[sectionKey] || 0)"
+                    />
+                    <span v-if="isInherited(sectionKey)" class="inherited-badge">
+                      <i class="pi pi-arrow-down"></i> {{ t('roles.strings.inherited') }}
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="permission-levels">
+                  <div v-for="level in section.levels" :key="level.value" class="permission-level">
+                    <RadioButton 
+                      :id="`${sectionKey}_${level.value}`"
+                      :value="level.value"
+                      v-model="form.permissions[sectionKey]"
+                      :disabled="isInherited(sectionKey) && level.value <= inheritedLevel(sectionKey)"
+                    />
+                    <label :for="`${sectionKey}_${level.value}`" class="ml-2">
+                      {{ level.label }}
+                    </label>
+                    <small v-if="level.description" class="level-description">
+                      {{ level.description }}
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Categoria: Compliance -->
+          <div class="permission-category">
+            <h4 class="category-title">{{ t('roles.categories.compliance') }}</h4>
+            <div class="permissions-grid">
+              <div v-for="(section, sectionKey) in getSectionsByCategory('compliance')" :key="sectionKey" class="permission-section">
+                <div class="permission-header">
+                  <h4>{{ t(`roles.permissions.${sectionKey}`) }}</h4>
+                  <div class="permission-summary">
+                    <Tag 
+                      :value="getPermissionLabel(form.permissions[sectionKey] || 0)" 
+                      :severity="getPermissionSeverity(form.permissions[sectionKey] || 0)"
+                    />
+                    <span v-if="isInherited(sectionKey)" class="inherited-badge">
+                      <i class="pi pi-arrow-down"></i> {{ t('roles.strings.inherited') }}
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="permission-levels">
+                  <div v-for="level in section.levels" :key="level.value" class="permission-level">
+                    <RadioButton 
+                      :id="`${sectionKey}_${level.value}`"
+                      :value="level.value"
+                      v-model="form.permissions[sectionKey]"
+                      :disabled="isInherited(sectionKey) && level.value <= inheritedLevel(sectionKey)"
+                    />
+                    <label :for="`${sectionKey}_${level.value}`" class="ml-2">
+                      {{ level.label }}
+                    </label>
+                    <small v-if="level.description" class="level-description">
+                      {{ level.description }}
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Categoria: Sistema -->
+          <div class="permission-category">
+            <h4 class="category-title">{{ t('roles.categories.system') }}</h4>
+            <div class="permissions-grid">
+              <div v-for="(section, sectionKey) in getSectionsByCategory('system')" :key="sectionKey" class="permission-section">
+                <div class="permission-header">
+                  <h4>{{ t(`roles.permissions.${sectionKey}`) }}</h4>
+                  <div class="permission-summary">
+                    <Tag 
+                      :value="getPermissionLabel(form.permissions[sectionKey] || 0)" 
+                      :severity="getPermissionSeverity(form.permissions[sectionKey] || 0)"
+                    />
+                    <span v-if="isInherited(sectionKey)" class="inherited-badge">
+                      <i class="pi pi-arrow-down"></i> {{ t('roles.strings.inherited') }}
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="permission-levels">
+                  <div v-for="level in section.levels" :key="level.value" class="permission-level">
+                    <RadioButton 
+                      :id="`${sectionKey}_${level.value}`"
+                      :value="level.value"
+                      v-model="form.permissions[sectionKey]"
+                      :disabled="isInherited(sectionKey) && level.value <= inheritedLevel(sectionKey)"
+                    />
+                    <label :for="`${sectionKey}_${level.value}`" class="ml-2">
+                      {{ level.label }}
+                    </label>
+                    <small v-if="level.description" class="level-description">
+                      {{ level.description }}
+                    </small>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -156,78 +276,54 @@ const form = ref({
 
 const parentRoleOptions = ref([])
 
-// Available permission sections with descriptions
+// Helper function per creare livelli standard
+const createStandardLevels = () => [
+  { value: 0, label: t('roles.permissions.none'), description: t('roles.permissions.noneDescription') },
+  { value: 1, label: t('roles.permissions.read'), description: t('roles.permissions.readDescription') },
+  { value: 2, label: t('roles.permissions.write'), description: t('roles.permissions.writeDescription') },
+  { value: 3, label: t('roles.permissions.delete'), description: t('roles.permissions.deleteDescription') }
+]
+
+// Available permission sections with descriptions, organizzate per categoria
 const permissionSections = {
-  users: {
-    levels: [
-      { value: 0, label: t('roles.permissions.none'), description: t('roles.permissions.noneDescription') },
-      { value: 1, label: t('roles.permissions.read'), description: t('roles.permissions.readDescription') },
-      { value: 2, label: t('roles.permissions.write'), description: t('roles.permissions.writeDescription') },
-      { value: 3, label: t('roles.permissions.delete'), description: t('roles.permissions.deleteDescription') }
-    ]
-  },
-  roles: {
-    levels: [
-      { value: 0, label: t('roles.permissions.none'), description: t('roles.permissions.noneDescription') },
-      { value: 1, label: t('roles.permissions.read'), description: t('roles.permissions.readDescription') },
-      { value: 2, label: t('roles.permissions.write'), description: t('roles.permissions.writeDescription') },
-      { value: 3, label: t('roles.permissions.delete'), description: t('roles.permissions.deleteDescription') }
-    ]
-  },
-  assets: {
-    levels: [
-      { value: 0, label: t('roles.permissions.none'), description: t('roles.permissions.noneDescription') },
-      { value: 1, label: t('roles.permissions.read'), description: t('roles.permissions.readDescription') },
-      { value: 2, label: t('roles.permissions.write'), description: t('roles.permissions.writeDescription') },
-      { value: 3, label: t('roles.permissions.delete'), description: t('roles.permissions.deleteDescription') },
-      { value: 4, label: t('roles.permissions.bulk'), description: t('roles.permissions.bulkDescription') }
-    ]
-  },
-  locations: {
-    levels: [
-      { value: 0, label: t('roles.permissions.none'), description: t('roles.permissions.noneDescription') },
-      { value: 1, label: t('roles.permissions.read'), description: t('roles.permissions.readDescription') },
-      { value: 2, label: t('roles.permissions.write'), description: t('roles.permissions.writeDescription') },
-      { value: 3, label: t('roles.permissions.delete'), description: t('roles.permissions.deleteDescription') }
-    ]
-  },
-  sites: {
-    levels: [
-      { value: 0, label: t('roles.permissions.none'), description: t('roles.permissions.noneDescription') },
-      { value: 1, label: t('roles.permissions.read'), description: t('roles.permissions.readDescription') },
-      { value: 2, label: t('roles.permissions.write'), description: t('roles.permissions.writeDescription') },
-      { value: 3, label: t('roles.permissions.delete'), description: t('roles.permissions.deleteDescription') }
-    ]
-  },
-  suppliers: {
-    levels: [
-      { value: 0, label: t('roles.permissions.none'), description: t('roles.permissions.noneDescription') },
-      { value: 1, label: t('roles.permissions.read'), description: t('roles.permissions.readDescription') },
-      { value: 2, label: t('roles.permissions.write'), description: t('roles.permissions.writeDescription') },
-      { value: 3, label: t('roles.permissions.delete'), description: t('roles.permissions.deleteDescription') }
-    ]
-  },
-  manufacturers: {
-    levels: [
-      { value: 0, label: t('roles.permissions.none'), description: t('roles.permissions.noneDescription') },
-      { value: 1, label: t('roles.permissions.read'), description: t('roles.permissions.readDescription') },
-      { value: 2, label: t('roles.permissions.write'), description: t('roles.permissions.writeDescription') },
-      { value: 3, label: t('roles.permissions.delete'), description: t('roles.permissions.deleteDescription') }
-    ]
-  },
-  contacts: {
-    levels: [
-      { value: 0, label: t('roles.permissions.none'), description: t('roles.permissions.noneDescription') },
-      { value: 1, label: t('roles.permissions.read'), description: t('roles.permissions.readDescription') },
-      { value: 2, label: t('roles.permissions.write'), description: t('roles.permissions.writeDescription') },
-      { value: 3, label: t('roles.permissions.delete'), description: t('roles.permissions.deleteDescription') }
-    ]
-  },
+  // Inventario
+  assets: { levels: [...createStandardLevels(), { value: 4, label: t('roles.permissions.bulk'), description: t('roles.permissions.bulkDescription') }], category: 'inventory' },
+  sites: { levels: createStandardLevels(), category: 'inventory' },
+  areas: { levels: createStandardLevels(), category: 'inventory' },
+  locations: { levels: createStandardLevels(), category: 'inventory' },
+  suppliers: { levels: createStandardLevels(), category: 'inventory' },
+  contacts: { levels: createStandardLevels(), category: 'inventory' },
+  manufacturers: { levels: createStandardLevels(), category: 'inventory' },
+  asset_types: { levels: createStandardLevels(), category: 'inventory' },
+  asset_statuses: { levels: createStandardLevels(), category: 'inventory' },
+  asset_documents: { levels: createStandardLevels(), category: 'inventory' },
+  asset_photos: { levels: createStandardLevels(), category: 'inventory' },
+  locations_floormap: { levels: createStandardLevels(), category: 'inventory' },
+  
+  // Gestione Asset
+  vulnerabilities: { levels: createStandardLevels(), category: 'asset_management' },
+  asset_reviews: { levels: createStandardLevels(), category: 'asset_management' },
+  asset_dependencies: { levels: createStandardLevels(), category: 'asset_management' },
+  
+  // Compliance
+  compliance: { levels: createStandardLevels(), category: 'compliance' },
+  security_zones: { levels: createStandardLevels(), category: 'compliance' },
+  evidence: { levels: createStandardLevels(), category: 'compliance' },
+  
+  // Sistema
+  users: { levels: createStandardLevels(), category: 'system' },
+  roles: { levels: createStandardLevels(), category: 'system' },
+  audit_logs: { levels: createStandardLevels(), category: 'system' },
+  utility: { levels: createStandardLevels(), category: 'system' },
+  notifications: { levels: createStandardLevels(), category: 'system' },
+  sso: { levels: createStandardLevels(), category: 'system' },
+  api_keys: { levels: createStandardLevels(), category: 'system' },
   reset_user_password: {
     levels: [
       { value: 0, label: t('roles.permissions.none'), description: t('roles.permissions.noneDescription') },
       { value: 1, label: t('roles.permissions.resetPassword'), description: t('roles.permissions.resetPasswordDescription') }
-    ]
+    ],
+    category: 'system'
   }
 }
 
@@ -303,6 +399,17 @@ const getPermissionSeverity = (level) => {
   if (level === 3) return 'danger'
   if (level === 4) return 'success'
   return 'secondary'
+}
+
+// Get sections by category
+const getSectionsByCategory = (category) => {
+  const result = {}
+  Object.entries(permissionSections).forEach(([key, section]) => {
+    if (section.category === category) {
+      result[key] = section
+    }
+  })
+  return result
 }
 
 // Watch to update the form when a role is edited
@@ -399,6 +506,27 @@ onMounted(() => {
 .section-name {
   font-weight: 500;
   flex: 1;
+}
+
+.permissions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.permission-category {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.category-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--surface-border);
 }
 
 .permissions-grid {

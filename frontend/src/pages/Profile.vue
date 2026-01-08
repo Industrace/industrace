@@ -147,7 +147,7 @@
         </Card>
       </div>
 
-      <!-- Impostazioni future -->
+      <!-- Impostazioni -->
       <div class="col-12">
         <Card>
           <template #title>
@@ -157,9 +157,20 @@
             </div>
           </template>
           <template #content>
-            <div class="text-center p-4">
-              <i class="pi pi-info-circle text-2xl text-blue-500 mb-2"></i>
-              <p class="text-gray-600">{{ t('profile.strings.settingsComingSoon') }}</p>
+            <div class="p-fluid">
+              <div class="field">
+                <div class="flex align-items-center justify-content-between">
+                  <div class="flex flex-column gap-1">
+                    <label class="block text-sm font-medium">{{ t('profile.fields.notificationsEnabled') }}</label>
+                    <small class="text-color-secondary">{{ t('profile.strings.notificationsEnabledHelp') }}</small>
+                  </div>
+                  <InputSwitch 
+                    v-model="user.notifications_enabled" 
+                    @update:modelValue="updateNotificationsPreference"
+                    :loading="updatingNotifications"
+                  />
+                </div>
+              </div>
             </div>
           </template>
         </Card>
@@ -179,6 +190,7 @@ import api from '../api/api'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Password from 'primevue/password'
+import InputSwitch from 'primevue/inputswitch'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -187,6 +199,7 @@ const { loading, execute } = useApi()
 // Data
 const user = ref({})
 const resetting = ref(false)
+const updatingNotifications = ref(false)
 
 // Password form
 const passwordForm = ref({
@@ -286,6 +299,33 @@ function clearPasswordForm() {
     confirmPassword: ''
   }
   clearPasswordErrors()
+}
+
+async function updateNotificationsPreference(enabled) {
+  updatingNotifications.value = true
+  try {
+    await execute(async () => {
+      const response = await api.updateNotificationsPreference(enabled)
+      // Update local user state with response
+      if (response.data) {
+        user.value.notifications_enabled = response.data.notifications_enabled
+      }
+      toast.add({
+        severity: 'success',
+        summary: t('common.messages.success'),
+        detail: t('profile.strings.notificationsUpdated'),
+        life: 3000
+      })
+    }, {
+      errorContext: t('profile.strings.notificationsUpdateError')
+    })
+  } catch (error) {
+    // Revert the switch if update failed
+    user.value.notifications_enabled = !enabled
+    console.error('Error updating notifications preference:', error)
+  } finally {
+    updatingNotifications.value = false
+  }
 }
 
 async function fetchUserProfile() {

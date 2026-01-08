@@ -254,9 +254,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import Card from 'primevue/card'
 import DataTable from 'primevue/datatable'
@@ -271,6 +271,7 @@ import api from '@/api/api'
 
 const { t } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const toast = useToast()
 
 const vulnerabilities = ref([])
@@ -316,8 +317,36 @@ async function fetchVulnerabilities() {
       skip: currentPage.value * rowsPerPage.value,
       limit: rowsPerPage.value
     }
-    if (filters.value.severity) params.severity = filters.value.severity
+    
+    // Handle severity filter - support multiple values from query string
+    if (filters.value.severity) {
+      params.severity = filters.value.severity
+    } else if (route.query.severity) {
+      // If filter is cleared but query param exists, use query param
+      const severityParam = Array.isArray(route.query.severity) ? route.query.severity[0] : route.query.severity
+      params.severity = severityParam
+    }
+    
     if (filters.value.source) params.source = filters.value.source
+    
+    // Date filters
+    if (filters.value.publishedFrom) {
+      // Convert Date to ISO string format
+      params.published_from = filters.value.publishedFrom.toISOString().split('T')[0]
+    }
+    if (filters.value.publishedTo) {
+      // Convert Date to ISO string format
+      params.published_to = filters.value.publishedTo.toISOString().split('T')[0]
+    }
+    
+    // CVSS score filters
+    if (filters.value.cvssMin !== null && filters.value.cvssMin !== undefined && filters.value.cvssMin !== '') {
+      params.cvss_min = parseFloat(filters.value.cvssMin)
+    }
+    if (filters.value.cvssMax !== null && filters.value.cvssMax !== undefined && filters.value.cvssMax !== '') {
+      params.cvss_max = parseFloat(filters.value.cvssMax)
+    }
+    
     if (globalFilter.value && globalFilter.value.trim()) {
       params.search = globalFilter.value.trim()
     }
@@ -401,6 +430,8 @@ function clearFilters() {
     cvssMax: null
   }
   globalFilter.value = ''
+  // Remove query parameters when clearing filters
+  router.replace({ query: {} })
   fetchVulnerabilities()
 }
 
@@ -441,10 +472,63 @@ function getSeveritySeverity(severity) {
   return severityMap[severity] || null
 }
 
+// Initialize filters from query parameters
+function initializeFiltersFromQuery() {
+  const query = route.query
+  
+  if (query.severity) {
+    // Handle comma-separated severity values (e.g., "critical,high")
+    const severityParam = Array.isArray(query.severity) ? query.severity[0] : query.severity
+    const severityValues = severityParam.split(',').map(v => v.trim())
+    
+    // If multiple values, we'll use the first one for the dropdown
+    // But we'll pass all values to the API
+    // For now, set the filter to show the first value, but we'll handle multiple in the API call
+    if (severityValues.length === 1) {
+      filters.value.severity = severityValues[0]
+    } else {
+      // For multiple values, we'll need to handle it differently
+      // Set to first value but store all for API call
+      filters.value.severity = severityValues[0]
+    }
+  }
+  
+  if (query.source) {
+    filters.value.source = Array.isArray(query.source) ? query.source[0] : query.source
+  }
+  
+  // Date filters
+  if (query.publishedFrom) {
+    const dateStr = Array.isArray(query.publishedFrom) ? query.publishedFrom[0] : query.publishedFrom
+    filters.value.publishedFrom = new Date(dateStr)
+  }
+  
+  if (query.publishedTo) {
+    const dateStr = Array.isArray(query.publishedTo) ? query.publishedTo[0] : query.publishedTo
+    filters.value.publishedTo = new Date(dateStr)
+  }
+  
+  // CVSS score filters
+  if (query.cvssMin) {
+    filters.value.cvssMin = parseFloat(Array.isArray(query.cvssMin) ? query.cvssMin[0] : query.cvssMin)
+  }
+  
+  if (query.cvssMax) {
+    filters.value.cvssMax = parseFloat(Array.isArray(query.cvssMax) ? query.cvssMax[0] : query.cvssMax)
+  }
+}
+
 onMounted(() => {
+  initializeFiltersFromQuery()
   fetchVulnerabilities()
   fetchStats()
 })
+
+// Watch for route query changes
+watch(() => route.query, () => {
+  initializeFiltersFromQuery()
+  fetchVulnerabilities()
+}, { deep: true })
 </script>
 
 <style scoped>

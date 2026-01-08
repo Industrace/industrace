@@ -2,6 +2,7 @@ import uuid
 from typing import List
 
 from fastapi import APIRouter, Depends, Request, Query, BackgroundTasks
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -23,7 +24,62 @@ router = APIRouter(
 
 
 @router.get("/me", response_model=UserRead)
-async def read_users_me(current_user: User = Depends(get_current_user)):
+async def read_users_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current user profile with tenant information"""
+    # Refresh user to ensure relationships are loaded
+    from sqlalchemy.orm import joinedload
+    user = db.query(User).options(
+        joinedload(User.tenant),
+        joinedload(User.role)
+    ).filter(User.id == current_user.id).first()
+    
+    if not user:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.USER_NOT_FOUND)
+    
+    # Create response dict with full_name
+    user_dict = {
+        "id": user.id,
+        "tenant_id": user.tenant_id,
+        "email": user.email,
+        "name": user.name,
+        "full_name": user.name,  # Set full_name from name
+        "role_id": user.role_id,
+        "role": user.role,
+        "tenant": user.tenant,
+        "is_active": user.is_active,
+        "notifications_enabled": user.notifications_enabled,
+        "created_at": user.created_at,
+        "last_login": user.last_login
+    }
+    
+    return user_dict
+
+
+class NotificationPreferenceUpdate(BaseModel):
+    notifications_enabled: bool
+
+
+@router.patch("/me/notifications", response_model=UserRead)
+@audit_log_action("update", "User", model_class=User)
+def update_notifications_preference(
+    preference: NotificationPreferenceUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update user's global notification preference"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    old_value = current_user.notifications_enabled
+    current_user.notifications_enabled = preference.notifications_enabled
+    db.commit()
+    db.refresh(current_user)
+    
+    logger.info(f"Updated notifications_enabled for user {current_user.id}: {old_value} -> {current_user.notifications_enabled}")
+    
     return current_user
 
 

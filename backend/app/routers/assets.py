@@ -2,7 +2,7 @@ import uuid
 from typing import List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
+from fastapi import APIRouter, Depends, Request, UploadFile, File, Form, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
@@ -91,6 +91,7 @@ def list_assets(
     business_criticality: Optional[str] = None,
     risk_score_min: Optional[float] = None,
     risk_score_max: Optional[float] = None,
+    has_critical_vulns: Optional[bool] = Query(None, description="Filter assets with critical/high vulnerabilities"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -128,11 +129,33 @@ def list_assets(
     if location_id:
         query = query.filter(Asset.location_id == location_id)
     if business_criticality:
-        query = query.filter(Asset.business_criticality == business_criticality)
+        # Supporta valori multipli separati da virgola (es: "critical,high")
+        criticality_values = [v.strip().lower() for v in business_criticality.split(',') if v.strip()]
+        if criticality_values:
+            query = query.filter(Asset.business_criticality.in_(criticality_values))
     if risk_score_min is not None:
         query = query.filter(Asset.risk_score >= risk_score_min)
     if risk_score_max is not None:
         query = query.filter(Asset.risk_score <= risk_score_max)
+    
+    if has_critical_vulns:
+        from app.models.vulnerability import AssetVulnerability, Vulnerability
+        from sqlalchemy import and_
+        # Subquery per trovare asset con vulnerabilità critiche/alte non patchate
+        assets_with_vulns_subquery = (
+            db.query(AssetVulnerability.asset_id)
+            .join(Vulnerability, AssetVulnerability.vulnerability_id == Vulnerability.id)
+            .filter(
+                and_(
+                    AssetVulnerability.tenant_id == current_user.tenant_id,
+                    AssetVulnerability.status.in_(["unreviewed", "acknowledged"]),
+                    Vulnerability.severity.in_(["critical", "high"])
+                )
+            )
+            .distinct()
+            .subquery()
+        )
+        query = query.filter(Asset.id.in_(db.query(assets_with_vulns_subquery.c.asset_id)))
 
     # Ricerca globale ottimizzata
     if global_search:
@@ -1225,7 +1248,21 @@ def update_asset(
     if not asset:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
+    # Store old risk score before update
+    old_risk_score = asset.risk_score
+    
+    # Check if risk-affecting fields are being updated
+    risk_affecting_fields = {
+        'business_criticality', 'physical_access_ease', 'remote_access', 
+        'remote_access_type', 'purdue_level'
+    }
+    update_dict = asset_update.dict(exclude_unset=True)
+    risk_fields_changed = any(field in update_dict for field in risk_affecting_fields)
+    
     result = crud_assets.update_asset(db, asset_id, asset_update, current_user.tenant_id)
+    
+    # Refresh asset to get updated values
+    db.refresh(result)
     
     # Invalida cache dashboard dopo aggiornamento asset
     from app.services.dashboard_cache import invalidate_dashboard_cache
@@ -1239,6 +1276,71 @@ def update_asset(
             asset_update.model is not None or 
             asset_update.firmware_version is not None):
             VulnerabilityAutoMatcher.match_asset_async(result.id, current_user.tenant_id)
+    
+    # Recalculate risk if risk-affecting fields changed
+    if risk_fields_changed:
+        try:
+            from app.services.risk_scoring import CompositeRiskScoringEngine
+            risk_engine = CompositeRiskScoringEngine()
+            breakdown = risk_engine.calculate(result)
+            new_risk_score = breakdown["final_score"]
+            
+            if new_risk_score is not None:
+                result.risk_score = new_risk_score
+                result.last_risk_assessment = datetime.utcnow()
+                db.commit()
+                db.refresh(result)
+                
+                # Check if risk changed significantly and send notification
+                # The notification service will filter based on user preferences (severity_min)
+                should_notify = False
+                if old_risk_score is None:
+                    # First risk calculation - notify if risk is present
+                    should_notify = True
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"Asset {asset_id}: First risk calculation, risk_score={new_risk_score}, will notify")
+                elif old_risk_score is not None:
+                    # Check for significant change (>= 2 points increase)
+                    if new_risk_score - old_risk_score >= 2:
+                        should_notify = True
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.info(f"Asset {asset_id}: Significant risk increase ({old_risk_score} -> {new_risk_score}), will notify")
+                    # Also notify if crossing threshold (e.g., from < 7 to >= 7)
+                    elif (old_risk_score < 7 and new_risk_score >= 7) or (old_risk_score >= 7 and new_risk_score < 7):
+                        should_notify = True
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.info(f"Asset {asset_id}: Risk crossed threshold ({old_risk_score} -> {new_risk_score}), will notify")
+                    # Also notify if risk increases and is already high (>= 7)
+                    # This ensures users get notified even for smaller increases if risk is already high
+                    elif new_risk_score >= 7 and new_risk_score > old_risk_score:
+                        should_notify = True
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.info(f"Asset {asset_id}: Risk increased while already high ({old_risk_score} -> {new_risk_score}), will notify")
+                
+                if should_notify:
+                    # Determine risk level for notification
+                    risk_level = "high" if new_risk_score >= 7 else ("medium" if new_risk_score >= 4 else "low")
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"Asset {asset_id}: Sending risk alert notification, risk_score={new_risk_score}, risk_level={risk_level}")
+                    from app.services.notification_service import NotificationService
+                    notifications = NotificationService.send_risk_alert(
+                        db, asset_id, new_risk_score, risk_level
+                    )
+                    logger.info(f"Asset {asset_id}: Risk alert notification process completed, {len(notifications)} notifications queued")
+                else:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.debug(f"Asset {asset_id}: Risk changed ({old_risk_score} -> {new_risk_score}) but notification conditions not met")
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error recalculating risk for asset {asset_id}: {e}", exc_info=True)
+            # Don't fail the update if risk calculation fails
     
     return result
 
@@ -1718,6 +1820,17 @@ def calculate_asset_risk(
     if not asset or asset.tenant_id != current_user.tenant_id:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
 
+    # Store old risk score to detect changes
+    old_risk_score = asset.risk_score
+    old_risk_level = None
+    if old_risk_score is not None:
+        if old_risk_score >= 7:
+            old_risk_level = "high"
+        elif old_risk_score >= 4:
+            old_risk_level = "medium"
+        else:
+            old_risk_level = "low"
+
     risk_engine = CompositeRiskScoringEngine()
     breakdown = risk_engine.calculate(asset)
     risk_score = breakdown["final_score"]
@@ -1734,11 +1847,44 @@ def calculate_asset_risk(
     else:
         risk_level = "low"
         risk_severity = "success"
+    
     # Update asset only if risk_score is calculated
     if risk_score is not None:
         asset.risk_score = risk_score
         asset.last_risk_assessment = datetime.utcnow()
         db.commit()
+        db.refresh(asset)
+        
+        # Check if risk changed significantly
+        # The notification service will filter based on user preferences (severity_min)
+        should_notify = False
+        if old_risk_score is None:
+            # First risk calculation - notify if risk is present
+            should_notify = True
+        elif old_risk_score is not None:
+            # Check for significant change (>= 2 points increase)
+            if risk_score - old_risk_score >= 2:
+                should_notify = True
+            # Also notify if crossing threshold (e.g., from < 7 to >= 7)
+            elif (old_risk_score < 7 and risk_score >= 7) or (old_risk_score >= 7 and risk_score < 7):
+                should_notify = True
+            # Or if risk level changed significantly
+            elif old_risk_level != risk_level and (old_risk_level == "low" and risk_level == "high"):
+                should_notify = True
+        
+        if should_notify:
+            # Send risk alert notification
+            # The notification service will check user preferences (severity_min) before sending
+            try:
+                from app.services.notification_service import NotificationService
+                NotificationService.send_risk_alert(
+                    db, asset_id, risk_score, risk_level
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error sending risk alert for asset {asset_id}: {e}", exc_info=True)
+    
     return RiskScoreResponse(
         asset_id=asset_id,
         risk_score=risk_score,

@@ -10,19 +10,64 @@
     "activeAssets": "Dispositivi Attivi",
     "inactiveAssets": "Dispositivi Inattivi"
   },
-  "charts": {
-    "assetsByStatus": "Dispositivi per Stato",
-    "assetsByType": "Dispositivi per Tipo",
-    "riskDistribution": "Distribuzione del Rischio"
+  "exposure": {
+    "title": "Dove sono esposto",
+    "description": "Sintesi del rischio sistemico",
+    "overallExposure": "Overall Exposure",
+    "overallExposureSubtitle": "Punteggio complessivo di esposizione",
+    "assetsAtRisk": "Assets at Risk",
+    "assetsAtRiskSubtitle": "Alto o critico rischio rilevato",
+    "criticalAssets": "Critical Assets",
+    "criticalAssetsSubtitle": "Asset con criticità elevata",
+    "assetsWithCriticalVulns": "Asset con Vulnerabilità Critiche",
+    "assetsWithCriticalVulnsSubtitle": "Asset con vulnerabilità critiche o alte non patchate",
+    "highRiskVulnerabilities": "High-Risk Vulnerabilities",
+    "highRiskVulnerabilitiesSubtitle": "Vulnerabilità critiche o alte non patchate"
+  },
+  "attention": {
+    "title": "Cosa devo guardare oggi",
+    "description": "Cose che richiedono un'azione umana",
+    "reviewsOverdue": "Reviews Scadute",
+    "reviewsOverdueSubtitle": "Asset con review in ritardo",
+    "complianceGaps": "Compliance Gaps",
+    "complianceGapsSubtitle": "Zone o asset non conformi",
+    "missingDependencies": "Missing Dependencies",
+    "missingDependenciesSubtitle": "Dipendenze mancanti non critiche",
+    "evidenceMissing": "Evidence Missing",
+    "evidenceMissingSubtitle": "Evidenze mancanti per capability"
+  },
+  "change": {
+    "title": "Cosa è cambiato di recente",
+    "description": "Contesto, non rischio diretto",
+    "recentChanges": "Recent Changes",
+    "recentChangesSubtitle": "Ultime modifiche agli asset",
+    "newlyAddedAssets": "Newly Added Assets",
+    "newlyAddedAssetsSubtitle": "Asset aggiunti o modificati",
+    "noRecentChanges": "Nessuna modifica recente",
+    "created": "Creato",
+    "updated": "Aggiornato",
+    "justNow": "Proprio ora",
+    "minutesAgo": "{count} minuti fa",
+    "hoursAgo": "{count} ore fa",
+    "daysAgo": "{count} giorni fa"
+  },
+  "posture": {
+    "title": "Sono difendibile?",
+    "description": "Vista manageriale / audit-friendly",
+    "securityPosture": "Security Posture",
+    "securityPostureSubtitle": "Stato complessivo della sicurezza",
+    "iec62443Coverage": "IEC 62443 Coverage",
+    "iec62443CoverageSubtitle": "Percentuale di zone valutate",
+    "nonCompliantZones": "Non-Compliant Zones",
+    "nonCompliantZonesSubtitle": "Zone non conformi",
+    "slGapSummary": "SL Gap Summary",
+    "slGapSummarySubtitle": "Gap tra SL-Target e SL-Achieved"
   },
   "actions": {
     "viewAllAssets": "Visualizza Tutti i Dispositivi",
     "recalculateRiskScores": "Ricalcola i Rischio",
-    "viewAll": "Visualizza Tutto"
-  },
-  "tables": {
-    "topRiskyAssets": "Dispositivi a Rischio",
-    "latestAssets": "Dispositivi Recenti"
+    "viewAll": "Visualizza Tutto",
+    "viewAssets": "Visualizza asset"
   },
   "widgets": {
     "assetReviews": "Review Asset",

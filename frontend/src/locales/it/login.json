@@ -42,6 +42,13 @@
         "demoMode": "Modalità Demo",
         "noAccount": "Non hai un account?",
         "signUp": "Registrati",
-        "submit": "Accedi"
+        "submit": "Accedi",
+        "loginWithMicrosoft": "Accedi con Microsoft",
+        "loginWithGoogle": "Accedi con Google",
+        "loginWithOkta": "Accedi con Okta",
+        "loginWithSSO": "Accedi con SSO"
+    },
+    "messages": {
+        "ssoError": "Errore durante il login SSO"
     }
 }

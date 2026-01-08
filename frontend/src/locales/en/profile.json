@@ -12,10 +12,12 @@
     "newPassword": "New Password",
     "confirmPassword": "Confirm Password",
     "settings": "Settings",
-    "resetPassword": "Reset Password"
+    "resetPassword": "Reset Password",
+    "notificationsEnabled": "Notifications Enabled"
   },
   "strings": {
     "userInfo": "User Information",
+    "security": "Security",
     "resetPasswordInfo": "Enter your current password and new password to update your login credentials.",
     "currentPasswordRequired": "Current password is required",
     "newPasswordRequired": "New password is required",
@@ -28,7 +30,10 @@
     "settingsComingSoon": "Additional settings will be available soon",
     "enterCurrentPassword": "Enter current password",
     "enterNewPassword": "Enter new password",
-    "confirmNewPassword": "Confirm new password"
+    "confirmNewPassword": "Confirm new password",
+    "notificationsEnabledHelp": "Enable or disable all email notifications. When disabled, you will not receive any notifications, regardless of specific preferences.",
+    "notificationsUpdated": "Notification preference updated successfully",
+    "notificationsUpdateError": "Error updating notification preference"
   },
   "messages": {
     "success": "Operation completed successfully",

@@ -5,7 +5,10 @@
         {{ t('notifications.sendTestEmail') }}
       </template>
       <template #content>
-        <div class="p-fluid">
+        <div v-if="loading" class="text-center p-4">
+          <ProgressSpinner />
+        </div>
+        <div v-else class="p-fluid">
           <div class="field">
             <label>{{ t('notifications.template') }} *</label>
             <Dropdown
@@ -15,7 +18,11 @@
               optionValue="value"
               :placeholder="t('notifications.selectTemplate')"
               class="w-full"
+              :disabled="loading"
             />
+            <small v-if="templateOptions.length === 0" class="text-color-secondary">
+              {{ t('notifications.noTemplates') }}
+            </small>
           </div>
           <div class="field">
             <label>{{ t('common.fields.email') }} *</label>
@@ -41,26 +48,53 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useToast } from 'primevue/usetoast'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 import InputText from 'primevue/inputtext'
+import ProgressSpinner from 'primevue/progressspinner'
 import api from '@/api/api'
 
 const emit = defineEmits(['test'])
 const { t } = useI18n()
+const toast = useToast()
 
 const selectedTemplate = ref(null)
 const testEmail = ref('')
 const sending = ref(false)
+const loading = ref(false)
+const templates = ref([])
 
-const templateOptions = [
-  { label: t('notifications.types.assetReviewDue'), value: 'asset_review_due' },
-  { label: t('notifications.types.assetReviewOverdue'), value: 'asset_review_overdue' },
-  { label: t('notifications.types.riskAlert'), value: 'risk_alert' }
-]
+const templateOptions = computed(() => {
+  return templates.value.map(template => ({
+    label: template.name || template.template_code,
+    value: template.template_code
+  }))
+})
+
+async function fetchTemplates() {
+  loading.value = true
+  try {
+    const res = await api.getNotificationTemplates()
+    templates.value = res.data || []
+  } catch (error) {
+    console.error('Error fetching templates:', error)
+    toast.add({ 
+      severity: 'error', 
+      summary: t('common.messages.error'), 
+      detail: t('notifications.errorLoadingTemplates') 
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchTemplates()
+})
 
 async function sendTest() {
   if (!selectedTemplate.value || !testEmail.value) return

@@ -107,12 +107,23 @@ class CompositeRiskScoringEngine:
                 vuln_break.append(translations["remote_access_unattended"])
         # Physical access ease
         phys = getattr(asset, "physical_access_ease", None)
-        if phys == "easy":
-            vuln_score += 3
-            vuln_break.append(translations["physical_access_easy"])
-        elif phys == "medium":
-            vuln_score += 1
-            vuln_break.append(translations["physical_access_medium"])
+        if phys:
+            phys_lower = phys.lower()
+            # New values: unrestricted, controlled, restricted
+            if phys_lower == "unrestricted" or phys_lower == "external":
+                vuln_score += 3
+                vuln_break.append(translations["physical_access_easy"])
+            elif phys_lower == "controlled" or phys_lower == "dmz":
+                vuln_score += 1
+                vuln_break.append(translations["physical_access_medium"])
+            # restricted or internal: no additional penalty
+            # Legacy values: easy, medium (for backward compatibility)
+            elif phys_lower == "easy":
+                vuln_score += 3
+                vuln_break.append(translations["physical_access_easy"])
+            elif phys_lower == "medium":
+                vuln_score += 1
+                vuln_break.append(translations["physical_access_medium"])
         elif phys is None:
             missing.append("physical_access_ease")
         # Purdue "inappropriato"
@@ -152,13 +163,34 @@ class CompositeRiskScoringEngine:
                     unpatched_vulns = crud_vulns.get_unpatched_vulnerabilities(
                         db, asset.id, asset.tenant_id
                     )
-                    if unpatched_vulns:
+                    # Additional safety check: explicitly filter out any vulnerabilities that shouldn't be considered
+                    # The function should already filter, but we double-check here for safety
+                    # Only include: unreviewed, acknowledged
+                    # Exclude: patched, mitigated, not_applicable, and any other states
+                    active_vulns = [
+                        v for v in unpatched_vulns
+                        if hasattr(v, 'status') and v.status and v.status.lower() in ["unreviewed", "acknowledged"]
+                    ]
+                    # Debug: log if we found any vulnerabilities with wrong status (should never happen)
+                    excluded_vulns = [
+                        v for v in unpatched_vulns
+                        if v not in active_vulns
+                    ]
+                    if excluded_vulns:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        for v in excluded_vulns:
+                            logger.warning(
+                                f"Asset {asset.id}: Excluded vulnerability {v.id} with status '{v.status}' "
+                                f"from risk calculation (should not have been returned by get_unpatched_vulnerabilities)"
+                            )
+                    if active_vulns:
                         critical_vulns = [
-                            v for v in unpatched_vulns
+                            v for v in active_vulns
                             if v.vulnerability and v.vulnerability.severity == 'critical'
                         ]
                         high_vulns = [
-                            v for v in unpatched_vulns
+                            v for v in active_vulns
                             if v.vulnerability and v.vulnerability.severity == 'high'
                         ]
                         
@@ -181,7 +213,7 @@ class CompositeRiskScoringEngine:
                         # CVSS score impact
                         cvss_scores = [
                             v.vulnerability.cvss_v3_score or v.vulnerability.cvss_v2_score or 0.0
-                            for v in unpatched_vulns
+                            for v in active_vulns
                             if v.vulnerability
                         ]
                         if cvss_scores:

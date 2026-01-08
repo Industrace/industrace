@@ -61,6 +61,8 @@ import itVulnerabilities from './it/vulnerabilities.json'
 import enVulnerabilities from './en/vulnerabilities.json'
 import itSSO from './it/sso.json'
 import enSSO from './en/sso.json'
+import itCore from './it/core.json'
+import enCore from './en/core.json'
 
 // Funzione per appiattire gli oggetti annidati
 const flattenObject = (obj, prefix = '') => {
@@ -130,7 +132,8 @@ const messages = {
     isa62443: itISA62443,
     assetDependencies: itAssetDependencies,
     vulnerabilities: itVulnerabilities,
-    sso: itSSO
+    sso: itSSO,
+    core: itCore
   }),
   en: flattenObject({
     common: enCommon,
@@ -161,7 +164,8 @@ const messages = {
     isa62443: enISA62443,
     assetDependencies: enAssetDependencies,
     vulnerabilities: enVulnerabilities,
-    sso: enSSO
+    sso: enSSO,
+    core: enCore
   })
 }
 

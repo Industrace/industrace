@@ -43,6 +43,10 @@
     "success": "Login successful",
     "email": "Email",
     "password": "Password",
-    "submit": "Accedi"
+    "submit": "Sign In",
+    "loginWithMicrosoft": "Sign in with Microsoft",
+    "loginWithGoogle": "Sign in with Google",
+    "loginWithOkta": "Sign in with Okta",
+    "loginWithSSO": "Sign in with SSO"
   }
 }

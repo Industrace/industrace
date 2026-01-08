@@ -239,8 +239,8 @@ async function handleFormSubmit(formData) {
 
 async function deleteArea(id) {
   await confirmDelete(
-    t('common.messages.confirmDelete'),
-    t('common.messages.warningDelete'),
+    t('common.messages.deleteConfirm'),
+    t('common.messages.deleteConfirm'),
     async () => {
       await execute(async () => {
         await api.deleteArea(id)
