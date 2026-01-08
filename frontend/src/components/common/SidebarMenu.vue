@@ -77,10 +77,9 @@ const menuSections = computed(() => {
 
   // Sezione ISA/IEC 62443
   const isa62443Items = []
-  if (canRead('assets')) isa62443Items.push({ label: t('menu.navigation.securityZones'), icon: 'pi-shield', to: '/security-zones' })
-  if (canRead('assets')) isa62443Items.push({ label: t('menu.navigation.conduits'), icon: 'pi-link', to: '/conduits' })
-  if (canRead('assets')) isa62443Items.push({ label: t('menu.navigation.compliance'), icon: 'pi-check-circle', to: '/compliance' })
-  if (canRead('assets')) isa62443Items.push({ label: t('menu.navigation.vulnerabilities'), icon: 'pi-exclamation-triangle', to: '/vulnerabilities' })
+  if (canRead('security_zones')) isa62443Items.push({ label: t('menu.navigation.securityZones'), icon: 'pi-shield', to: '/security-zones' })
+  if (canRead('compliance')) isa62443Items.push({ label: t('menu.navigation.conduits'), icon: 'pi-link', to: '/conduits' })
+  if (canRead('compliance')) isa62443Items.push({ label: t('menu.navigation.compliance'), icon: 'pi-check-circle', to: '/compliance' })
   
   if (isa62443Items.length > 0) {
     sections.push({
@@ -91,7 +90,8 @@ const menuSections = computed(() => {
 
   // Sezione Management
   const managementItems = []
-  if (canRead('assets')) managementItems.push({ label: t('menu.navigation.assetReviews'), icon: 'pi-calendar-check', to: '/asset-reviews' })
+  if (canRead('asset_reviews')) managementItems.push({ label: t('menu.navigation.assetReviews'), icon: 'pi-calendar', to: '/asset-reviews' })
+  if (canRead('vulnerabilities')) managementItems.push({ label: t('menu.navigation.vulnerabilities'), icon: 'pi-exclamation-triangle', to: '/vulnerabilities' })
   if (canRead('asset_types')) managementItems.push({ label: t('menu.navigation.assettypes'), icon: 'pi-tags', to: '/asset-types' })
   if (canRead('asset_statuses')) managementItems.push({ label: t('menu.navigation.assetstatuses'), icon: 'pi-list', to: '/asset-statuses' })
   
@@ -108,6 +108,7 @@ const menuSections = computed(() => {
   const utilityItems = []
   utilityItems.push({ label: t('menu.navigation.networkMap'), icon: 'pi-sitemap', to: '/network-map' }) // Mappa di rete
   utilityItems.push({ label: t('menu.navigation.profile'), icon: 'pi-user', to: '/profile' }) // Profilo sempre visibile
+  if (canRead('notifications')) utilityItems.push({ label: t('menu.navigation.notifications'), icon: 'pi-bell', to: '/notifications' })
   if (canRead('utility')) utilityItems.push({ label: t('menu.navigation.pcap'), icon: 'pi-upload', to: '/utility' })
   if (canRead('audit_logs')) utilityItems.push({ label: t('menu.navigation.auditLogs'), icon: 'pi-history', to: '/audit-logs' })
   

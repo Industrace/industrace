@@ -42,6 +42,10 @@ def get_vulnerabilities(
     manufacturer: Optional[str] = None,
     source: Optional[str] = None,
     search: Optional[str] = None,
+    published_from: Optional[str] = None,
+    published_to: Optional[str] = None,
+    cvss_min: Optional[float] = None,
+    cvss_max: Optional[float] = None,
     sort_field: Optional[str] = None,
     sort_order: Optional[str] = "desc"
 ) -> Dict[str, Any]:
@@ -56,13 +60,19 @@ def get_vulnerabilities(
         base_query = base_query.filter(Vulnerability.cve_id.ilike(f"%{cve_id}%"))
     
     if severity:
-        base_query = base_query.filter(Vulnerability.severity == severity)
+        # Support multiple severity values separated by comma (e.g., "critical,high")
+        severity_values = [v.strip().lower() for v in severity.split(',') if v.strip()]
+        if severity_values:
+            base_query = base_query.filter(Vulnerability.severity.in_(severity_values))
     
     if manufacturer:
-        # JSONB contains check - search if array contains the manufacturer name (case-insensitive)
-        # Convert JSONB array to text and search case-insensitively
+        # JSONB array contains check - search if array contains the manufacturer name (case-insensitive)
         # affected_manufacturers is a JSONB array like ["Siemens", "Schneider Electric"]
+        # Use JSONB @> operator with case-insensitive text search
+        # Convert manufacturer to lowercase for case-insensitive matching
         manufacturer_lower = manufacturer.lower()
+        # Check if any element in the JSONB array contains the manufacturer (case-insensitive)
+        # Using text-based search on the string representation of the JSONB array
         base_query = base_query.filter(
             func.lower(
                 func.cast(Vulnerability.affected_manufacturers, sa.String)
@@ -71,6 +81,62 @@ def get_vulnerabilities(
     
     if source:
         base_query = base_query.filter(Vulnerability.source == source)
+    
+    # Date filters
+    if published_from:
+        from datetime import datetime
+        try:
+            # Try ISO format first (with time)
+            try:
+                published_from_date = datetime.fromisoformat(published_from.replace('Z', '+00:00'))
+            except ValueError:
+                # Fall back to date-only format (YYYY-MM-DD)
+                published_from_date = datetime.strptime(published_from, '%Y-%m-%d')
+            base_query = base_query.filter(Vulnerability.published_date >= published_from_date)
+        except (ValueError, AttributeError):
+            pass  # Ignore invalid date format
+    
+    if published_to:
+        from datetime import datetime
+        try:
+            # Try ISO format first (with time)
+            try:
+                published_to_date = datetime.fromisoformat(published_to.replace('Z', '+00:00'))
+            except ValueError:
+                # Fall back to date-only format (YYYY-MM-DD)
+                published_to_date = datetime.strptime(published_to, '%Y-%m-%d')
+            # For published_to, we want to include the entire day, so set time to end of day
+            if published_to_date.hour == 0 and published_to_date.minute == 0 and published_to_date.second == 0:
+                from datetime import timedelta
+                published_to_date = published_to_date + timedelta(days=1) - timedelta(seconds=1)
+            base_query = base_query.filter(Vulnerability.published_date <= published_to_date)
+        except (ValueError, AttributeError):
+            pass  # Ignore invalid date format
+    
+    # CVSS score filters
+    if cvss_min is not None:
+        # Use cvss_v3_score if available, otherwise cvss_v2_score
+        base_query = base_query.filter(
+            or_(
+                Vulnerability.cvss_v3_score >= cvss_min,
+                and_(
+                    Vulnerability.cvss_v3_score.is_(None),
+                    Vulnerability.cvss_v2_score >= cvss_min
+                )
+            )
+        )
+    
+    if cvss_max is not None:
+        # Use cvss_v3_score if available, otherwise cvss_v2_score
+        base_query = base_query.filter(
+            or_(
+                Vulnerability.cvss_v3_score <= cvss_max,
+                and_(
+                    Vulnerability.cvss_v3_score.is_(None),
+                    Vulnerability.cvss_v2_score <= cvss_max
+                )
+            )
+        )
     
     # Global search across CVE ID, title, and description
     if search:
@@ -97,7 +163,10 @@ def get_vulnerabilities(
         query = query.filter(Vulnerability.cve_id.ilike(f"%{cve_id}%"))
     
     if severity:
-        query = query.filter(Vulnerability.severity == severity)
+        # Support multiple severity values separated by comma (e.g., "critical,high")
+        severity_values = [v.strip().lower() for v in severity.split(',') if v.strip()]
+        if severity_values:
+            query = query.filter(Vulnerability.severity.in_(severity_values))
     
     if manufacturer:
         # JSONB contains check - search if array contains the manufacturer name (case-insensitive)
@@ -112,6 +181,62 @@ def get_vulnerabilities(
     
     if source:
         query = query.filter(Vulnerability.source == source)
+    
+    # Date filters
+    if published_from:
+        from datetime import datetime
+        try:
+            # Try ISO format first (with time)
+            try:
+                published_from_date = datetime.fromisoformat(published_from.replace('Z', '+00:00'))
+            except ValueError:
+                # Fall back to date-only format (YYYY-MM-DD)
+                published_from_date = datetime.strptime(published_from, '%Y-%m-%d')
+            query = query.filter(Vulnerability.published_date >= published_from_date)
+        except (ValueError, AttributeError):
+            pass  # Ignore invalid date format
+    
+    if published_to:
+        from datetime import datetime
+        try:
+            # Try ISO format first (with time)
+            try:
+                published_to_date = datetime.fromisoformat(published_to.replace('Z', '+00:00'))
+            except ValueError:
+                # Fall back to date-only format (YYYY-MM-DD)
+                published_to_date = datetime.strptime(published_to, '%Y-%m-%d')
+            # For published_to, we want to include the entire day, so set time to end of day
+            if published_to_date.hour == 0 and published_to_date.minute == 0 and published_to_date.second == 0:
+                from datetime import timedelta
+                published_to_date = published_to_date + timedelta(days=1) - timedelta(seconds=1)
+            query = query.filter(Vulnerability.published_date <= published_to_date)
+        except (ValueError, AttributeError):
+            pass  # Ignore invalid date format
+    
+    # CVSS score filters
+    if cvss_min is not None:
+        # Use cvss_v3_score if available, otherwise cvss_v2_score
+        query = query.filter(
+            or_(
+                Vulnerability.cvss_v3_score >= cvss_min,
+                and_(
+                    Vulnerability.cvss_v3_score.is_(None),
+                    Vulnerability.cvss_v2_score >= cvss_min
+                )
+            )
+        )
+    
+    if cvss_max is not None:
+        # Use cvss_v3_score if available, otherwise cvss_v2_score
+        query = query.filter(
+            or_(
+                Vulnerability.cvss_v3_score <= cvss_max,
+                and_(
+                    Vulnerability.cvss_v3_score.is_(None),
+                    Vulnerability.cvss_v2_score <= cvss_max
+                )
+            )
+        )
     
     # Global search across CVE ID, title, and description
     if search:
@@ -355,14 +480,16 @@ def get_unpatched_vulnerabilities(
     asset_id: uuid.UUID,
     tenant_id: uuid.UUID
 ) -> List[AssetVulnerability]:
-    """Get unpatched vulnerabilities for an asset"""
+    """Get unpatched vulnerabilities for an asset.
+    
+    Only includes vulnerabilities with status 'unreviewed' or 'acknowledged'.
+    Explicitly excludes: 'patched', 'mitigated', 'not_applicable' (and any NULL/other states).
+    """
     return db.query(AssetVulnerability).filter(
         AssetVulnerability.asset_id == asset_id,
         AssetVulnerability.tenant_id == tenant_id,
-        sa.or_(
-            AssetVulnerability.status == "unreviewed",
-            AssetVulnerability.status == "acknowledged"
-        )  # Include both unreviewed and acknowledged (not yet mitigated/patched)
+        AssetVulnerability.status.in_(["unreviewed", "acknowledged"])
+        # Only include unreviewed and acknowledged - exclude patched, mitigated, not_applicable
     ).all()
 
 

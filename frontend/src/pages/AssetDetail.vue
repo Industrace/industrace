@@ -63,8 +63,16 @@
       </TabPanel>
       <TabPanel>
         <template #header>
+          <span :title="t('assets.tabs.suppliersTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+            <i class="pi pi-briefcase"></i> {{ t('assets.tabs.suppliers') }}
+          </span>
+        </template>
+        <AssetSuppliersTab :assetId="asset.id" :readOnly="!canWrite('assets')" />
+      </TabPanel>
+      <TabPanel>
+        <template #header>
           <span :title="t('assets.tabs.notesTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
-            <i class="pi pi-sticky-note"></i> {{ t('assets.tabs.notes') }}
+            <i class="pi pi-file-edit"></i> {{ t('assets.tabs.notes') }}
           </span>
         </template>
         <div class="asset-notes" v-if="asset.description" v-html="sanitizedDescription"></div>
@@ -80,7 +88,15 @@
           </template>
         </Dialog>
       </TabPanel>
-      <!-- NUOVA TAB CONNESSIONI -->
+
+      <TabPanel>
+        <template #header>
+          <span :title="t('assets.tabs.reviewTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+            <i class="pi pi-calendar"></i> {{ t('assets.tabs.review') }}
+          </span>
+        </template>
+        <AssetDetailReviewTab :assetId="asset.id" :canWrite="canWrite('asset_reviews')" @updated="fetchAsset" />
+      </TabPanel>
       <TabPanel>
         <template #header>
           <span :title="t('assets.tabs.connectionsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
@@ -89,7 +105,6 @@
         </template>
         <AssetDetailConnectionsTab :assetId="asset.id" :assetInterfaces="asset.interfaces || []" />
       </TabPanel>
-      <!-- NUOVA TAB COMUNICAZIONI -->
       <TabPanel>
         <template #header>
           <span :title="t('assets.tabs.communicationsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
@@ -98,14 +113,7 @@
         </template>
         <AssetDetailCommunicationsTab :assetId="asset.id" />
       </TabPanel>
-      <TabPanel>
-        <template #header>
-          <span :title="t('assets.tabs.suppliersTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
-            <i class="pi pi-briefcase"></i> {{ t('assets.tabs.suppliers') }}
-          </span>
-        </template>
-        <AssetSuppliersTab :assetId="asset.id" :readOnly="!canWrite('assets')" />
-      </TabPanel>
+
       <TabPanel>
         <template #header>
           <span :title="t('assets.tabs.customFieldsTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
@@ -116,19 +124,11 @@
       </TabPanel>
       <TabPanel>
         <template #header>
-          <span :title="t('assets.tabs.reviewTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
-            <i class="pi pi-calendar-check"></i> {{ t('assets.tabs.review') }}
-          </span>
-        </template>
-        <AssetDetailReviewTab :assetId="asset.id" :canWrite="canWrite('assets')" @updated="fetchAsset" />
-      </TabPanel>
-      <TabPanel>
-        <template #header>
           <span :title="t('assets.tabs.dependenciesTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-sitemap"></i> {{ t('assets.tabs.dependencies') }}
           </span>
         </template>
-        <AssetDetailDependenciesTab :assetId="asset.id" :canWrite="canWrite('assets')" @updated="fetchAsset" />
+        <AssetDetailDependenciesTab :assetId="asset.id" :canWrite="canWrite('asset_dependencies')" @updated="fetchAsset" />
       </TabPanel>
       <TabPanel>
         <template #header>
@@ -136,15 +136,7 @@
             <i class="pi pi-shield"></i> {{ t('assets.tabs.vulnerabilities') }}
           </span>
         </template>
-        <AssetDetailVulnerabilitiesTab :assetId="asset.id" :canWrite="canWrite('assets')" @updated="fetchAsset" />
-      </TabPanel>
-      <TabPanel>
-        <template #header>
-          <span :title="t('assets.tabs.timelineTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
-            <i class="pi pi-clock"></i> {{ t('assets.tabs.timeline') }}
-          </span>
-        </template>
-        <AssetDetailTimelineTab :assetId="asset.id" />
+        <AssetDetailVulnerabilitiesTab :assetId="asset.id" :canWrite="canWrite('vulnerabilities')" @updated="fetchAsset" />
       </TabPanel>
       <TabPanel>
         <template #header>
@@ -159,6 +151,15 @@
           @updated="fetchAsset"
         />
       </TabPanel>
+      <TabPanel>
+        <template #header>
+          <span :title="t('assets.tabs.timelineTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
+            <i class="pi pi-clock"></i> {{ t('assets.tabs.timeline') }}
+          </span>
+        </template>
+        <AssetDetailTimelineTab :assetId="asset.id" />
+      </TabPanel>
+
     </TabView>
 
     <!-- Dialogs -->

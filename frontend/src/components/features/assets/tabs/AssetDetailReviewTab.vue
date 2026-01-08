@@ -8,7 +8,7 @@
       <Card class="mb-4">
         <template #title>
           <div class="flex align-items-center gap-2">
-            <i class="pi pi-calendar-check"></i>
+            <i class="pi pi-calendar"></i>
             {{ t('assetReviews.reviewStatus') }}
           </div>
         </template>
