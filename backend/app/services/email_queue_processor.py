@@ -44,87 +44,104 @@ class EmailQueueProcessor:
         Process notification queue.
         Returns: {'sent': int, 'failed': int, 'skipped': int}
         """
-        now = datetime.utcnow()
-        
-        # Get pending notifications scheduled for now or earlier
-        pending = (
-            db.query(NotificationQueue)
-            .filter(
-                NotificationQueue.status == 'pending',
-                NotificationQueue.scheduled_for <= now
-            )
-            .limit(batch_size)
-            .all()
-        )
-        
         stats = {'sent': 0, 'failed': 0, 'skipped': 0}
         
-        for notification in pending:
+        try:
+            now = datetime.utcnow()
+            
+            # Get pending notifications scheduled for now or earlier
             try:
-                # Get SMTP config
-                email_config = EmailQueueProcessor.get_smtp_config(db, notification.tenant_id)
-                
-                if not email_config:
-                    # Skip if no SMTP config
-                    notification.status = 'cancelled'
-                    notification.error_message = 'No SMTP configuration'
-                    stats['skipped'] += 1
-                    db.commit()
-                    continue
-                
-                # Send email
-                notification.attempts += 1
-                notification.last_attempt_at = now
-                
-                success = send_email(
-                    notification.email,
-                    notification.subject,
-                    notification.body_text or '',
-                    email_config,
-                    notification.body_html
+                pending = (
+                    db.query(NotificationQueue)
+                    .filter(
+                        NotificationQueue.status == 'pending',
+                        NotificationQueue.scheduled_for <= now
+                    )
+                    .limit(batch_size)
+                    .all()
                 )
-                
-                if success:
-                    notification.status = 'sent'
-                    notification.sent_at = now
-                    stats['sent'] += 1
-                    
-                    # Create log entry
-                    log_entry = NotificationLog(
-                        tenant_id=notification.tenant_id,
-                        user_id=notification.user_id,
-                        notification_type=notification.notification_type,
-                        status='sent',
-                        sent_at=now,
-                        context_data=notification.context_data
-                    )
-                    db.add(log_entry)
-                else:
-                    notification.status = 'failed'
-                    notification.error_message = 'Email send failed'
-                    stats['failed'] += 1
-                    
-                    # Create log entry
-                    log_entry = NotificationLog(
-                        tenant_id=notification.tenant_id,
-                        user_id=notification.user_id,
-                        notification_type=notification.notification_type,
-                        status='failed',
-                        error_message='Email send failed',
-                        context_data=notification.context_data
-                    )
-                    db.add(log_entry)
-                
-                db.commit()
-                
             except Exception as e:
-                logger.error(f"Error processing notification {notification.id}: {e}")
-                notification.status = 'failed'
-                notification.error_message = str(e)
-                notification.attempts += 1
-                notification.last_attempt_at = now
-                stats['failed'] += 1
-                db.commit()
+                logger.error(f"Error querying notification queue: {e}", exc_info=True)
+                db.rollback()
+                return stats
+            
+            for notification in pending:
+                try:
+                    # Get SMTP config
+                    email_config = EmailQueueProcessor.get_smtp_config(db, notification.tenant_id)
+                    
+                    if not email_config:
+                        # Skip if no SMTP config
+                        notification.status = 'cancelled'
+                        notification.error_message = 'No SMTP configuration'
+                        stats['skipped'] += 1
+                        db.commit()
+                        continue
+                    
+                    # Send email
+                    notification.attempts += 1
+                    notification.last_attempt_at = now
+                    
+                    success = send_email(
+                        notification.email,
+                        notification.subject,
+                        notification.body_text or '',
+                        email_config,
+                        notification.body_html
+                    )
+                    
+                    if success:
+                        notification.status = 'sent'
+                        notification.sent_at = now
+                        stats['sent'] += 1
+                        
+                        # Create log entry
+                        log_entry = NotificationLog(
+                            tenant_id=notification.tenant_id,
+                            user_id=notification.user_id,
+                            notification_type=notification.notification_type,
+                            status='sent',
+                            sent_at=now,
+                            context_data=notification.context_data
+                        )
+                        db.add(log_entry)
+                    else:
+                        notification.status = 'failed'
+                        notification.error_message = 'Email send failed'
+                        stats['failed'] += 1
+                        
+                        # Create log entry
+                        log_entry = NotificationLog(
+                            tenant_id=notification.tenant_id,
+                            user_id=notification.user_id,
+                            notification_type=notification.notification_type,
+                            status='failed',
+                            error_message='Email send failed',
+                            context_data=notification.context_data
+                        )
+                        db.add(log_entry)
+                    
+                    db.commit()
+                    
+                except Exception as e:
+                    logger.error(f"Error processing notification {notification.id}: {e}", exc_info=True)
+                    try:
+                        notification.status = 'failed'
+                        notification.error_message = str(e)[:500]  # Limit error message length
+                        notification.attempts += 1
+                        notification.last_attempt_at = now
+                        stats['failed'] += 1
+                        db.commit()
+                    except Exception as commit_error:
+                        logger.error(f"Error committing failed notification {notification.id}: {commit_error}", exc_info=True)
+                        db.rollback()
+                        
+        except Exception as e:
+            logger.error(f"Unexpected error in process_queue: {e}", exc_info=True)
+            try:
+                db.rollback()
+            except Exception as rollback_error:
+                logger.error(f"Error during rollback: {rollback_error}", exc_info=True)
         
         return stats
 

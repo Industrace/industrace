@@ -64,18 +64,25 @@ class BackgroundTaskManager:
     async def _process_email_queue_loop(cls):
         """Process email queue every 60 seconds"""
         while cls._running:
+            db = None
             try:
                 db = SessionLocal()
-                try:
-                    stats = EmailQueueProcessor.process_queue(db, batch_size=50)
-                    if stats['sent'] > 0 or stats['failed'] > 0:
-                        logger.info(f"Email queue processed: {stats}")
-                except Exception as e:
-                    logger.error(f"Error processing email queue: {e}", exc_info=True)
-                finally:
-                    db.close()
+                stats = EmailQueueProcessor.process_queue(db, batch_size=50)
+                if stats['sent'] > 0 or stats['failed'] > 0 or stats['skipped'] > 0:
+                    logger.info(f"Email queue processed: {stats}")
             except Exception as e:
-                logger.error(f"Error in email queue loop: {e}", exc_info=True)
+                logger.error(f"Error processing email queue: {e}", exc_info=True)
+                if db:
+                    try:
+                        db.rollback()
+                    except Exception as rollback_error:
+                        logger.error(f"Error during rollback in email queue loop: {rollback_error}", exc_info=True)
+            finally:
+                if db:
+                    try:
+                        db.close()
+                    except Exception as close_error:
+                        logger.error(f"Error closing database session: {close_error}", exc_info=True)
             
             # Wait 60 seconds before next run
             await asyncio.sleep(60)
