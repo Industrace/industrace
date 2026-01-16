@@ -74,6 +74,7 @@
   "noAffectedAssets": "Nessun asset affetto",
   "errorLoadingAssets": "Errore nel caricamento degli asset affetti",
   "vulnerabilityFeeds": {
+    "name": "Nome",
     "title": "Feed Vulnerabilità",
     "description": "Configura i feed di vulnerabilità (remoti e locali) per il matching automatico",
     "addFeed": "Aggiungi Feed",

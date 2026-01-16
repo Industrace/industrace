@@ -10,7 +10,8 @@
     "select": "Seleziona",
     "yes": "Si",
     "no": "No",
-    "search": "Cerca"
+    "search": "Cerca",
+    "optional": "Opzionale"
   },
   "actions": {
     "actions": "Azioni",

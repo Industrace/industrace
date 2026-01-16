@@ -75,6 +75,7 @@
   "errorLoadingAssets": "Error loading affected assets",
   "vulnerabilityFeeds": {
     "title": "Vulnerability Feeds",
+    "name": "Name",
     "description": "Configure vulnerability feeds (remote and local) for automatic matching",
     "addFeed": "Add Feed",
     "addFirstFeed": "Add first feed",

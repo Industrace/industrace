@@ -64,5 +64,20 @@
         "row": "Riga",
         "confirm": "Conferma",
         "readError": "Errore nella lettura del file"
+    },
+    "placeholders": {
+        "supplierName": "Es. Azienda SRL",
+        "supplierDescription": "Breve descrizione del fornitore",
+        "vatNumber": "Es. IT12345678901",
+        "taxCode": "Es. RSSMRA80A01H501U",
+        "address": "Es. Via Roma 123",
+        "city": "Es. Milano",
+        "zipCode": "Es. 20100",
+        "province": "Es. MI",
+        "country": "Es. Italia",
+        "phone": "Es. +39 02 1234567",
+        "email": "Es. info@azienda.it",
+        "website": "Es. https://www.azienda.it",
+        "notes": "Note aggiuntive sul fornitore"
     }
 }

@@ -10,7 +10,8 @@
     "select": "Select",
     "yes": "Yes",
     "no": "No",
-    "search": "Search"
+    "search": "Search",
+    "optional": "Optional"
   },
   "actions": {
     "actions": "Actions",
