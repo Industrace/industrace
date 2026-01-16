@@ -35,6 +35,7 @@ class UserRead(BaseModel):
     notifications_enabled: bool = True
     created_at: datetime
     last_login: Optional[datetime] = None
+    password_change_required: Optional[bool] = False
 
     class Config:
         from_attributes = True

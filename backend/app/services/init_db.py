@@ -46,6 +46,7 @@ def create_sample_data():
             password_hash=get_password_hash("admin123"),
             name="Administrator",
             role_id=admin_role_id,  # Usa l'ID del ruolo invece del nome
+            password_change_required=True,  # Force password change on first login
         )
         db.add(admin_user)
 

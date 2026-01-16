@@ -75,6 +75,7 @@ def seed_test_users():
                 name=user_data["name"],
                 role_id=user_data["role"].id,
                 is_active=user_data["is_active"],
+                password_change_required=True,  # Force password change on first login
             )
             db.add(new_user)
             # print(

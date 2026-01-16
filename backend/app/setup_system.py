@@ -75,6 +75,7 @@ def setup_system():
                 name=u["name"],
                 role_id=roles[u["role"]].id,
                 is_active=True,
+                password_change_required=True,  # Force password change on first login
             )
             db.add(user)
             # print(f"User created: {u['email']} ({u['role']})")

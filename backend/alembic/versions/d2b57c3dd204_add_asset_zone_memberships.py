@@ -63,17 +63,19 @@ def upgrade() -> None:
     
     # Unique constraint: an asset cannot have the same role in the same zone
     # (but can have different roles in the same zone)
-    op.create_unique_constraint(
-        'uq_asset_zone_membership_asset_zone_role',
-        'asset_zone_memberships',
-        ['asset_id', 'security_zone_id', 'role'],
-        postgresql_where=sa.text('deleted_at IS NULL')
+    # Use UNIQUE INDEX with WHERE clause for partial unique constraint
+    op.execute(
+        sa.text(
+            "CREATE UNIQUE INDEX uq_asset_zone_membership_asset_zone_role "
+            "ON asset_zone_memberships (asset_id, security_zone_id, role) "
+            "WHERE deleted_at IS NULL"
+        )
     )
 
 
 def downgrade() -> None:
     """Drop asset_zone_memberships table."""
-    op.drop_constraint('uq_asset_zone_membership_asset_zone_role', 'asset_zone_memberships', type_='unique')
+    op.drop_index('uq_asset_zone_membership_asset_zone_role', 'asset_zone_memberships')
     op.drop_index('ix_asset_zone_memberships_tenant_id', table_name='asset_zone_memberships')
     op.drop_index('ix_asset_zone_memberships_security_zone_id', table_name='asset_zone_memberships')
     op.drop_index('ix_asset_zone_memberships_asset_id', table_name='asset_zone_memberships')
