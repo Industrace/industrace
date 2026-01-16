@@ -109,7 +109,8 @@ def admin_user(test_tenant, admin_role):
         name="Admin User",
         tenant_id=test_tenant.id,
         role_id=admin_role.id,
-        is_active=True
+        is_active=True,
+        password_change_required=False  # Set to False for tests to allow login
     )
     db.add(user)
     db.commit()
@@ -127,7 +128,8 @@ def editor_user(test_tenant, editor_role):
         name="Editor User",
         tenant_id=test_tenant.id,
         role_id=editor_role.id,
-        is_active=True
+        is_active=True,
+        password_change_required=False  # Set to False for tests to allow login
     )
     db.add(user)
     db.commit()
@@ -145,7 +147,8 @@ def viewer_user(test_tenant, viewer_role):
         name="Viewer User",
         tenant_id=test_tenant.id,
         role_id=viewer_role.id,
-        is_active=True
+        is_active=True,
+        password_change_required=False  # Set to False for tests to allow login
     )
     db.add(user)
     db.commit()
@@ -236,7 +239,8 @@ class TestAuthentication:
             name="Inactive User",
             tenant_id=test_tenant.id,
             role_id=admin_role.id,
-            is_active=False
+            is_active=False,
+            password_change_required=False
         )
         db.add(inactive_user)
         db.commit()

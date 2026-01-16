@@ -122,6 +122,21 @@ After installation, you can log in with:
 - **Email**: admin@example.com
 - **Password**: admin123
 
+**⚠️ Important Security Notice:**
+- Default accounts (admin, editor, viewer) are created with weak passwords for initial setup
+- **You will be required to change your password on first login**
+- The new password must meet the following requirements:
+  - Minimum 12 characters
+  - At least one uppercase letter
+  - At least one lowercase letter
+  - At least one number
+  - At least one special character (!@#$%^&*(),.?":{}|<>[]\/_+=-~`)
+
+### Account Security Features
+- **Account Lockout**: After 5 failed login attempts, your account will be temporarily locked for 30 minutes
+- **Password Change Required**: Default accounts must change their password on first login
+- **Rate Limiting**: Login attempts are rate-limited to prevent brute-force attacks
+
 ### Demo Data
 The system automatically populates with comprehensive demo data when using `make prod` or `make prod-cloud`:
 - 3 Sites (Production Plant, R&D Center, Distribution Warehouse)
@@ -311,9 +326,10 @@ After successful installation:
 
 1. **Access the application**: http://localhost:5173
 2. **Login with default credentials**: admin@example.com / admin123
-3. **Explore demo data**: Navigate through sites, areas, assets, and connections
-4. **Configure your environment**: Update settings in the admin panel
-5. **Add your own data**: Start adding your industrial assets
+3. **Change your password**: You will be required to change your password on first login. The new password must be at least 12 characters long and include uppercase, lowercase, numbers, and special characters.
+4. **Explore demo data**: Navigate through sites, areas, assets, and connections
+5. **Configure your environment**: Update settings in the admin panel
+6. **Add your own data**: Start adding your industrial assets
 
 ## Support
 

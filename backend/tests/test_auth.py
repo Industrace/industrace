@@ -69,7 +69,8 @@ def test_user(test_tenant, test_role):
         password_hash=get_password_hash("testpassword"),
         name="Test User",
         tenant_id=test_tenant.id,
-        role_id=test_role.id
+        role_id=test_role.id,
+        password_change_required=False  # Set to False for tests to allow login
     )
     db.add(user)
     db.commit()

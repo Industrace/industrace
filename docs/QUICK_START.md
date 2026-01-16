@@ -93,6 +93,19 @@ Open your browser and go to:
    - Editor: `editor@example.com` / `editor123`
    - Viewer: `viewer@example.com` / `viewer123`
 
+2. **⚠️ Change Password (Required)**: 
+   - On first login, you will be required to change your password
+   - The new password must meet security requirements:
+     - Minimum 12 characters
+     - At least one uppercase letter (A-Z)
+     - At least one lowercase letter (a-z)
+     - At least one number (0-9)
+     - At least one special character (!@#$%^&*(),.?":{}|<>[]\/_+=-~`)
+
+3. **Account Security**:
+   - After 5 failed login attempts, your account will be temporarily locked for 30 minutes
+   - Login attempts are rate-limited to prevent brute-force attacks
+
 2. **Demo Data**: The system automatically populates with realistic demo data when using `make prod` or `make prod-cloud` including:
    - 3 Sites (Production Plant, R&D Center, Distribution Warehouse)
    - 12 Areas (Assembly Lines, Labs, Control Rooms, etc.)

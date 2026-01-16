@@ -111,6 +111,11 @@ def setup_logging():
                 "level": "INFO",
                 "propagate": False,
             },
+            "security": {  # Security events logger
+                "handlers": ["console", "security_file"],
+                "level": "INFO",
+                "propagate": False,
+            },
             "uvicorn": {  # Uvicorn logger
                 "handlers": ["console", "file"],
                 "level": "INFO",
