@@ -52,7 +52,8 @@ async def read_users_me(
         "is_active": user.is_active,
         "notifications_enabled": user.notifications_enabled,
         "created_at": user.created_at,
-        "last_login": user.last_login
+        "last_login": user.last_login,
+        "password_change_required": user.password_change_required or False
     }
     
     return user_dict
@@ -209,7 +210,8 @@ def change_password(
     current_user: User = Depends(get_current_user),
 ):
     """Allow the user to change their password"""
-    from app.services.auth import verify_password
+    from app.services.auth import verify_password, get_password_hash
+    from app.schemas.validators import validate_password_strength
 
     # Verify current password
     if not verify_password(password_data.current_password, current_user.password_hash):
@@ -217,8 +219,12 @@ def change_password(
             status_code=400, error_code=ErrorCode.INVALID_CREDENTIALS
         )
 
-    # Update password
+    # Validate new password strength (always enforce strong passwords)
+    validate_password_strength(password_data.new_password, allow_weak=False)
+
+    # Update password and reset password_change_required flag
     current_user.password_hash = get_password_hash(password_data.new_password)
+    current_user.password_change_required = False
     db.commit()
 
     return {"detail": "Password updated successfully"}

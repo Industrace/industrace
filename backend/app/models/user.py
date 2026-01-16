@@ -1,6 +1,6 @@
 # backend/models/user.py
 import uuid
-from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from app.database import Base
@@ -30,6 +30,13 @@ class User(Base):
     sso_email = Column(String(255), nullable=True)  # Email dal provider (può differire)
     last_sso_login = Column(DateTime, nullable=True)
     sso_metadata = Column(JSONB, nullable=True)  # Dati aggiuntivi dal provider
+    
+    # Account lockout fields
+    failed_login_attempts = Column(Integer, default=0)  # Number of consecutive failed login attempts
+    locked_until = Column(DateTime, nullable=True)  # Timestamp when account lockout expires
+    
+    # Password change required flag
+    password_change_required = Column(Boolean, default=False)  # Force password change on next login
     
     role = relationship("Role", back_populates="users", lazy="joined")
     tenant = relationship("Tenant", lazy="joined")

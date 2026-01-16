@@ -42,6 +42,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -56,8 +57,95 @@ from app.services.auth import (
     create_access_token,
 )
 from app.services.audit_log import create_audit_log
+from app.services.rate_limiter import check_rate_limit_strict, add_rate_limit_headers_strict
+from app.services.security_logging import (
+    log_failed_login,
+    log_successful_login,
+    log_unauthorized_access,
+    log_rate_limit_exceeded
+)
 from app.config import settings
 from app.logging_config import setup_logging
+
+
+def get_cors_origin(request: Request) -> str:
+    """
+    Determines the correct CORS origin based on the request.
+    Returns the origin if it's in the list of allowed origins,
+    otherwise returns the first configured origin or empty string.
+    """
+    allowed_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
+    
+    if not allowed_origins:
+        return ""
+    
+    # Get the origin from the request
+    origin = request.headers.get("origin")
+    
+    # If the origin is in the allowed list, use it
+    if origin and origin in allowed_origins:
+        return origin
+    
+    # Otherwise, use the first configured origin (fallback)
+    # In production, this should be the main domain
+    return allowed_origins[0] if allowed_origins else ""
+
+
+def get_cors_headers(request: Request) -> dict:
+    """
+    Generates the correct CORS headers for a response.
+    Uses configured origins instead of "*".
+    """
+    origin = get_cors_origin(request)
+    
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Expose-Headers": "X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset",
+    }
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to add security headers to all responses.
+    This ensures security headers are present even if nginx is bypassed.
+    """
+    
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # X-Frame-Options: Prevent clickjacking
+        response.headers["X-Frame-Options"] = "DENY"
+        
+        # X-Content-Type-Options: Prevent MIME type sniffing
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        
+        # X-XSS-Protection: Enable XSS filter (legacy, but still useful)
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        
+        # Referrer-Policy: Control referrer information
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        
+        # Content-Security-Policy: Prevent XSS attacks
+        # Note: 'unsafe-inline' is needed for some frontend frameworks
+        # Consider tightening this based on your frontend requirements
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self'; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none';"
+        )
+        
+        # Strict-Transport-Security: Force HTTPS in production
+        if settings.ENVIRONMENT == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        
+        return response
 
 from app.routers import users
 from app.routers import suppliers
@@ -126,6 +214,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add security headers middleware
+# This ensures security headers are present even if nginx is bypassed
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(tenants.router, tags=["tenants"])
 app.include_router(suppliers.router, tags=["suppliers"])
@@ -370,6 +462,9 @@ async def validation_exception_handler(
         pass
     
     # Return the validation error details
+    # Add CORS headers to allow frontend to read the response
+    cors_headers = get_cors_headers(request)
+    
     return JSONResponse(
         status_code=422,
         content={
@@ -377,6 +472,7 @@ async def validation_exception_handler(
             "detail": "Invalid input data",
             "validation_errors": validation_errors
         },
+        headers=cors_headers
     )
 
 
@@ -391,6 +487,9 @@ async def custom_validation_exception_handler(
         pass
     
     # Return the custom validation error
+    # Use configured origins instead of "*" for security
+    cors_headers = get_cors_headers(request)
+    
     return JSONResponse(
         status_code=422,
         content={
@@ -402,12 +501,7 @@ async def custom_validation_exception_handler(
                 "type": "validation_error"
             }]
         },
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Allow-Credentials": "true"
-        }
+        headers=cors_headers
     )
 
 
@@ -457,12 +551,24 @@ async def login(
     db: Session = Depends(get_db),
     request: Request = None,
 ):
+    # Rate limiting to prevent brute force attacks
+    # Uses stricter limit for login (10/minute by default)
+    if not check_rate_limit_strict(request, settings.RATE_LIMIT_STRICT):
+        log_rate_limit_exceeded(f"ip:{request.client.host if request.client else 'unknown'}", settings.RATE_LIMIT_STRICT, request)
+        raise ErrorCodeException(
+            status_code=429,
+            error_code="RATE_LIMIT_EXCEEDED",
+            detail="Troppi tentativi di login. Riprova più tardi."
+        )
+    
     user = db.query(User).filter(User.email == email).first()
     if not user:
+        log_failed_login(email, request, "USER_NOT_FOUND")
         raise ErrorCodeException(status_code=401, error_code="INVALID_CREDENTIALS")
     
     # Check if user is deleted
     if user.deleted_at is not None:
+        log_failed_login(email, request, "USER_DELETED")
         raise ErrorCodeException(status_code=401, error_code="INVALID_CREDENTIALS")
     
     # Check if user has password (SSO-only users cannot login with password)
@@ -470,12 +576,14 @@ async def login(
         # Check if SSO is configured and enabled for this tenant
         sso_config = crud_sso.get_sso_config(db, user.tenant_id)
         if sso_config and sso_config.enabled:
+            log_failed_login(email, request, "SSO_REQUIRED")
             raise ErrorCodeException(
                 status_code=401,
                 error_code="SSO_REQUIRED",
                 detail=f"This user can only login via SSO. Please use SSO authentication."
             )
         else:
+            log_failed_login(email, request, "SSO_NOT_CONFIGURED")
             raise ErrorCodeException(
                 status_code=401,
                 error_code="INVALID_CREDENTIALS",
@@ -483,14 +591,51 @@ async def login(
             )
     
     if not verify_password(password, user.password_hash):
-        raise ErrorCodeException(status_code=401, error_code="INVALID_CREDENTIALS")
+        log_failed_login(email, request, "INVALID_PASSWORD")
+        
+        # Increment failed login attempts
+        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+        
+        # Lock account if max attempts exceeded
+        if user.failed_login_attempts >= settings.MAX_LOGIN_ATTEMPTS:
+            user.locked_until = datetime.utcnow() + timedelta(minutes=settings.LOCKOUT_DURATION_MINUTES)
+            db.commit()
+            raise ErrorCodeException(
+                status_code=403,
+                error_code="ACCOUNT_LOCKED",
+                detail=f"Account locked due to too many failed login attempts. Try again after {user.locked_until.isoformat()}."
+            )
+        else:
+            db.commit()
+            raise ErrorCodeException(status_code=401, error_code="INVALID_CREDENTIALS")
     
     # Check if user is active
     if not user.is_active:
+        log_failed_login(email, request, "USER_INACTIVE")
         raise ErrorCodeException(status_code=401, error_code="INVALID_CREDENTIALS")
     
-    # Update last_login
-    from datetime import datetime
+    # Check account lockout
+    from datetime import datetime, timedelta
+    if user.locked_until and user.locked_until > datetime.utcnow():
+        log_failed_login(email, request, "ACCOUNT_LOCKED")
+        raise ErrorCodeException(
+            status_code=403,
+            error_code="ACCOUNT_LOCKED",
+            detail=f"Account locked until {user.locked_until.isoformat()}. Please try again later."
+        )
+    
+    # Check if password change is required
+    if user.password_change_required:
+        log_failed_login(email, request, "PASSWORD_CHANGE_REQUIRED")
+        raise ErrorCodeException(
+            status_code=403,
+            error_code="PASSWORD_CHANGE_REQUIRED",
+            detail="Password change required. Please change your password before logging in."
+        )
+    
+    # Reset failed attempts and lockout on successful login
+    user.failed_login_attempts = 0
+    user.locked_until = None
     user.last_login = datetime.utcnow()
     db.commit()
     db.refresh(user)
@@ -501,6 +646,9 @@ async def login(
         expires_delta=access_token_expires,
     )
 
+    # Security logging for successful login
+    log_successful_login(str(user.id), str(user.tenant_id), user.email, request)
+    
     # Audit log for login
     ip_address = request.client.host if request and request.client else None
     create_audit_log(
@@ -518,6 +666,8 @@ async def login(
     response = JSONResponse(
         content={"access_token": access_token, "token_type": "bearer"}
     )
+    # Add rate limit headers with strict limit for login
+    add_rate_limit_headers_strict(response, request, settings.RATE_LIMIT_STRICT)
     # Secure cookie for frontend
     response.set_cookie(
         key="access_token_cookie",
@@ -674,9 +824,13 @@ async def error_code_exception_handler(request: Request, exc: ErrorCodeException
         # Get the translated message
     translated_message = messages.get(language, {}).get(exc.error_code, exc.error_code)
     
+    # Add CORS headers to allow frontend to read the response
+    cors_headers = get_cors_headers(request)
+    
     return JSONResponse(
         status_code=exc.status_code, 
-        content={"error_code": exc.error_code, "detail": translated_message}
+        content={"error_code": exc.error_code, "detail": translated_message},
+        headers=cors_headers
     )
 
 
@@ -689,18 +843,23 @@ async def generic_exception_handler(request: Request, exc: Exception):
     # Log the error for debugging
     logging.error(f"Error 500 on {request.url}: {exc}", exc_info=True)
     
+    # Add CORS headers to allow frontend to read the response
+    cors_headers = get_cors_headers(request)
+    
     # Handle JSON serialization errors specifically
     if isinstance(exc, ValueError) and "Out of range float values are not JSON compliant" in str(exc):
         logger.error("JSON serialization error with inf/NaN values detected")
         return JSONResponse(
             status_code=500,
             content={"error_code": "SERIALIZATION_ERROR", "detail": "Errore di serializzazione dati - valori numerici non validi rilevati"},
+            headers=cors_headers
         )
     
     # For the user, return only a generic message
     return JSONResponse(
         status_code=500, 
-        content={"error_code": "INTERNAL_ERROR", "detail": "Errore interno del server"}
+        content={"error_code": "INTERNAL_ERROR", "detail": "Errore interno del server"},
+        headers=cors_headers
     )
 
 

@@ -209,10 +209,59 @@ def validate_tenant_slug(cls, v):
     return v
 
 
-def validate_password(cls, v):
-    """Validate password strength"""
-    if v is None or v == "":
-        return v
-    if len(v) < 8:
+def validate_password_strength(password: str, allow_weak: bool = False) -> None:
+    """
+    Validate password strength.
+    Requires (unless allow_weak=True):
+    - Minimum 12 characters
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one number
+    - At least one special character
+    
+    Args:
+        password: The password to validate
+        allow_weak: If True, skip validation (for default accounts that require password change)
+    """
+    if password is None or password == "":
+        return
+    
+    # Allow weak passwords for default accounts that require password change
+    if allow_weak:
+        return
+    
+    import re
+    
+    # Minimum length: 12 characters
+    if len(password) < 12:
         raise InvalidPasswordError('password')
+    
+    # At least one uppercase letter
+    if not re.search(r'[A-Z]', password):
+        raise InvalidPasswordError('password')
+    
+    # At least one lowercase letter
+    if not re.search(r'[a-z]', password):
+        raise InvalidPasswordError('password')
+    
+    # At least one number
+    if not re.search(r'\d', password):
+        raise InvalidPasswordError('password')
+    
+    # At least one special character
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>\[\]\\/_+=\-~`]', password):
+        raise InvalidPasswordError('password')
+
+
+def validate_password(cls, v):
+    """
+    Validate password strength (Pydantic validator).
+    Requires:
+    - Minimum 12 characters
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one number
+    - At least one special character
+    """
+    validate_password_strength(v, allow_weak=False)
     return v 

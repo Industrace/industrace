@@ -16,6 +16,30 @@ router = APIRouter(
 )
 
 
+def sanitize_search_query(query: str, max_length: int = 100) -> str:
+    """
+    Sanitizes search query to prevent ReDoS and performance issues.
+    
+    Args:
+        query: Raw search query from user
+        max_length: Maximum allowed length (default 100)
+        
+    Returns:
+        Sanitized query safe for ILIKE operations
+    """
+    # Limit query length
+    if len(query) > max_length:
+        query = query[:max_length]
+    
+    # Escape special characters for LIKE/ILIKE operations
+    # % and _ are wildcards in SQL LIKE, so we escape them
+    query = query.replace("\\", "\\\\")  # Escape backslashes first
+    query = query.replace("%", "\\%")
+    query = query.replace("_", "\\_")
+    
+    return query
+
+
 @router.get("/global")
 def global_search(
     q: str = Query(..., min_length=1, description="Search query"),
@@ -32,7 +56,8 @@ def global_search(
     if not q.strip():
         return {"results": []}
 
-    query = q.strip().lower()
+    # Sanitize query to prevent ReDoS and performance issues
+    query = sanitize_search_query(q.strip().lower())
     results = []
 
     # Search Assets

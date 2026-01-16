@@ -8,6 +8,8 @@ import os
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.services.audit_decorator import audit_log_action
+from app.services.file_validation import validate_image_file, validate_file_size
+from app.config import settings
 from app.database import get_db
 from app.models import User, AssetPhoto
 from app.schemas import AssetPhotoCreate, AssetPhoto as AssetPhotoSchema
@@ -28,7 +30,20 @@ def upload_photo(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Validate file size first (before processing)
+    if not validate_file_size(file):
+        raise ErrorCodeException(
+            status_code=400, error_code=ErrorCode.FILE_TOO_LARGE
+        )
+    
+    # Validate content_type (quick check)
     if file.content_type not in ["image/jpeg", "image/png"]:
+        raise ErrorCodeException(
+            status_code=400, error_code=ErrorCode.INVALID_ASSET_PHOTO_FORMAT
+        )
+    
+    # Validate actual file content using magic numbers and PIL
+    if not validate_image_file(file):
         raise ErrorCodeException(
             status_code=400, error_code=ErrorCode.INVALID_ASSET_PHOTO_FORMAT
         )

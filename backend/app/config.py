@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
     RATE_LIMIT_DEFAULT: str = os.getenv("RATE_LIMIT_DEFAULT", "100/hour")
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    REDIS_ENABLED: bool = os.getenv("REDIS_ENABLED", "true").lower() == "true"
+    
+    # Account Lockout
+    MAX_LOGIN_ATTEMPTS: int = int(os.getenv("MAX_LOGIN_ATTEMPTS", "5"))
+    LOCKOUT_DURATION_MINUTES: int = int(os.getenv("LOCKOUT_DURATION_MINUTES", "15"))
     
     # SSO/Enterprise Auth
     SSO_REDIRECT_URI: str = os.getenv("SSO_REDIRECT_URI", "http://localhost:5173/auth/sso/callback")
@@ -93,6 +99,8 @@ class Settings(BaseSettings):
                 raise ValueError("DEBUG must be False in production environment")
             if not self.SECURE_COOKIES:
                 raise ValueError("SECURE_COOKIES must be True in production environment")
+            if self.SAME_SITE_COOKIES != "strict":
+                raise ValueError("SAME_SITE_COOKIES must be 'strict' in production environment")
 
     class Config:
         env_file = ".env"

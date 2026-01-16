@@ -72,6 +72,7 @@ async def get_current_user(
         token = access_token_cookie
 
     if token is None:
+        log_unauthorized_access(request, reason="NO_TOKEN")
         raise ErrorCodeException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             error_code=ErrorCode.INVALID_CREDENTIALS,

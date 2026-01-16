@@ -10,6 +10,8 @@ from app.database import get_db
 from app.models import User, AssetDocument
 from app.schemas import AssetDocumentCreate, AssetDocument as AssetDocumentSchema
 from app.services.auth import get_current_user
+from app.services.file_validation import validate_document_file, validate_file_size
+from app.config import settings
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.services.audit_decorator import audit_log_action
@@ -30,7 +32,13 @@ def upload_document(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Validazione tipo MIME per documenti
+    # Validate file size first (before processing)
+    if not validate_file_size(file):
+        raise ErrorCodeException(
+            status_code=400, error_code=ErrorCode.FILE_TOO_LARGE
+        )
+    
+    # Validate content_type (quick check)
     allowed_mime_types = [
         "application/pdf",
         "application/msword",  # .doc
@@ -44,6 +52,13 @@ def upload_document(
     if file.content_type not in allowed_mime_types:
         raise ErrorCodeException(
             status_code=400, 
+            error_code=ErrorCode.INVALID_ASSET_DOCUMENT_FORMAT
+        )
+    
+    # Validate actual file content using magic numbers
+    if not validate_document_file(file):
+        raise ErrorCodeException(
+            status_code=400,
             error_code=ErrorCode.INVALID_ASSET_DOCUMENT_FORMAT
         )
 

@@ -12,6 +12,7 @@ from app.services.api_auth import (
     require_write_scope,
 )
 from app.services.rate_limiter import add_rate_limit_headers, check_rate_limit
+from app.services.security_logging import log_api_key_usage
 from app.crud import assets as crud_assets
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -70,6 +71,9 @@ async def list_assets_external(
     request: Request = None,
 ):
     """List of tenant assets (external API)"""
+    # Log API key usage
+    log_api_key_usage(str(api_key.id), str(api_key.tenant_id), "/assets", request)
+    
     # Verify rate limit
     if not check_rate_limit(request, api_key):
         raise ErrorCodeException(

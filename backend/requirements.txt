@@ -47,6 +47,9 @@ reportlab==4.0.4
 qrcode[pil]==7.4.2
 Pillow==10.0.0
 
+# File Validation
+python-magic==0.4.27
+
 # Testing Dependencies
 pytest==7.4.3
 pytest-cov==4.1.0
