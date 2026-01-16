@@ -518,23 +518,23 @@ class PDFGenerator:
         elif field_name == "asset_tag":
             return asset.get("tag", translations.get("not_available", "N/A"))
         elif field_name == "asset_type":
-            return asset.get("asset_type", {}).get(
+            return (asset.get("asset_type") or {}).get(
                 "name", translations.get("not_available", "N/A")
             )
         elif field_name == "asset_status":
-            return asset.get("status", {}).get(
+            return (asset.get("status") or {}).get(
                 "name", translations.get("not_available", "N/A")
             )
         elif field_name == "asset_location":
-            return asset.get("location", {}).get(
+            return (asset.get("location") or {}).get(
                 "name", translations.get("not_available", "N/A")
             )
         elif field_name == "asset_site":
-            return asset.get("site", {}).get(
+            return (asset.get("site") or {}).get(
                 "name", translations.get("not_available", "N/A")
             )
         elif field_name == "asset_manufacturer":
-            return asset.get("manufacturer", {}).get(
+            return (asset.get("manufacturer") or {}).get(
                 "name", translations.get("not_available", "N/A")
             )
         elif field_name == "asset_model":
@@ -809,17 +809,17 @@ class PDFGenerator:
                     self.styles["InfoText"],
                 ),
                 Paragraph(
-                    f"<b>{translations.get('asset_type', 'Tipo')}:</b> {self._format_value(asset.get('asset_type', {}).get('name'), translations)}",
+                    f"<b>{translations.get('asset_type', 'Tipo')}:</b> {self._format_value((asset.get('asset_type') or {}).get('name'), translations)}",
                     self.styles["InfoText"],
                 ),
                 Paragraph(
-                    f"<b>{translations.get('asset_status', 'Stato')}:</b> {self._format_value(asset.get('status', {}).get('name'), translations)}",
+                    f"<b>{translations.get('asset_status', 'Stato')}:</b> {self._format_value((asset.get('status') or {}).get('name'), translations)}",
                     self.styles["InfoText"],
                 ),
             ],
             [
                 Paragraph(
-                    f"<b>{translations.get('asset_manufacturer', 'Produttore')}:</b> {self._format_value(asset.get('manufacturer', {}).get('name'), translations)}",
+                    f"<b>{translations.get('asset_manufacturer', 'Produttore')}:</b> {self._format_value((asset.get('manufacturer') or {}).get('name'), translations)}",
                     self.styles["InfoText"],
                 ),
                 Paragraph(
@@ -833,19 +833,68 @@ class PDFGenerator:
             ],
             [
                 Paragraph(
-                    f"<b>{translations.get('asset_site', 'Sito')}:</b> {self._format_value(asset.get('site', {}).get('name'), translations)}",
+                    f"<b>{translations.get('asset_site', 'Sito')}:</b> {self._format_value((asset.get('site') or {}).get('name'), translations)}",
                     self.styles["InfoText"],
                 ),
                 Paragraph(
-                    f"<b>{translations.get('asset_location', 'Posizione')}:</b> {self._format_value(asset.get('location', {}).get('name'), translations)}",
+                    f"<b>{translations.get('asset_location', 'Posizione')}:</b> {self._format_value((asset.get('location') or {}).get('name'), translations)}",
                     self.styles["InfoText"],
                 ),
                 Paragraph(
-                    f"<b>{translations.get('asset_firmware', 'Firmware')}:</b> {self._format_value(asset.get('firmware'), translations)}",
+                    f"<b>{translations.get('asset_firmware', 'Firmware')}:</b> {self._format_value(asset.get('firmware_version'), translations)}",
                     self.styles["InfoText"],
                 ),
             ],
         ]
+        
+        # Aggiungi righe aggiuntive se i campi sono presenti
+        additional_rows = []
+        
+        # Riga con installation_date, business_criticality, security_zone
+        if asset.get('installation_date') or asset.get('business_criticality') or asset.get('security_zone'):
+            additional_rows.append([
+                Paragraph(
+                    f"<b>{translations.get('asset_installation_date', 'Data Installazione')}:</b> {self._format_value(asset.get('installation_date'), translations)}",
+                    self.styles["InfoText"],
+                ),
+                Paragraph(
+                    f"<b>{translations.get('asset_business_criticality', 'Criticità Business')}:</b> {self._format_value(asset.get('business_criticality'), translations)}",
+                    self.styles["InfoText"],
+                ),
+                Paragraph(
+                    f"<b>{translations.get('asset_security_zone', 'Security Zone')}:</b> {self._format_value((asset.get('security_zone') or {}).get('name') if isinstance(asset.get('security_zone'), dict) else asset.get('security_zone'), translations)}",
+                    self.styles["InfoText"],
+                ),
+            ])
+        
+        # Riga con area, remote_access, remote_access_type
+        if asset.get('area') or asset.get('remote_access') is not None or asset.get('remote_access_type'):
+            additional_rows.append([
+                Paragraph(
+                    f"<b>{translations.get('asset_area', 'Area')}:</b> {self._format_value((asset.get('area') or {}).get('name') if isinstance(asset.get('area'), dict) else asset.get('area'), translations)}",
+                    self.styles["InfoText"],
+                ),
+                Paragraph(
+                    f"<b>{translations.get('asset_remote_access', 'Accesso Remoto')}:</b> {self._format_value('Yes' if asset.get('remote_access') else 'No', translations)}",
+                    self.styles["InfoText"],
+                ),
+                Paragraph(
+                    f"<b>{translations.get('asset_remote_access_type', 'Tipo Accesso Remoto')}:</b> {self._format_value(asset.get('remote_access_type'), translations)}",
+                    self.styles["InfoText"],
+                ),
+            ])
+        
+        # Riga con protocols se presente
+        if asset.get('protocols') and isinstance(asset.get('protocols'), list) and len(asset.get('protocols', [])) > 0:
+            additional_rows.append([
+                Paragraph(
+                    f"<b>{translations.get('asset_protocols', 'Protocolli')}:</b> {self._format_value(', '.join(asset.get('protocols', [])), translations)}",
+                    self.styles["InfoText"],
+                ),
+            ])
+        
+        asset_info_data.extend(additional_rows)
+        
         asset_info_table = Table(asset_info_data, colWidths=[60 * mm, 60 * mm, 55 * mm])
         asset_info_table.setStyle(
             TableStyle(

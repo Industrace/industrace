@@ -40,7 +40,6 @@
             </div>
             
             <!-- Fallback to standard fields if advanced configuration is not set -->
-            <!-- TODO: Add more fields -->
             <div v-else class="info-grid">
               <div class="info-item">
                 <label>Serial Number:</label>
@@ -55,8 +54,8 @@
                 <span>{{ asset.manufacturer?.name || 'N/A' }}</span>
               </div>
               <div class="info-item">
-                <label>IP Address:</label>
-                <span>{{ asset.ip_address || 'N/A' }}</span>
+                <label>Type:</label>
+                <span>{{ asset.asset_type?.name || 'N/A' }}</span>
               </div>
               <div class="info-item">
                 <label>Site:</label>
@@ -67,12 +66,40 @@
                 <span>{{ asset.location?.name || 'N/A' }}</span>
               </div>
               <div class="info-item">
-                <label>Type:</label>
-                <span>{{ asset.asset_type?.name || 'N/A' }}</span>
-              </div>
-              <div class="info-item">
                 <label>Firmware:</label>
                 <span>{{ asset.firmware_version || 'N/A' }}</span>
+              </div>
+              <div class="info-item" v-if="asset.ip_address">
+                <label>IP Address:</label>
+                <span>{{ asset.ip_address }}</span>
+              </div>
+              <div class="info-item" v-if="asset.installation_date">
+                <label>Installation Date:</label>
+                <span>{{ formatDate(asset.installation_date) }}</span>
+              </div>
+              <div class="info-item" v-if="asset.business_criticality">
+                <label>Business Criticality:</label>
+                <span>{{ asset.business_criticality }}</span>
+              </div>
+              <div class="info-item" v-if="asset.security_zone">
+                <label>Security Zone:</label>
+                <span>{{ asset.security_zone?.name || 'N/A' }}</span>
+              </div>
+              <div class="info-item" v-if="asset.area">
+                <label>Area:</label>
+                <span>{{ asset.area?.name || asset.area?.code || 'N/A' }}</span>
+              </div>
+              <div class="info-item" v-if="asset.remote_access !== undefined">
+                <label>Remote Access:</label>
+                <span>{{ asset.remote_access ? 'Yes' : 'No' }}</span>
+              </div>
+              <div class="info-item" v-if="asset.remote_access_type && asset.remote_access_type !== 'none'">
+                <label>Remote Access Type:</label>
+                <span>{{ formatRemoteAccessType(asset.remote_access_type) }}</span>
+              </div>
+              <div class="info-item" v-if="asset.protocols && asset.protocols.length > 0">
+                <label>Protocols:</label>
+                <span>{{ asset.protocols.join(', ') }}</span>
               </div>
             </div>
           </div>
@@ -95,25 +122,66 @@
 
         <!-- Connessioni -->
         <div v-if="options.includeConnections && asset.connections?.length" class="connections-section">
-          <h3 class="section-title">Connections</h3>
-          <div class="connections-list">
+          <h3 class="section-title">{{ t('assets.tabs.connections') || 'Connections' }}</h3>
+          <div class="connections-list-compact">
             <div 
-              v-for="connection in asset.connections" 
-              :key="connection.id" 
-              class="connection-item"
+              v-for="connection in limitedConnections" 
+              :key="connection.id || connection.connection_type" 
+              class="connection-item-compact"
             >
-              <div class="connection-info">
-                <span class="connection-type">{{ connection.connection_type }}</span>
-                <span class="connection-target">{{ connection.target_asset?.name || connection.target_ip }}</span>
+              <span class="connection-type-compact">{{ connection.connection_type }}:</span>
+              <span class="connection-target-compact">{{ connection.target_asset?.name || connection.target_ip || 'N/A' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Note/Descrizione -->
+        <div v-if="asset.description" class="notes-section">
+          <h3 class="section-title">{{ t('assets.strings.notes') || 'Notes' }}</h3>
+          <p class="notes-text">{{ truncateText(asset.description, 200) }}</p>
+        </div>
+
+        <!-- Contatti -->
+        <div v-if="hasContacts" class="contacts-section">
+          <h3 class="section-title">{{ t('assets.contacts.title') || 'Contacts' }}</h3>
+          <div v-if="owners.length > 0" class="contact-group">
+            <h4 class="contact-group-title">{{ t('assets.contacts.owners') || 'Owners' }}</h4>
+            <div class="contacts-list">
+              <div v-for="contact in owners" :key="contact.id || contact.email" class="contact-item">
+                <div class="contact-name">{{ getContactName(contact) }}</div>
+                <div class="contact-details">
+                  <span v-if="contact.email">{{ contact.email }}</span>
+                  <span v-if="contact.phone1">{{ contact.phone1 }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="pointsOfContact.length > 0" class="contact-group">
+            <h4 class="contact-group-title">{{ t('assets.contacts.pointsOfContact') || 'Points of Contact' }}</h4>
+            <div class="contacts-list">
+              <div v-for="contact in pointsOfContact" :key="contact.id || contact.email" class="contact-item">
+                <div class="contact-name">{{ getContactName(contact) }}</div>
+                <div class="contact-details">
+                  <span v-if="contact.email">{{ contact.email }}</span>
+                  <span v-if="contact.phone1">{{ contact.phone1 }}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Descrizione -->
-        <div v-if="asset.description" class="description-section">
-          <h3 class="section-title">Description</h3>
-          <p class="description-text">{{ asset.description }}</p>
+        <!-- Fornitori -->
+        <div v-if="asset.suppliers && asset.suppliers.length > 0" class="suppliers-section">
+          <h3 class="section-title">{{ t('assets.strings.suppliers') || 'Suppliers' }}</h3>
+          <div class="suppliers-list">
+            <div v-for="supplier in asset.suppliers" :key="supplier.id || supplier.name" class="supplier-item">
+              <div class="supplier-name">{{ supplier.name }}</div>
+              <div class="supplier-details">
+                <span v-if="supplier.email">{{ supplier.email }}</span>
+                <span v-if="supplier.phone">{{ supplier.phone }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- QR Code per accesso rapido -->
@@ -132,8 +200,11 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import i18n from '../../locales/loader-final.js'
 import PrintLayout from './PrintLayout.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   asset: {
@@ -218,7 +289,12 @@ const getFieldLabel = (fieldName) => {
     'asset_risk_score': 'Risk Score',
     'asset_business_criticality': 'Criticità Business',
     'asset_installation_date': 'Data Installazione',
-    'asset_last_maintenance': 'Ultima Manutenzione'
+    'asset_last_maintenance': 'Ultima Manutenzione',
+    'asset_security_zone': 'Security Zone',
+    'asset_area': 'Area',
+    'asset_remote_access': 'Accesso Remoto',
+    'asset_remote_access_type': 'Tipo Accesso Remoto',
+    'asset_protocols': 'Protocolli'
   }
   return fieldLabels[fieldName] || fieldName
 }
@@ -276,10 +352,71 @@ const getFieldValue = (fieldName) => {
       return asset.installation_date ? new Date(asset.installation_date).toLocaleDateString(getDateLocale()) : 'N/A'
     case 'asset_last_maintenance':
       return asset.last_maintenance_date ? new Date(asset.last_maintenance_date).toLocaleDateString(getDateLocale()) : 'N/A'
+    case 'asset_security_zone':
+      return asset.security_zone?.name || 'N/A'
+    case 'asset_area':
+      return asset.area?.name || asset.area?.code || 'N/A'
+    case 'asset_remote_access':
+      return asset.remote_access ? 'Yes' : 'No'
+    case 'asset_remote_access_type':
+      return formatRemoteAccessType(asset.remote_access_type) || 'N/A'
+    case 'asset_protocols':
+      return asset.protocols && asset.protocols.length > 0 ? asset.protocols.join(', ') : 'N/A'
     default:
       return 'N/A'
   }
 }
+
+// Funzioni helper
+const formatDate = (date) => {
+  if (!date) return 'N/A'
+  return new Date(date).toLocaleDateString(getDateLocale())
+}
+
+const formatRemoteAccessType = (type) => {
+  if (!type || type === 'none') return 'N/A'
+  const types = {
+    'attended': 'Attended',
+    'unattended': 'Unattended',
+    'none': 'None'
+  }
+  return types[type] || type
+}
+
+const truncateText = (text, maxLength = 200) => {
+  if (!text) return 'N/A'
+  if (text.length <= maxLength) return text
+  return text.substring(0, maxLength) + '...'
+}
+
+// Computed per contatti
+const owners = computed(() => {
+  if (!props.asset.contacts) return []
+  return props.asset.contacts.filter(c => c.role === 'owner')
+})
+
+const pointsOfContact = computed(() => {
+  if (!props.asset.contacts) return []
+  return props.asset.contacts.filter(c => c.role === 'point_of_contact')
+})
+
+const hasContacts = computed(() => {
+  return owners.value.length > 0 || pointsOfContact.value.length > 0
+})
+
+const getContactName = (contact) => {
+  if (!contact) return 'N/A'
+  const firstName = contact.first_name || ''
+  const lastName = contact.last_name || ''
+  const fullName = `${firstName} ${lastName}`.trim()
+  return fullName || contact.email || 'N/A'
+}
+
+// Computed per connessioni limitate
+const limitedConnections = computed(() => {
+  if (!props.asset.connections) return []
+  return props.asset.connections.slice(0, 6)
+})
 </script>
 
 <style scoped>
@@ -416,7 +553,10 @@ const getFieldValue = (fieldName) => {
 .risk-section,
 .custom-fields-section,
 .connections-section,
-.description-section {
+.description-section,
+.notes-section,
+.contacts-section,
+.suppliers-section {
   margin-top: 20px;
 }
 
@@ -521,13 +661,129 @@ const getFieldValue = (fieldName) => {
   color: #333;
 }
 
-.description-text {
+.description-text,
+.notes-text {
   line-height: 1.6;
   color: #333;
   background: #f8f9fa;
   padding: 15px;
   border-radius: 6px;
   border-left: 4px solid #28a745;
+  font-size: 13px;
+}
+
+.notes-text {
+  max-height: 150px;
+  overflow: hidden;
+}
+
+/* Contatti */
+.contacts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.contact-group {
+  margin-bottom: 15px;
+}
+
+.contact-group-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #495057;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.contact-item {
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #007bff;
+}
+
+.contact-name {
+  font-weight: bold;
+  color: #333;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.contact-details {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+.contact-details span {
+  display: inline-block;
+}
+
+/* Fornitori */
+.suppliers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.supplier-item {
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #ffc107;
+}
+
+.supplier-name {
+  font-weight: bold;
+  color: #333;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.supplier-details {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+.supplier-details span {
+  display: inline-block;
+}
+
+/* Connessioni compatte */
+.connections-list-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.connection-item-compact {
+  padding: 6px 10px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #007bff;
+  font-size: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.connection-type-compact {
+  font-weight: bold;
+  color: #007bff;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.connection-target-compact {
+  color: #333;
+  flex: 1;
 }
 
 .qr-section {

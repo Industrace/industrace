@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select
 from typing import List, Optional
 from datetime import datetime
 import os
 from pathlib import Path
 from uuid import UUID
 
-from app.models.asset import Asset
+from app.models.asset import Asset, asset_contacts
 from app.models.site import Site
 from app.models.area import Area
 from app.models.location import Location
@@ -252,6 +253,9 @@ def generate_print(
                 joinedload(Asset.photos),
                 joinedload(Asset.documents),
                 joinedload(Asset.contacts),
+                joinedload(Asset.suppliers),
+                joinedload(Asset.security_zone),
+                joinedload(Asset.area),
             )
             .filter(Asset.id == request.asset_id)
             .first()
@@ -306,6 +310,24 @@ def generate_print(
             "update_status": asset_with_relations.update_status,
             "risk_score": asset_with_relations.risk_score,
             "last_risk_assessment": asset_with_relations.last_risk_assessment,
+            "protocols": asset_with_relations.protocols or [],
+            "security_zone": (
+                {
+                    "id": asset_with_relations.security_zone.id,
+                    "name": asset_with_relations.security_zone.name,
+                }
+                if asset_with_relations.security_zone
+                else None
+            ),
+            "area": (
+                {
+                    "id": asset_with_relations.area.id,
+                    "name": asset_with_relations.area.name,
+                    "code": asset_with_relations.area.code,
+                }
+                if asset_with_relations.area
+                else None
+            ),
             "asset_type": (
                 {
                     "name": (
@@ -437,36 +459,62 @@ def generate_print(
                 else []
             ),
             "contacts": (
-                [
+                (lambda contact_roles_dict: [
                     {
-                        "first_name": contact.first_name,
-                        "last_name": contact.last_name,
-                        "email": contact.email,
-                        "phone1": contact.phone1,
-                        "phone2": contact.phone2,
-                        "type": contact.type,
-                        "notes": contact.notes,
+                        "first_name": contact.first_name or "",
+                        "last_name": contact.last_name or "",
+                        "email": contact.email or "",
+                        "phone1": contact.phone1 or "",
+                        "phone2": contact.phone2 or "",
+                        "type": contact.type or "",
+                        "notes": contact.notes or "",
+                        "role": contact_roles_dict.get(contact.id, "other")
                     }
                     for contact in asset_with_relations.contacts
-                ]
+                ])(
+                    {
+                        contact_id: role
+                        for contact_id, role in (
+                            db.execute(
+                                select(
+                                    asset_contacts.c.contact_id,
+                                    asset_contacts.c.role
+                                ).where(
+                                    asset_contacts.c.asset_id == request.asset_id
+                                )
+                            ).fetchall() if asset_with_relations.contacts else []
+                        )
+                    }
+                )
                 if asset_with_relations.contacts
                 else []
             ),
             # ADDED: suppliers
             "suppliers": [
                 {
-                    "name": s.name,
-                    "email": s.email,
-                    "phone": s.phone,
-                    "website": s.website,
-                    "notes": s.notes,
+                    "name": s.name or "",
+                    "email": s.email or "",
+                    "phone": s.phone or "",
+                    "website": s.website or "",
+                    "notes": s.notes or "",
                 }
-                for s in getattr(asset_with_relations, "suppliers", [])
+                for s in (asset_with_relations.suppliers if hasattr(asset_with_relations, "suppliers") and asset_with_relations.suppliers else [])
             ],
             # ADDED: network interfaces
             "interfaces": [
-                iface.__dict__
-                for iface in getattr(asset_with_relations, "interfaces", [])
+                {
+                    "id": str(iface.id) if iface.id else None,
+                    "name": iface.name or "",
+                    "type": iface.type or "",
+                    "ip_address": iface.ip_address or "",
+                    "mac_address": iface.mac_address or "",
+                    "vlan": iface.vlan or "",
+                    "default_gateway": iface.default_gateway or "",
+                    "subnet_mask": iface.subnet_mask or "",
+                    "logical_port": iface.logical_port or "",
+                    "physical_plug_label": iface.physical_plug_label or "",
+                }
+                for iface in (asset_with_relations.interfaces if hasattr(asset_with_relations, "interfaces") and asset_with_relations.interfaces else [])
             ],
         }
 
@@ -495,6 +543,10 @@ def generate_print(
     except Exception as e:
         # Update the history with an error
         print_history.update_print_history_status(db, str(history.id), "error")
+        # Log the error for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Print generation failed: {str(e)}", exc_info=True)
         raise ErrorCodeException(
             status_code=500, error_code=ErrorCode.PRINT_GENERATION_FAILED
         )
