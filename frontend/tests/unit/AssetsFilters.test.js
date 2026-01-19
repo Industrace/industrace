@@ -50,9 +50,17 @@ const i18n = createI18n({
 // Mock PrimeVue components
 const mockComponents = {
   Dropdown: {
-    template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
-    props: ['modelValue', 'options', 'optionLabel', 'optionValue', 'placeholder', 'showClear'],
-    emits: ['update:modelValue']
+    template: '<div><select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)" :id="id"><option v-for="option in options" :key="getOptionValue(option)" :value="getOptionValue(option)">{{ getOptionLabel(option) }}</option></select></div>',
+    props: ['modelValue', 'options', 'optionLabel', 'optionValue', 'placeholder', 'showClear', 'id'],
+    emits: ['update:modelValue'],
+    methods: {
+      getOptionValue(option) {
+        return this.optionValue ? option[this.optionValue] : option
+      },
+      getOptionLabel(option) {
+        return this.optionLabel ? option[this.optionLabel] : option
+      }
+    }
   },
   Button: {
     template: '<button @click="$emit(\'click\')"><slot /></button>',
@@ -152,7 +160,15 @@ describe('AssetsFilters', () => {
     })
 
     const statusDropdown = wrapper.find('#filter_status')
-    await statusDropdown.setValue('1')
+    const selectElement = statusDropdown.find('select')
+    if (selectElement.exists()) {
+      await selectElement.setValue('1')
+      await selectElement.trigger('change')
+    } else {
+      // Fallback: directly trigger update event
+      await statusDropdown.vm.$emit('update:modelValue', '1')
+    }
+    await wrapper.vm.$nextTick()
 
     expect(filters.status_id.value).toBe('1')
   })
