@@ -18,11 +18,18 @@ const i18n = createI18n({
           filterbyLocation: 'Filtra per posizione',
           advancedFilters: 'Filtri avanzati',
           riskScoreMin: 'Min',
-          riskScoreMax: 'Max'
+          riskScoreMax: 'Max',
+          businessCriticalityLow: 'Bassa',
+          businessCriticalityMedium: 'Media',
+          businessCriticalityHigh: 'Alta',
+          businessCriticalityCritical: 'Critica'
         },
         fields: {
           businessCriticality: 'Criticità Aziendale',
           riskScore: 'Punteggio di Rischio'
+        },
+        filters: {
+          hasCriticalVulns: 'Ha vulnerabilità critiche'
         }
       },
       locations: {
@@ -54,6 +61,11 @@ const mockComponents = {
     template: '<input type="number" :value="modelValue" @input="$emit(\'update:modelValue\', parseFloat($event.target.value))" />',
     props: ['modelValue', 'placeholder', 'min', 'max', 'mode'],
     emits: ['update:modelValue']
+  },
+  Checkbox: {
+    template: '<input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />',
+    props: ['modelValue', 'binary'],
+    emits: ['update:modelValue']
   }
 }
 
@@ -67,7 +79,8 @@ describe('AssetsFilters', () => {
     location_id: { value: null },
     business_criticality: { value: null },
     risk_score_min: { value: null },
-    risk_score_max: { value: null }
+    risk_score_max: { value: null },
+    has_critical_vulns: { value: false }
   }
 
   beforeEach(() => {
