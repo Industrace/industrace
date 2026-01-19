@@ -1005,15 +1005,11 @@ function confirmBulkSoftDelete() {
 async function bulkSoftDelete(assets) {
   try {
     const assetIds = assets.map(asset => asset.id)
-    // console.log('Bulk soft delete - Asset IDs:', assetIds)
     
     const response = await api.bulkSoftDeleteAssets(assetIds)
-          // console.log('Bulk soft delete - Response:', response.data)
     
     const deletedCount = response.data.deleted ? response.data.deleted.length : 0
     const errorCount = response.data.errors ? response.data.errors.length : 0
-    
-          // console.log('Bulk soft delete - Deleted count:', deletedCount, 'Error count:', errorCount)
     
     // Mostra toast di successo solo se ci sono asset eliminati
     if (deletedCount > 0) {
@@ -1089,7 +1085,6 @@ async function emptyTrash() {
     toast.add({ severity: 'success', summary: t('common.messages.success'), detail: t('assets.messages.trashEmptied'), life: 3000 })
     fetchAssets()
   } catch (err) {
-    // console.log(err)
     toast.add({ severity: 'error', summary: t('common.messages.error'), detail: t('assets.messages.trashEmptyError'), life: 3000 })
   }
 }

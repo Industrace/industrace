@@ -188,7 +188,6 @@ watch(() => props.asset, (newAsset) => {
 }, { immediate: true })
 
 async function handleSubmit() {
-  // console.log('handleSubmit chiamato')
   
   // Custom validation before calling submit
   const validationErrors = validateAssetData(form.value)
@@ -202,7 +201,6 @@ async function handleSubmit() {
     return
   }
 
-      // console.log('Form data:', form.value)
 
   // Force asset_id e tenant_id on all interfaces
   if (Array.isArray(form.value.interfaces)) {
@@ -216,7 +214,6 @@ async function handleSubmit() {
   }
 
   await submit(async (formData) => {
-    // console.log('Submit callback chiamato con:', formData)
     
     // Format data fields as YYYY-MM-DD or ISO
     const formatDate = (d) => {
@@ -237,7 +234,6 @@ async function handleSubmit() {
       installation_date: formatDate(formData.installation_date),
       last_update_date: formatDateTime(formData.last_update_date)
     }
-    // console.log('Dati finali da inviare:', dataWithFormattedDates)
     emit('submit', dataWithFormattedDates)
   }, {
     successMessage: props.asset ? null : t('assets.messages.created'), // Non mostrare toast per update

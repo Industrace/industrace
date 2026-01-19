@@ -60,7 +60,6 @@ export default {
     return api.get(`/assets/${id}`)
   },
   createAsset(assetData) {
-    // console.log('API createAsset chiamata con:', assetData)
     return api.post('/assets', assetData)
   },
   deleteAsset(id) {

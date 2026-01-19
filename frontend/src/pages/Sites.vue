@@ -297,13 +297,10 @@ async function fetchSites() {
     const params = getApiParams()
     let response
     if (trashMode.value) {
-      // console.log('DEBUG: Fetching sites trash')
       response = await api.getSitesTrash(params)
     } else {
-              // console.log('DEBUG: Fetching active sites')
       response = await api.getSites(params)
     }
-          // console.log('DEBUG: Received sites:', response.data)
     sites.value = response.data
     return response
   }, {
@@ -461,7 +458,6 @@ async function handleEmptyTrash() {
 // Export CSV
 function exportCsv() {
   // TODO: Implementare export CSV per siti
-      // console.log('Export CSV sites')
 }
 
 // Import

@@ -264,7 +264,6 @@ function getPermissionsSeverity(role) {
 async function testPermissions() {
   await execute(async () => {
     const response = await api.testUserPermissions()
-          // console.log('Permessi utente:', response.data)
     
     // Mostra toast personalizzato con i dati
     toast.add({

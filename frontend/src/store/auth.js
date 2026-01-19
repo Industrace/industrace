@@ -34,11 +34,9 @@ function startTokenRefresh(intervalMinutes = 5) {
 
     try {
       await api.refresh()
-          //console.log('[AUTH] Token refresh eseguito')
   } catch (err) {
-    // console.log(err)
-    console.warn('[AUTH] Token refresh fallito')
-      logout()
+    // Token refresh failed, logout user
+    logout()
     }
   }, intervalMinutes * 60 * 1000)
 }
@@ -79,7 +77,6 @@ async function login(email, password) {
       } else {
         // Just log the error but don't logout
         // Keep isAuthenticated as is - if we have a token, the router guard will verify it
-        console.warn('Failed to fetch user, but suppressing logout (token may still be valid):', error)
         // Don't change isAuthenticated - let the router guard verify the token
       }
     }

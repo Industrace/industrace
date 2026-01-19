@@ -10,7 +10,7 @@ from .tenant import Tenant
 class UserCreate(BaseModel):
     name: str = Field(..., max_length=255, description="User name")
     email: EmailStr = Field(..., description="Email address")
-    password: str = Field(..., min_length=8, max_length=255, description="Password")
+    password: str = Field(..., min_length=12, max_length=255, description="Password (minimum 12 characters with complexity requirements)")
     role_id: uuid.UUID
     is_active: Optional[bool] = True
 

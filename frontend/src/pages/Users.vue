@@ -509,7 +509,6 @@ async function handleEmptyTrash() {
 // Export CSV
 function exportCsv() {
   // TODO: Implementare export CSV per utenti
-      // console.log('Export CSV users')
 }
 
 // Import

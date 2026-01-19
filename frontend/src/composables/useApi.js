@@ -60,7 +60,6 @@ export function useApi() {
       
       if (showToast) {
         // Gestione errori di validazione dettagliati
-        // console.log('API Error Response:', err.response?.data)
         if (err.response?.data?.validation_errors) {
            const validationErrors = err.response.data.validation_errors
            const errorMessages = validationErrors.map(error => {

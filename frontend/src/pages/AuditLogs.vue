@@ -507,7 +507,6 @@ function formatJson(data) {
 
 function exportAuditLogs() {
   // TODO: Implementare export CSV dei log di audit
-      // console.log('Export audit logs')
 }
 </script>
 

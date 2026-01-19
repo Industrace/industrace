@@ -949,7 +949,7 @@ def import_assets_xlsx_confirm(
                 if row.get("installation_date") and str(row.get("installation_date")).strip() != "":
                     try:
                         installation_date = datetime.strptime(str(row.get("installation_date")).strip(), "%Y-%m-%d").date()
-                    except:
+                    except (ValueError, TypeError):
                         pass  # Keep as None if parsing fails
                 
                 # Parse purdue_level if provided
@@ -957,7 +957,7 @@ def import_assets_xlsx_confirm(
                 if row.get("purdue_level") and str(row.get("purdue_level")).strip() != "":
                     try:
                         purdue_level = float(str(row.get("purdue_level")).strip())
-                    except:
+                    except (ValueError, TypeError):
                         pass  # Keep default if parsing fails
                 
                 asset.name = name
@@ -1007,7 +1007,7 @@ def import_assets_xlsx_confirm(
                 if row.get("installation_date") and str(row.get("installation_date")).strip() != "":
                     try:
                         installation_date = datetime.strptime(str(row.get("installation_date")).strip(), "%Y-%m-%d").date()
-                    except:
+                    except (ValueError, TypeError):
                         pass  # Keep as None if parsing fails
                 
                 # Parse purdue_level if provided
@@ -1015,7 +1015,7 @@ def import_assets_xlsx_confirm(
                 if row.get("purdue_level") and str(row.get("purdue_level")).strip() != "":
                     try:
                         purdue_level = float(str(row.get("purdue_level")).strip())
-                    except:
+                    except (ValueError, TypeError):
                         pass  # Keep default if parsing fails
                 
                 new_asset = Asset(

@@ -139,7 +139,6 @@ async function fetchSite() {
   try {
     const response = await api.getSite(siteId)
     site.value = response.data
-    // console.log('Fetched site:', site.value)
   } catch (error) {
     toast.add({ severity: 'error', summary: t('common.messages.error'), detail: t('sites.messages.fetchError'), life: 3000 })
   }
@@ -150,7 +149,6 @@ async function fetchLocations() {
   try {
     const response = await api.getLocations({ site_id: siteId })
     locations.value = response.data
-          // console.log('Locations fetched:', response.data)
   } catch (error) {
     toast.add({ severity: 'error', summary: t('common.messages.error'), detail: t('sites.messages.fetchLocationsError'), life: 3000 })
   } finally {

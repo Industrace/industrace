@@ -23,14 +23,13 @@ import 'primevue/resources/primevue.min.css'
 import 'primeicons/primeicons.css'
 import './static/main.css'
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
+import i18n from './locales/loader-final.js'
 
 const app = createApp(App)
 const pinia = createPinia()
 pinia.use(piniaPersistedState)
 
-import i18n from './locales/loader-final.js'
-
-app.use(createPinia())
+app.use(pinia)
 app.use(router)
 app.use(PrimeVue)
 app.use(i18n)

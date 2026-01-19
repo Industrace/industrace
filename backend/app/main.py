@@ -1,14 +1,12 @@
 # File: backend/main.py
 
-import uuid
 import logging
 import json
 import math
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Optional
 from jose import jwt, JWTError, ExpiredSignatureError
-from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +38,6 @@ from fastapi import FastAPI, Depends, HTTPException, Form, Request, Cookie
 
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
@@ -270,29 +267,29 @@ async def startup_event():
         import subprocess
         import os
         
-        print("Checking database migrations...")
+        logger.info("Checking database migrations...")
         try:
             # Always try to upgrade to head (handles multiple heads with 'heads' command)
-            print("Applying database migrations...")
+            logger.info("Applying database migrations...")
             result = subprocess.run(["alembic", "upgrade", "heads"], check=True, capture_output=True, text=True)
             if result.stdout:
-                print(result.stdout)
-            print("Database migrations applied successfully!")
+                logger.info(result.stdout)
+            logger.info("Database migrations applied successfully!")
         except subprocess.CalledProcessError as e:
-            print(f"Error applying database migrations: {e}")
+            logger.error(f"Error applying database migrations: {e}")
             if e.stderr:
-                print(f"Error details: {e.stderr}")
+                logger.error(f"Error details: {e.stderr}")
             # Try with single head as fallback (for backward compatibility)
             try:
-                print("Attempting to apply migrations with 'head' (single) as fallback...")
+                logger.info("Attempting to apply migrations with 'head' (single) as fallback...")
                 subprocess.run(["alembic", "upgrade", "head"], check=True, capture_output=True, text=True)
-                print("Database migrations applied successfully!")
+                logger.info("Database migrations applied successfully!")
             except subprocess.CalledProcessError as e2:
-                print(f"Fallback migration failed: {e2}")
+                logger.error(f"Fallback migration failed: {e2}")
                 if e2.stderr:
-                    print(f"Error details: {e2.stderr}")
+                    logger.error(f"Error details: {e2.stderr}")
                 # Continue anyway, it might be that the migrations are already applied
-                print("Continuing startup despite migration errors (migrations may already be applied)")
+                logger.warning("Continuing startup despite migration errors (migrations may already be applied)")
         
         db = SessionLocal()
         # Controlla se esistono tenant, utenti e ruoli
@@ -301,34 +298,34 @@ async def startup_event():
         role_count = db.query(Role).count()
         
         if tenant_count == 0 and user_count == 0 and role_count == 0:
-            print("Empty database detected. Automatic initialization...")
+            logger.info("Empty database detected. Automatic initialization...")
             setup_system()
-            print("Database initialized successfully!")
-            print("Default credentials:")
-            print("  Admin: admin@example.com / admin123")
-            print("  Editor: editor@example.com / editor123")
-            print("  Viewer: viewer@example.com / viewer123")
+            logger.info("Database initialized successfully!")
+            logger.info("Default credentials:")
+            logger.info("  Admin: admin@example.com / admin123")
+            logger.info("  Editor: editor@example.com / editor123")
+            logger.info("  Viewer: viewer@example.com / viewer123")
         elif user_count == 0 or role_count == 0:
-            print("Partially configured database. Completing initialization...")
+            logger.info("Partially configured database. Completing initialization...")
             setup_system()
-            print("Initialization completed!")
-            print("Default credentials:")
-            print("  Admin: admin@example.com / admin123")
-            print("  Editor: editor@example.com / editor123")
-            print("  Viewer: viewer@example.com / viewer123")
+            logger.info("Initialization completed!")
+            logger.info("Default credentials:")
+            logger.info("  Admin: admin@example.com / admin123")
+            logger.info("  Editor: editor@example.com / editor123")
+            logger.info("  Viewer: viewer@example.com / viewer123")
         else:
-            print(f"Database already configured (tenant: {tenant_count}, users: {user_count}, roles: {role_count})")
+            logger.info(f"Database already configured (tenant: {tenant_count}, users: {user_count}, roles: {role_count})")
             # Initialize notification templates if not present (system-wide)
             try:
                 from app.models import NotificationTemplate
                 from app.init_data.init_notification_templates import init_notification_templates
                 template_count = db.query(NotificationTemplate).count()
                 if template_count == 0:
-                    print("📧 Initializing notification templates...")
+                    logger.info("Initializing notification templates...")
                     init_notification_templates(db)
-                    print("✅ Notification templates initialized")
+                    logger.info("Notification templates initialized")
             except Exception as e:
-                print(f"⚠️  Notification templates initialization failed: {e}")
+                logger.error(f"Notification templates initialization failed: {e}")
             
             # Check if demo data exists and seed only if needed in development environment
             from app.config import settings
@@ -338,15 +335,13 @@ async def startup_event():
                 if asset_count == 0:
                     try:
                         from app.init_demo_data import seed_demo_data
-                        print("🌱 Seeding demo data using Python...")
+                        logger.info("Seeding demo data using Python...")
                         seed_demo_data()
-                        print("🎉 Demo data seeding completed successfully!")
+                        logger.info("Demo data seeding completed successfully!")
                     except Exception as e:
-                        print(f"⚠️  Demo data seeding failed: {e}")
-                        import traceback
-                        traceback.print_exc()
+                        logger.error(f"Demo data seeding failed: {e}", exc_info=True)
                 else:
-                    print(f"📊 Demo data already exists ({asset_count} assets found)")
+                    logger.info(f"Demo data already exists ({asset_count} assets found)")
         
         db.close()
         
@@ -354,13 +349,11 @@ async def startup_event():
         try:
             from app.services.background_tasks import BackgroundTaskManager
             BackgroundTaskManager.start()
-            print("✅ Background tasks started (email queue processor, asset review checker)")
+            logger.info("Background tasks started (email queue processor, asset review checker)")
         except Exception as e:
-            print(f"⚠️  Failed to start background tasks: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Failed to start background tasks: {e}", exc_info=True)
     except Exception as e:
-        print(f"Error during database initialization: {e}")
+        logger.error(f"Error during database initialization: {e}", exc_info=True)
         # Non blocchiamo l'avvio dell'app in caso di errore
 
 
@@ -370,9 +363,9 @@ async def shutdown_event():
     try:
         from app.services.background_tasks import BackgroundTaskManager
         BackgroundTaskManager.stop()
-        print("Background tasks stopped")
+        logger.info("Background tasks stopped")
     except Exception as e:
-        print(f"Error stopping background tasks: {e}")
+        logger.error(f"Error stopping background tasks: {e}", exc_info=True)
 
 
 from app.errors.validation_errors import ValidationError, InvalidVATNumberError, InvalidTaxCodeError, InvalidURLError, InvalidPhoneError, InvalidEmailError, InvalidIPAddressError, InvalidMACAddressError, InvalidVLANError, InvalidImpactValueError, InvalidPurdueLevelError, InvalidRiskScoreError, InvalidBusinessCriticalityError, InvalidRemoteAccessTypeError, InvalidPhysicalAccessEaseError, InvalidTenantSlugError, InvalidPasswordError
@@ -381,14 +374,6 @@ from app.errors.validation_errors import ValidationError, InvalidVATNumberError,
 async def validation_exception_handler(
     request: Request, validation_exc: RequestValidationError
 ):
-    # Log the error for debugging (only in development)
-    if settings.DEBUG:
-        import builtins
-        # builtins.print("Validation error:", validation_exc.errors)
-        # builtins.print("Validation error details:")
-        # for error in validation_exc.errors():
-        #     builtins.print(f"  Field: {error['loc']}, Message: {error['msg']}, Type: {error['type']}")
-
     # Extract specific error messages
     validation_errors = []
     for error in validation_exc.errors():
@@ -396,7 +381,6 @@ async def validation_exception_handler(
         
         # Handle our custom exceptions
         error_msg = error["msg"]
-        # print(f"Processing error message: '{error_msg}'")
         
         # Extract the error code from the message
         if "INVALID_VAT_NUMBER" in error_msg:
@@ -452,15 +436,6 @@ async def validation_exception_handler(
             "type": error["type"]
         })
     
-    # Log the final response for debugging
-    if settings.DEBUG:
-        # print("Final response:", {
-        #     "error_code": "VALIDATION_ERROR", 
-        #     "detail": "Invalid input data",
-        #     "validation_errors": validation_errors
-        # })
-        pass
-    
     # Return the validation error details
     # Add CORS headers to allow frontend to read the response
     cors_headers = get_cors_headers(request)
@@ -480,12 +455,6 @@ async def validation_exception_handler(
 async def custom_validation_exception_handler(
     request: Request, validation_exc: ValidationError
 ):
-    # Log the error for debugging (only in development)
-    if settings.DEBUG:
-        import builtins
-        # builtins.print(f"Custom validation error: {validation_exc.error_code} for field {validation_exc.field}")
-        pass
-    
     # Return the custom validation error
     # Use configured origins instead of "*" for security
     cors_headers = get_cors_headers(request)
@@ -615,7 +584,6 @@ async def login(
         raise ErrorCodeException(status_code=401, error_code="INVALID_CREDENTIALS")
     
     # Check account lockout
-    from datetime import datetime, timedelta
     if user.locked_until and user.locked_until > datetime.utcnow():
         log_failed_login(email, request, "ACCOUNT_LOCKED")
         raise ErrorCodeException(
@@ -767,7 +735,7 @@ async def logout(
             if user_id:
                 # Get user from database
                 current_user = db.query(User).filter(User.id == user_id).first()
-        except:
+        except (JWTError, ExpiredSignatureError):
             # Token is invalid or expired, but we still want to log the logout attempt
             pass
     
@@ -801,27 +769,21 @@ class ErrorCodeException(HTTPException):
 
 @app.exception_handler(ErrorCodeException)
 async def error_code_exception_handler(request: Request, exc: ErrorCodeException):
-    # Log the error for debugging (only in development)
-    if settings.DEBUG:
-        # print(f"ErrorCodeException: {exc.error_code} - {exc.status_code}")
-        pass
-    
     # Use the translations if available
     from app.errors.translations import messages
-    from app.services.auth import get_current_user
     
-    # Try to determine the language from the current user
+    # Try to determine the language from the request headers
     language = "en"  # default
     try:
-        # Try to get the current user to determine the language
-        # If it doesn't work, use the Accept-Language header
+        # Use the Accept-Language header to determine language
         accept_language = request.headers.get("accept-language", "en")
         if "it" in accept_language.lower():
             language = "it"
-    except:
+    except Exception:
+        # If header parsing fails, use default language
         pass
     
-        # Get the translated message
+    # Get the translated message
     translated_message = messages.get(language, {}).get(exc.error_code, exc.error_code)
     
     # Add CORS headers to allow frontend to read the response
