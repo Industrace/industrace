@@ -7,11 +7,11 @@ from app.models import Role
 
 def init_tenant_roles(tenant_id: uuid.UUID, db: Session = None):
     """
-    Inizializza i ruoli default per un tenant specifico
+    Initialize default roles for a specific tenant
     
     Args:
-        tenant_id: ID del tenant per cui creare i ruoli
-        db: Sessione database (opzionale, se non fornita ne crea una nuova)
+        tenant_id: ID of the tenant for which to create roles
+        db: Database session (optional, creates a new one if not provided)
     """
     should_close_db = False
     if db is None:

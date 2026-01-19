@@ -6,12 +6,12 @@ from app.models import Role
 
 def update_roles_permissions():
     """
-    Aggiorna i permessi dei ruoli esistenti con i nuovi permessi aggiunti.
-    Questo script aggiorna tutti i ruoli di tutti i tenant.
+    Update existing roles permissions with newly added permissions.
+    This script updates all roles for all tenants.
     """
     db: Session = SessionLocal()
     
-    # Definizione dei nuovi permessi per ogni ruolo
+    # Definition of new permissions for each role
     new_permissions = {
         "admin": {
             "reset_user_password": 1,
@@ -44,7 +44,7 @@ def update_roles_permissions():
     }
     
     try:
-        # Aggiorna tutti i ruoli di tutti i tenant
+        # Update all roles for all tenants
         roles = db.query(Role).all()
         updated_count = 0
         
@@ -53,29 +53,29 @@ def update_roles_permissions():
             updated = False
             
             if role_permissions:
-                # Assicurati che permissions sia un dizionario
+                # Ensure permissions is a dictionary
                 if role.permissions is None:
                     role.permissions = {}
                 
-                # Aggiungi o aggiorna i permessi mancanti
+                # Add or update missing permissions
                 for perm_name, perm_level in role_permissions.items():
                     if perm_name not in role.permissions:
                         role.permissions[perm_name] = perm_level
                         updated = True
-                        print(f"✅ Aggiornato ruolo '{role.name}' (tenant: {role.tenant_id}): aggiunto permesso '{perm_name}' = {perm_level}")
+                        print(f"✅ Updated role '{role.name}' (tenant: {role.tenant_id}): added permission '{perm_name}' = {perm_level}")
             
             if updated:
                 updated_count += 1
         
         if updated_count > 0:
             db.commit()
-            print(f"\n✅ Aggiornati {updated_count} ruoli con i nuovi permessi!")
+            print(f"\n✅ Updated {updated_count} roles with new permissions!")
         else:
-            print("\nℹ️  Tutti i ruoli hanno già i permessi aggiornati.")
+            print("\nℹ️  All roles already have updated permissions.")
             
     except Exception as e:
         db.rollback()
-        print(f"\n❌ Errore durante l'aggiornamento dei permessi: {e}")
+        print(f"\n❌ Error during permissions update: {e}")
         raise
     finally:
         db.close()

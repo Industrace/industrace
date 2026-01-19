@@ -63,7 +63,7 @@ def create_asset(
     from app.services.dashboard_cache import invalidate_dashboard_cache
     invalidate_dashboard_cache(str(current_user.tenant_id))
     
-    # Auto-match vulnerabilità in background
+    # Auto-match vulnerabilities in background
     from app.services.vulnerability_auto_match import VulnerabilityAutoMatcher
     if VulnerabilityAutoMatcher.should_auto_match_asset(result):
         VulnerabilityAutoMatcher.match_asset_async(result.id, current_user.tenant_id)
@@ -141,7 +141,7 @@ def list_assets(
     if has_critical_vulns:
         from app.models.vulnerability import AssetVulnerability, Vulnerability
         from sqlalchemy import and_
-        # Subquery per trovare asset con vulnerabilità critiche/alte non patchate
+        # Subquery to find assets with critical/high unpatched vulnerabilities
         assets_with_vulns_subquery = (
             db.query(AssetVulnerability.asset_id)
             .join(Vulnerability, AssetVulnerability.vulnerability_id == Vulnerability.id)
@@ -189,7 +189,7 @@ def list_assets(
         result = []
         for asset in assets:
             asset_dict = AssetRead.from_orm(asset).dict()
-            # L'area è già caricata tramite selectinload, nessuna query aggiuntiva
+            # Area is already loaded via selectinload, no additional query needed
             if asset.area:
                 asset_dict["area_name"] = asset.area.name
                 asset_dict["area_code"] = asset.area.code
@@ -197,7 +197,7 @@ def list_assets(
             # Assicurati che le interfacce siano incluse (potrebbero non essere serializzate automaticamente)
             if asset.interfaces:
                 from app.schemas.asset_interface import AssetInterface
-                # Serializza le interfacce manualmente se non sono già presenti
+                # Serialize interfaces manually if not already present
                 if not asset_dict.get("interfaces") or len(asset_dict.get("interfaces", [])) == 0:
                     asset_dict["interfaces"] = [AssetInterface.from_orm(iface).dict() for iface in asset.interfaces]
             
@@ -359,7 +359,7 @@ def get_assets_for_network_map(
             } if asset.status else None,
         }
         
-        # Aggiungi area info se presente
+        # Add area info if present
         if asset.area_id:
             from app.models.area import Area
             area = db.query(Area).filter(Area.id == asset.area_id).first()
@@ -569,7 +569,7 @@ def import_assets_xlsx_preview(
         else:
             df = pd.read_excel(file.file, engine="openpyxl")
     except Exception as e:
-        return {"error": f"Errore nella lettura del file: {str(e)}"}
+        return {"error": f"Error reading file: {str(e)}"}
     to_create, to_update, errors = [], [], []
     for idx, row in df.iterrows():
         name = row.get("nome") or row.get("name")
@@ -811,7 +811,7 @@ def import_assets_xlsx_confirm(
         else:
             df = pd.read_excel(file.file, engine="openpyxl")
     except Exception as e:
-        return {"error": f"Errore nella lettura del file: {str(e)}"}
+        return {"error": f"Error reading file: {str(e)}"}
     created, updated, errors = [], [], []
     for idx, row in df.iterrows():
         name = row.get("nome") or row.get("name")
@@ -919,7 +919,7 @@ def import_assets_xlsx_confirm(
                     errors.append(
                         {
                             "row": int(idx) + 2,
-                            "error": f"Errore creazione manufacturer: {str(e)}",
+                            "error": f"Error creating manufacturer: {str(e)}",
                         }
                     )
                     continue
@@ -1056,7 +1056,7 @@ def import_assets_xlsx_confirm(
         except IntegrityError as e:
             db.rollback()
             errors.append(
-                {"row": int(idx) + 2, "error": f"Errore di integrità: {str(e)}"}
+                {"row": int(idx) + 2, "error": f"Integrity error: {str(e)}"}
             )
         except Exception as e:
             db.rollback()
@@ -1268,7 +1268,7 @@ def update_asset(
     from app.services.dashboard_cache import invalidate_dashboard_cache
     invalidate_dashboard_cache(str(current_user.tenant_id))
     
-    # Auto-match vulnerabilità in background se asset ha info rilevanti
+    # Auto-match vulnerabilities in background se asset ha info rilevanti
     from app.services.vulnerability_auto_match import VulnerabilityAutoMatcher
     if VulnerabilityAutoMatcher.should_auto_match_asset(result):
         # Controlla se manufacturer, model o firmware sono stati aggiornati

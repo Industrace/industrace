@@ -110,7 +110,7 @@ def list_api_keys(user_email: str):
     for key in api_keys:
         status = "Active" if key.is_active else "Inactive"
         expires = (
-            key.expires_at.strftime("%Y-%m-%d %H:%M:%S") if key.expires_at else "Mai"
+            key.expires_at.strftime("%Y-%m-%d %H:%M:%S") if key.expires_at else "Never"
         )
 
         # print(f"ID: {key.id}")
@@ -128,7 +128,7 @@ def main():
     if len(sys.argv) < 2:
         print("Usage:")
         print(
-            "  python generate_api_key.py create <nome> <email> [scopes] [rate_limit] [expires_days]"
+            "  python generate_api_key.py create <name> <email> [scopes] [rate_limit] [expires_days]"
         )
         print("  python generate_api_key.py list <email>")
         print("")

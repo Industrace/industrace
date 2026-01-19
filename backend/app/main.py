@@ -354,7 +354,7 @@ async def startup_event():
             logger.error(f"Failed to start background tasks: {e}", exc_info=True)
     except Exception as e:
         logger.error(f"Error during database initialization: {e}", exc_info=True)
-        # Non blocchiamo l'avvio dell'app in caso di errore
+        # Don't block app startup in case of error
 
 
 @app.on_event("shutdown")
@@ -813,14 +813,14 @@ async def generic_exception_handler(request: Request, exc: Exception):
         logger.error("JSON serialization error with inf/NaN values detected")
         return JSONResponse(
             status_code=500,
-            content={"error_code": "SERIALIZATION_ERROR", "detail": "Errore di serializzazione dati - valori numerici non validi rilevati"},
+            content={"error_code": "SERIALIZATION_ERROR", "detail": "Data serialization error - invalid numeric values detected"},
             headers=cors_headers
         )
     
     # For the user, return only a generic message
     return JSONResponse(
         status_code=500, 
-        content={"error_code": "INTERNAL_ERROR", "detail": "Errore interno del server"},
+        content={"error_code": "INTERNAL_ERROR", "detail": "Internal server error"},
         headers=cors_headers
     )
 

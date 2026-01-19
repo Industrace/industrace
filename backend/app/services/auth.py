@@ -49,7 +49,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     encoded_jwt = jwt.encode(
         to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
     )
-    logger.info(f"Token creato per utente {data.get('sub')} con scadenza {expire}")
+    logger.info(f"Token created for user {data.get('sub')} with expiration {expire}")
     return encoded_jwt
 
 

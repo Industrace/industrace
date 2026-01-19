@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Script per inizializzare manualmente le Security Capabilities.
-Eseguire con: python init_capabilities.py
-Oppure nel container Docker: docker-compose exec backend python /app/init_capabilities.py
+Script to manually initialize Security Capabilities.
+Run with: python init_capabilities.py
+Or in Docker container: docker-compose exec backend python /app/init_capabilities.py
 """
 from app.database import SessionLocal
 from app.init_data.init_security_capabilities import init_security_capabilities
 
 
 def main():
-    """Inizializza le Security Capabilities"""
-    print("🔐 Inizializzazione Security Capabilities...")
+    """Initialize Security Capabilities"""
+    print("🔐 Initializing Security Capabilities...")
     print("-" * 60)
     
     db = SessionLocal()
@@ -18,11 +18,11 @@ def main():
         count = init_security_capabilities(db)
         print("-" * 60)
         if count > 0:
-            print(f"✅ Inizializzazione completata! ({count} capability create)")
+            print(f"✅ Initialization completed! ({count} capabilities created)")
         else:
-            print("ℹ️  Tutte le capability erano già presenti nel database.")
+            print("ℹ️  All capabilities were already present in the database.")
     except Exception as e:
-        print(f"❌ Errore durante l'inizializzazione: {e}")
+        print(f"❌ Error during initialization: {e}")
         import traceback
         traceback.print_exc()
         return 1

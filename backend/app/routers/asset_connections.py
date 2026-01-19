@@ -103,7 +103,7 @@ def list_connections(
             try:
                 dependency_status = ConnectionDependencyAnalyzer.get_connection_dependency_status(db, conn)
             except Exception as e:
-                # Se c'è un errore nel calcolo, usa uno stato di default
+                # If there's an error in calculation, use a default status
                 logger.warning(f"Error calculating dependency status for connection {conn.id}: {e}", exc_info=True)
                 dependency_status = {
                     'has_dependency': False,
