@@ -13,7 +13,6 @@ help:
 	@echo "  make prod-cloud - Start CLOUD production environment (HTTPS + Traefik + Let's Encrypt)"
 	@echo "  make demo      - Add demo data to existing system"
 	@echo "  make clean     - Clean system completely"
-	@echo "  make test      - Run tests"
 	@echo "  make logs      - Show logs"
 	@echo "  make stop      - Stop all containers"
 	@echo "  make config    - Show configuration information"
@@ -100,10 +99,10 @@ prod-cloud:
 	@echo "🦌 Traefik dashboard: http://localhost:8080"
 
 
-# Run tests
-test:
-	@echo "🧪 Running tests..."
-	docker-compose -f docker-compose.prod.yml exec backend pytest
+# Run tests (disabled - tests removed)
+# test:
+# 	@echo "🧪 Running tests..."
+# 	docker-compose -f docker-compose.prod.yml exec backend pytest
 
 # Show logs
 logs:
