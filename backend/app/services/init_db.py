@@ -43,7 +43,7 @@ def create_sample_data():
         admin_user = User(
             tenant_id=tenant.id,
             email="admin@acme.com",
-            password_hash=get_password_hash("admin123"),
+            password_hash=get_password_hash("Admin@123456!"),
             name="Administrator",
             role_id=admin_role_id,  # Usa l'ID del ruolo invece del nome
             password_change_required=True,  # Force password change on first login

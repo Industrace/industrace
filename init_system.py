@@ -132,7 +132,7 @@ def verify_system():
     try:
         response = requests.post(
             "http://localhost:8000/login",
-            data={"email": "admin@example.com", "password": "admin123"},
+            data={"email": "admin@example.com", "password": "Admin@123456!"},
             timeout=10
         )
         if response.status_code == 200:
@@ -148,9 +148,9 @@ def print_credentials():
     print("🎉 SYSTEM INITIALIZATION COMPLETED!")
     print("="*60)
     print("\n📋 Login Credentials:")
-    print("   Admin:   admin@example.com / admin123")
-    print("   Editor:  editor@example.com / editor123")
-    print("   Viewer:  viewer@example.com / viewer123")
+    print("   Admin:   admin@example.com / Admin@123456!")
+    print("   Editor:  editor@example.com / Editor@123456!")
+    print("   Viewer:  viewer@example.com / Viewer@123456!")
     print("\n🌐 Access URLs:")
     print("   Frontend: http://localhost:5173")
     print("   Backend API: http://localhost:8000")

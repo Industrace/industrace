@@ -87,11 +87,11 @@ Open your browser and go to:
 
 1. **Login**: Use the default credentials:
    - Email: `admin@example.com`
-   - Password: `admin123`
+   - Password: `Admin@123456!`
 
    **Alternative users:**
-   - Editor: `editor@example.com` / `editor123`
-   - Viewer: `viewer@example.com` / `viewer123`
+   - Editor: `editor@example.com` / `Editor@123456!`
+   - Viewer: `viewer@example.com` / `Viewer@123456!`
 
 2. **⚠️ Change Password (Required)**: 
    - On first login, you will be required to change your password

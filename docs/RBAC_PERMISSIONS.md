@@ -1,20 +1,20 @@
-# Sistema RBAC Espanso - Industrace
+# Expanded RBAC System - Industrace
 
-## Panoramica
+## Overview
 
-Il sistema RBAC (Role-Based Access Control) di Industrace è stato espanso per includere tutte le nuove funzionalità aggiunte al sistema. Questo documento descrive le sezioni di permessi disponibili e i livelli di accesso per ciascuna.
+Industrace's RBAC (Role-Based Access Control) system has been expanded to include all new features added to the system. This document describes the available permission sections and access levels for each.
 
-## Struttura dei Permessi
+## Permission Structure
 
-Il sistema RBAC utilizza un modello basato su **sezioni** e **livelli**:
+The RBAC system uses a model based on **sections** and **levels**:
 
-- **Sezioni**: Aree funzionali del sistema (es: `assets`, `vulnerabilities`, `compliance`)
-- **Livelli**: Livelli di accesso numerici (0-4):
-  - **0**: Nessun accesso
-  - **1**: Read (lettura)
-  - **2**: Write (scrittura/modifica)
-  - **3**: Delete (eliminazione/amministrazione)
-  - **4**: Bulk/Advanced (operazioni massive e analisi avanzate)
+- **Sections**: Functional areas of the system (e.g., `assets`, `vulnerabilities`, `compliance`)
+- **Levels**: Numeric access levels (0-4):
+  - **0**: No access
+  - **1**: Read
+  - **2**: Write (modify)
+  - **3**: Delete (administration)
+  - **4**: Bulk/Advanced (bulk operations and advanced analytics)
 
 ## Sezioni di Permessi
 
@@ -171,20 +171,59 @@ Queste sezioni erano già presenti nel sistema originale:
 
 ## Ruoli Predefiniti
 
-### Admin
-Accesso completo a tutte le sezioni (livello 3 o superiore per tutte).
+### Admin (Livello 3 - Amministrazione Completa)
 
-### Editor
-- Accesso read/write alle sezioni operative (assets, vulnerabilities, reviews, dependencies)
-- Accesso read-only alle sezioni amministrative (compliance, security_zones, sso)
-- Può gestire preferenze notifiche personali
+Accesso completo a tutte le sezioni:
 
-### Viewer
-- Accesso read-only a tutte le sezioni tranne:
-  - `users`: nessun accesso
-  - `sso`: nessun accesso
-  - `api_keys`: nessun accesso
-- Può visualizzare notifiche personali
+| Sezione | Livello | Descrizione |
+|---------|---------|-------------|
+| Tutti i moduli base | 3 | Gestione completa asset, siti, aree, etc. |
+| `vulnerabilities` | 3 | Gestione completa vulnerabilità e CVE |
+| `asset_reviews` | 3 | Gestione completa review e manutenzione |
+| `asset_dependencies` | 3 | Gestione completa dipendenze e analisi |
+| `compliance` | 3 | Gestione completa ISA/IEC 62443 |
+| `security_zones` | 3 | Gestione completa zone di sicurezza |
+| `evidence` | 3 | Gestione completa evidence compliance |
+| `notifications` | 3 | Gestione completa notifiche e template |
+| `sso` | 3 | Configurazione completa Single Sign-On |
+| `api_keys` | 3 | Gestione completa API keys |
+| `reset_user_password` | 1 | Reset password utenti |
+
+### Editor (Livello 2 - Modifica)
+
+Accesso read/write alle sezioni operative:
+
+| Sezione | Livello | Descrizione |
+|---------|---------|-------------|
+| Moduli base | 2 | Modifica asset, siti, aree, etc. |
+| `vulnerabilities` | 2 | Gestione vulnerabilità e status |
+| `asset_reviews` | 2 | Gestione review e manutenzione |
+| `asset_dependencies` | 2 | Gestione dipendenze |
+| `security_zones` | 2 | Gestione zone e membership |
+| `evidence` | 2 | Gestione evidence |
+| `notifications` | 2 | Gestione preferenze personali |
+| `compliance` | 1 | Solo lettura ISA/IEC 62443 |
+| `sso` | 1 | Solo lettura configurazione SSO |
+| `api_keys` | 1 | Visualizzazione API keys proprie |
+| `users`, `roles` | 1 | Solo lettura utenti e ruoli |
+
+### Viewer (Livello 1 - Solo Lettura)
+
+Accesso read-only alle sezioni:
+
+| Sezione | Livello | Descrizione |
+|---------|---------|-------------|
+| Tutti i moduli base | 1 | Solo lettura asset, siti, aree, etc. |
+| `vulnerabilities` | 1 | Solo lettura vulnerabilità |
+| `asset_reviews` | 1 | Solo lettura status review |
+| `asset_dependencies` | 1 | Solo lettura dipendenze |
+| `compliance` | 1 | Solo lettura ISA/IEC 62443 |
+| `security_zones` | 1 | Solo lettura zone di sicurezza |
+| `evidence` | 1 | Solo lettura evidence |
+| `notifications` | 1 | Solo lettura notifiche personali |
+| `users` | 0 | **Nessun accesso** |
+| `sso` | 0 | **Nessun accesso** |
+| `api_keys` | 0 | **Nessun accesso** |
 
 ## Utilizzo nel Codice
 
@@ -217,15 +256,25 @@ if check_permission(current_user, "vulnerabilities", 2):
 level = get_user_permission_level(current_user, "vulnerabilities")
 ```
 
-## Migrazione
+## Aggiornamento Ruoli
 
-Per aggiornare i ruoli esistenti con le nuove sezioni di permessi, eseguire:
+### Aggiornamento Automatico (Durante Upgrade)
+
+Quando si aggiorna il sistema, la migrazione Alembic `update_roles_permissions` aggiornerà automaticamente tutti i ruoli con i permessi mancanti.
+
+### Aggiornamento Manuale
+
+Per aggiornare manualmente i ruoli esistenti con le nuove sezioni di permessi, eseguire:
 
 ```bash
-python -m app.expand_rbac_permissions
+# Via Makefile (consigliato)
+make update-roles
+
+# Oppure direttamente
+docker-compose -f docker-compose.prod.yml exec backend python scripts/update_roles.py
 ```
 
-Questo script aggiorna automaticamente tutti i ruoli (admin, editor, viewer) per tutti i tenant nel sistema.
+Questo script aggiorna automaticamente tutti i ruoli (admin, editor, viewer) per tutti i tenant nel sistema, assicurando che tutti i permessi siano presenti.
 
 ## Note
 

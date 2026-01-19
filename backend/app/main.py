@@ -39,7 +39,7 @@ from fastapi import FastAPI, Depends, HTTPException, Form, Request, Cookie
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -266,8 +266,13 @@ async def startup_event():
         # Check and apply database migrations only if needed
         import subprocess
         import os
+        import time
         
         logger.info("Checking database migrations...")
+        
+        # Wait a bit for database to be ready
+        time.sleep(2)
+        
         try:
             # Always try to upgrade to head (handles multiple heads with 'heads' command)
             logger.info("Applying database migrations...")
@@ -291,28 +296,28 @@ async def startup_event():
                 # Continue anyway, it might be that the migrations are already applied
                 logger.warning("Continuing startup despite migration errors (migrations may already be applied)")
         
+        # Wait a moment for migrations to fully commit
+        time.sleep(1)
+        
         db = SessionLocal()
-        # Controlla se esistono tenant, utenti e ruoli
-        tenant_count = db.query(Tenant).count()
-        user_count = db.query(User).count()
-        role_count = db.query(Role).count()
+        try:
+            # Controlla se esistono tenant, utenti e ruoli
+            tenant_count = db.query(Tenant).count()
+            user_count = db.query(User).count()
+            role_count = db.query(Role).count()
+        except Exception as e:
+            logger.error(f"Error checking database: {e}")
+            db.close()
+            return
         
         if tenant_count == 0 and user_count == 0 and role_count == 0:
-            logger.info("Empty database detected. Automatic initialization...")
+            logger.info("Empty database detected. Initializing system...")
             setup_system()
-            logger.info("Database initialized successfully!")
-            logger.info("Default credentials:")
-            logger.info("  Admin: admin@example.com / admin123")
-            logger.info("  Editor: editor@example.com / editor123")
-            logger.info("  Viewer: viewer@example.com / viewer123")
+            # Credentials are printed by setup_system()
         elif user_count == 0 or role_count == 0:
             logger.info("Partially configured database. Completing initialization...")
             setup_system()
-            logger.info("Initialization completed!")
-            logger.info("Default credentials:")
-            logger.info("  Admin: admin@example.com / admin123")
-            logger.info("  Editor: editor@example.com / editor123")
-            logger.info("  Viewer: viewer@example.com / viewer123")
+            # Credentials are printed by setup_system()
         else:
             logger.info(f"Database already configured (tenant: {tenant_count}, users: {user_count}, roles: {role_count})")
             # Initialize notification templates if not present (system-wide)
@@ -597,8 +602,7 @@ async def login(
         log_failed_login(email, request, "PASSWORD_CHANGE_REQUIRED")
         raise ErrorCodeException(
             status_code=403,
-            error_code="PASSWORD_CHANGE_REQUIRED",
-            detail="Password change required. Please change your password before logging in."
+            error_code="PASSWORD_CHANGE_REQUIRED"
         )
     
     # Reset failed attempts and lockout on successful login

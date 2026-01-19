@@ -120,7 +120,7 @@ npm run dev
 ### Default Credentials
 After installation, you can log in with:
 - **Email**: admin@example.com
-- **Password**: admin123
+- **Password**: Admin@123456!
 
 **⚠️ Important Security Notice:**
 - Default accounts (admin, editor, viewer) are created with weak passwords for initial setup
@@ -325,7 +325,7 @@ ADMIN_EMAIL=admin@yourdomain.com
 After successful installation:
 
 1. **Access the application**: http://localhost:5173
-2. **Login with default credentials**: admin@example.com / admin123
+2. **Login with default credentials**: admin@example.com / Admin@123456!
 3. **Change your password**: You will be required to change your password on first login. The new password must be at least 12 characters long and include uppercase, lowercase, numbers, and special characters.
 4. **Explore demo data**: Navigate through sites, areas, assets, and connections
 5. **Configure your environment**: Update settings in the admin panel

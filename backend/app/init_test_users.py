@@ -37,21 +37,21 @@ def seed_test_users():
         {
             "name": "Admin Test",
             "email": "admin@test.com",
-            "password": "admin123",
+            "password": "Admin@123456!",
             "role": admin_role,
             "is_active": True,
         },
         {
             "name": "Editor Test",
             "email": "editor@test.com",
-            "password": "editor123",
+            "password": "Editor@123456!",
             "role": editor_role,
             "is_active": True,
         },
         {
             "name": "Viewer Test",
             "email": "viewer@test.com",
-            "password": "viewer123",
+            "password": "Viewer@123456!",
             "role": viewer_role,
             "is_active": True,
         },
@@ -89,9 +89,9 @@ def seed_test_users():
     db.close()
 
     # print("\n=== Test user credentials ===")
-    # print("Admin: admin@test.com / admin123")
-    # print("Editor: editor@test.com / editor123")
-    # print("Viewer: viewer@test.com / viewer123")
+    # print("Admin: admin@test.com / Admin@123456!")
+    # print("Editor: editor@test.com / Editor@123456!")
+    # print("Viewer: viewer@test.com / Viewer@123456!")
     # print("Limited Editor: editor.limited@test.com / limited123")
     # print("=====================================")
 

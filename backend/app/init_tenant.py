@@ -72,14 +72,14 @@ if __name__ == "__main__":
         tenant_name = sys.argv[1]
         tenant_slug = sys.argv[2]
         admin_email = sys.argv[3]
-        admin_password = sys.argv[4] if len(sys.argv) > 4 else "admin123"
+        admin_password = sys.argv[4] if len(sys.argv) > 4 else "Admin@123456!"
         admin_name = sys.argv[5] if len(sys.argv) > 5 else "Admin"
     else:
         # Default values
         tenant_name = "Nuovo Tenant"
         tenant_slug = "nuovo-tenant"
         admin_email = "admin@example.com"
-        admin_password = "admin123"
+        admin_password = "Admin@123456!"
         admin_name = "Super Admin"
     
     print(f"🏗️ Creating tenant: {tenant_name}")

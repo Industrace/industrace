@@ -4,7 +4,7 @@
 
 1. Backend in esecuzione: `docker-compose -f docker-compose.dev.yml up backend`
 2. Database migrato: `docker-compose -f docker-compose.dev.yml exec backend alembic upgrade head`
-3. Utente admin creato (default: admin@example.com / admin123)
+3. Utente admin creato (default: admin@example.com / Admin@123456!)
 
 ## Test Manuali con cURL
 
@@ -13,7 +13,7 @@
 ```bash
 TOKEN=$(curl -X POST http://localhost:8000/api/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=admin@example.com&password=admin123" \
+  -d "username=admin@example.com&password=Admin@123456!" \
   | jq -r '.access_token')
 
 echo "Token: $TOKEN"

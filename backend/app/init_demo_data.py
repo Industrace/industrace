@@ -12,9 +12,17 @@ from datetime import datetime, timedelta
 import random
 
 
-def seed_demo_data():
+VERBOSE = False  # Set to True for detailed output
+
+def vprint(*args, **kwargs):
+    """Verbose print - only prints if VERBOSE is True"""
+    if VERBOSE:
+        print(*args, **kwargs)
+
+def seed_demo_data(verbose=False):
     """Populate database with realistic demo data in English"""
-    print("🌱 Seeding demo data using Python...")
+    global VERBOSE
+    VERBOSE = verbose
     seed_demo_data_python()
 
 
@@ -34,7 +42,7 @@ def seed_demo_data_python():
         db.add(tenant)
         db.commit()
         db.refresh(tenant)
-        print(f"✅ Created tenant: {tenant.name}")
+        vprint(f"✅ Created tenant: {tenant.name}")
     
     # Get roles
     admin_role = db.query(Role).filter_by(name="admin").first()
@@ -100,7 +108,7 @@ def seed_demo_data_python():
             )
             db.add(site)
             sites.append(site)
-            print(f"✅ Created site: {site.name}")
+            vprint(f"✅ Created site: {site.name}")
         else:
             sites.append(existing_site)
     
@@ -149,7 +157,7 @@ def seed_demo_data_python():
             )
             db.add(area)
             areas.append(area)
-            print(f"✅ Created area: {area.name}")
+            vprint(f"✅ Created area: {area.name}")
         else:
             areas.append(existing_area)
     
@@ -201,7 +209,7 @@ def seed_demo_data_python():
                 )
                 db.add(location)
                 locations.append(location)
-                print(f"✅ Created location: {location.name}")
+                vprint(f"✅ Created location: {location.name}")
         else:
             locations.append(existing_location)
     
@@ -227,7 +235,7 @@ def seed_demo_data_python():
             )
             db.add(manufacturer)
             manufacturers.append(manufacturer)
-            print(f"✅ Created manufacturer: {manufacturer.name}")
+            vprint(f"✅ Created manufacturer: {manufacturer.name}")
         else:
             manufacturers.append(existing_mfg)
     
@@ -253,7 +261,7 @@ def seed_demo_data_python():
             )
             db.add(supplier)
             suppliers.append(supplier)
-            print(f"✅ Created supplier: {supplier.name}")
+            vprint(f"✅ Created supplier: {supplier.name}")
         else:
             suppliers.append(existing_sup)
     
@@ -287,7 +295,7 @@ def seed_demo_data_python():
             )
             db.add(contact)
             contacts.append(contact)
-            print(f"✅ Created contact: {contact.first_name} {contact.last_name}")
+            vprint(f"✅ Created contact: {contact.first_name} {contact.last_name}")
         else:
             contacts.append(existing_contact)
     
@@ -606,7 +614,7 @@ def seed_demo_data_python():
                     asset.contacts.append(contact)
             
             assets.append(asset)
-            print(f"✅ Created asset: {asset.name}")
+            vprint(f"✅ Created asset: {asset.name}")
         else:
             assets.append(existing_asset)
     
@@ -661,7 +669,7 @@ def seed_demo_data_python():
                 )
                 db.add(interface)
                 interfaces.append(interface)
-                print(f"✅ Created interface: {interface.name} for {asset.name}")
+                vprint(f"✅ Created interface: {interface.name} for {asset.name}")
             else:
                 interfaces.append(existing_interface)
     
@@ -739,7 +747,7 @@ def seed_demo_data_python():
                 interface_info = ""
                 if parent_interface and child_interface:
                     interface_info = f" ({parent_interface.name} ↔ {child_interface.name})"
-                print(f"✅ Created connection: {parent_asset.name} → {child_asset.name}{interface_info}")
+                vprint(f"✅ Created connection: {parent_asset.name} → {child_asset.name}{interface_info}")
             else:
                 # Update existing connection with interfaces if not set
                 if existing_connection.local_interface_id is None and parent_interface:
@@ -817,7 +825,7 @@ def seed_demo_data_python():
             )
             db.add(zone)
             security_zones.append(zone)
-            print(f"✅ Created security zone: {zone.name} (SL-T: {zone.security_level_target})")
+            vprint(f"✅ Created security zone: {zone.name} (SL-T: {zone.security_level_target})")
         else:
             security_zones.append(existing_zone)
     
@@ -875,7 +883,7 @@ def seed_demo_data_python():
                 )
                 db.add(membership)
                 zone_memberships.append(membership)
-                print(f"✅ Linked {asset.name} to {zone.name} as {membership_data['role']}")
+                vprint(f"✅ Linked {asset.name} to {zone.name} as {membership_data['role']}")
             else:
                 zone_memberships.append(existing_membership)
     
@@ -976,26 +984,30 @@ def seed_demo_data_python():
                 )
                 db.add(conduit)
                 conduits.append(conduit)
-                print(f"✅ Created conduit: {conduit.name} ({from_zone.name} → {to_zone.name})")
+                vprint(f"✅ Created conduit: {conduit.name} ({from_zone.name} → {to_zone.name})")
             else:
                 conduits.append(existing_conduit)
     
     db.commit()
     
-    print(f"\n🎉 Demo data seeding completed successfully!")
-    print(f"📊 Created/Found:")
-    print(f"   • {len(sites)} Sites")
-    print(f"   • {len(areas)} Areas")
-    print(f"   • {len(locations)} Locations")
-    print(f"   • {len(manufacturers)} Manufacturers")
-    print(f"   • {len(suppliers)} Suppliers")
-    print(f"   • {len(contacts)} Contacts")
-    print(f"   • {len(assets)} Assets")
-    print(f"   • {len(interfaces)} Interfaces")
-    print(f"   • {len(connections)} Connections")
-    print(f"   • {len(security_zones)} Security Zones")
-    print(f"   • {len(zone_memberships)} Asset Zone Memberships")
-    print(f"   • {len(conduits)} Conduits")
+    # Only show detailed summary if verbose mode is enabled
+    vprint(f"\n🎉 Demo data seeding completed successfully!")
+    vprint("\n" + "="*60)
+    vprint("✅ DEMO DATA INITIALIZATION COMPLETED")
+    vprint("="*60)
+    vprint(f"\n📊 Created/Found:")
+    vprint(f"   • {len(sites)} Sites")
+    vprint(f"   • {len(areas)} Areas")
+    vprint(f"   • {len(locations)} Locations")
+    vprint(f"   • {len(manufacturers)} Manufacturers")
+    vprint(f"   • {len(suppliers)} Suppliers")
+    vprint(f"   • {len(contacts)} Contacts")
+    vprint(f"   • {len(assets)} Assets")
+    vprint(f"   • {len(interfaces)} Interfaces")
+    vprint(f"   • {len(connections)} Connections")
+    vprint(f"   • {len(security_zones)} Security Zones")
+    vprint(f"   • {len(zone_memberships)} Asset Zone Memberships")
+    vprint(f"   • {len(conduits)} Conduits")
     
     db.close()
 

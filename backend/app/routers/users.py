@@ -92,7 +92,14 @@ def create_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    from app.schemas.validators import validate_password_strength
+    
     try:
+        # Validate password strength
+        # Allow weak passwords only if password_change_required is True
+        allow_weak = user.password_change_required if hasattr(user, 'password_change_required') else False
+        validate_password_strength(user.password, allow_weak=allow_weak)
+        
         hashed_password = get_password_hash(user.password)
         db_user = User(
             tenant_id=current_user.tenant_id,
@@ -101,6 +108,7 @@ def create_user(
             name=user.name,
             role_id=user.role_id,
             is_active=user.is_active if user.is_active is not None else True,
+            password_change_required=user.password_change_required if hasattr(user, 'password_change_required') else False,
         )
         db.add(db_user)
         db.commit()

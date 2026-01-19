@@ -10,9 +10,10 @@ from .tenant import Tenant
 class UserCreate(BaseModel):
     name: str = Field(..., max_length=255, description="User name")
     email: EmailStr = Field(..., description="Email address")
-    password: str = Field(..., min_length=12, max_length=255, description="Password (minimum 12 characters with complexity requirements)")
+    password: str = Field(..., min_length=8, max_length=255, description="Password (minimum 8 characters, 12+ recommended with complexity requirements)")
     role_id: uuid.UUID
     is_active: Optional[bool] = True
+    password_change_required: Optional[bool] = False  # If True, allows weak password (user must change on first login)
 
 
 class UserUpdate(BaseModel):

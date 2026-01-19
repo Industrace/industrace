@@ -32,8 +32,10 @@ def seed_roles(tenant_id=None):
                 "asset_dependencies": 3,
                 "compliance": 3,
                 "security_zones": 3,
+                "evidence": 3,
                 "notifications": 3,
                 "sso": 3,
+                "api_keys": 3,
             },
         },
         {
@@ -60,8 +62,10 @@ def seed_roles(tenant_id=None):
                 "asset_dependencies": 2,
                 "compliance": 1,
                 "security_zones": 2,
+                "evidence": 2,
                 "notifications": 2,
                 "sso": 1,
+                "api_keys": 1,
             },
         },
         {
@@ -88,8 +92,10 @@ def seed_roles(tenant_id=None):
                 "asset_dependencies": 1,
                 "compliance": 1,
                 "security_zones": 1,
+                "evidence": 1,
                 "notifications": 1,
                 "sso": 0,
+                "api_keys": 0,
             },
         },
     ]
@@ -105,8 +111,13 @@ def seed_roles(tenant_id=None):
             db.add(new_role)
             # print(f"Role {role_data['name']} created.")
         else:
-            # print(f"Role {role_data['name']} already exists.")
-            pass
+            # Update existing role with new permissions
+            # Merge existing permissions with new ones to avoid removing custom permissions
+            updated_permissions = role.permissions.copy() if role.permissions else {}
+            updated_permissions.update(role_data["permissions"])
+            role.permissions = updated_permissions
+            db.add(role)
+            # print(f"Role {role_data['name']} updated with new permissions.")
     db.commit()
     db.close()
 

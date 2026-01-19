@@ -175,7 +175,7 @@ make config
 - **Production Local URL**: https://localhost
 - **Production Cloud URL**: https://industrace.local
 - **Email**: admin@example.com
-- **Password**: admin123
+- **Password**: Admin@123456!
 
 **Note**: Demo data is automatically populated when using `make prod` or `make prod-cloud`. The system includes sample sites, areas, locations, manufacturers, suppliers, contacts, assets with interfaces, and network connections for testing purposes.
 

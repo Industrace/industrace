@@ -154,10 +154,7 @@ def seed_manufacturers(tenant_id=None):
                 pass
         
         db.commit()
-        if created_manufacturers:
-            print(f"✅ Manufacturers created for tenant '{tenant.name}': {', '.join(created_manufacturers[:5])}{'...' if len(created_manufacturers) > 5 else ''}")
-        else:
-            print(f"ℹ️  All manufacturers already exist for tenant '{tenant.name}'")
+        # Silently complete - no output needed
             
     except Exception as e:
         db.rollback()

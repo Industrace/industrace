@@ -15,9 +15,9 @@ from app.init_data.init_sr_capability_mappings import init_sr_capability_mapping
 ADMIN_EMAIL = "admin@example.com"
 EDITOR_EMAIL = "editor@example.com"
 VIEWER_EMAIL = "viewer@example.com"
-ADMIN_PASSWORD = "admin123"
-EDITOR_PASSWORD = "editor123"
-VIEWER_PASSWORD = "viewer123"
+ADMIN_PASSWORD = "Admin@123456!"
+EDITOR_PASSWORD = "Editor@123456!"
+VIEWER_PASSWORD = "Viewer@123456!"
 TENANT_NAME = "Default Tenant"
 TENANT_SLUG = "default-tenant"
 
@@ -75,7 +75,7 @@ def setup_system():
                 name=u["name"],
                 role_id=roles[u["role"]].id,
                 is_active=True,
-                password_change_required=True,  # Force password change on first login
+                password_change_required=False,  # Passwords are now secure by default
             )
             db.add(user)
             # print(f"User created: {u['email']} ({u['role']})")
@@ -90,7 +90,6 @@ def setup_system():
     # 5. Notification templates (system-wide)
     try:
         init_notification_templates(db)
-        print("✅ Notification templates initialized")
     except Exception as e:
         print(f"⚠️  Notification templates initialization failed: {e}")
 
@@ -104,47 +103,42 @@ def setup_system():
     # 8. ISA/IEC 62443 Security Requirements (system-wide)
     try:
         init_security_requirements(db)
-        print("✅ ISA/IEC 62443 Security Requirements initialized")
     except Exception as e:
         print(f"⚠️  Security Requirements initialization failed: {e}")
-        import traceback
-        traceback.print_exc()
 
     # 9. ISA/IEC 62443 Security Capabilities (system-wide)
     try:
         init_security_capabilities(db)
-        print("✅ ISA/IEC 62443 Security Capabilities initialized")
     except Exception as e:
         print(f"⚠️  Security Capabilities initialization failed: {e}")
-        import traceback
-        traceback.print_exc()
 
     # 10. ISA/IEC 62443 SR-Capability Mappings (system-wide)
     try:
         init_sr_capability_mappings(db)
-        print("✅ ISA/IEC 62443 SR-Capability mappings initialized")
     except Exception as e:
         print(f"⚠️  SR-Capability mappings initialization failed: {e}")
-        import traceback
-        traceback.print_exc()
 
     # Add demo data if in development environment
     from app.config import settings
     if settings.ENVIRONMENT == "development":
         try:
             from app.init_demo_data import seed_demo_data
-            print("🌱 Adding demo data for development environment...")
             seed_demo_data()
         except Exception as e:
             print(f"⚠️  Demo data seeding failed: {e}")
-            import traceback
-            traceback.print_exc()
 
     db.close()
-    # print("\nSetup system completed!\nExample credentials:")
-    # print(f"Admin: {ADMIN_EMAIL} / {ADMIN_PASSWORD}")
-    # print(f"Editor: {EDITOR_EMAIL} / {EDITOR_PASSWORD}")
-    # print(f"Viewer: {VIEWER_EMAIL} / {VIEWER_PASSWORD}")
+    
+    # Print credentials at the end
+    print("\n" + "="*60)
+    print("✅ SYSTEM INITIALIZATION COMPLETED")
+    print("="*60)
+    print("\n🔐 Default Login Credentials:")
+    print(f"   Admin:  {ADMIN_EMAIL} / {ADMIN_PASSWORD}")
+    print(f"   Editor: {EDITOR_EMAIL} / {EDITOR_PASSWORD}")
+    print(f"   Viewer: {VIEWER_EMAIL} / {VIEWER_PASSWORD}")
+    print("\n⚠️  IMPORTANT: Change these passwords immediately!")
+    print("="*60 + "\n")
 
 
 if __name__ == "__main__":

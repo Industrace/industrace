@@ -43,10 +43,7 @@ def setup_asset_statuses(tenant_id=None):
                 created_statuses.append(stato["name"])
         
         db.commit()
-        if created_statuses:
-            print(f"✅ Asset statuses created for tenant '{tenant.name}': {', '.join(created_statuses)}")
-        else:
-            print(f"ℹ️  All asset statuses already exist for tenant '{tenant.name}'")
+        # Silently complete - no output needed
             
     except Exception as e:
         db.rollback()

@@ -504,7 +504,7 @@ def get_sr_assessment_assist(
         raise
     except Exception as e:
         logger.error(f"Error verifying zone/SR in assessment-assist: {e}", exc_info=True)
-        raise ErrorCodeException(status_code=500, error_code=ErrorCode.INTERNAL_ERROR, detail=str(e))
+        raise ErrorCodeException(status_code=500, error_code=ErrorCode.INTERNAL_ERROR)
     
     # A. Get required capabilities for this SR
     # Check if SRCapability table exists and has data
@@ -891,11 +891,11 @@ def create_or_update_sr_assessment(
     
     status = assessment_data.get('status')
     if status not in ['compliant', 'non_compliant', 'partial', 'not_applicable', 'insufficient_info']:
-        raise ErrorCodeException(status_code=400, error_code=ErrorCode.INVALID_INPUT, detail="Invalid status")
+        raise ErrorCodeException(status_code=400, error_code=ErrorCode.INVALID_INPUT)
     
     justification = assessment_data.get('justification')
     if status != 'compliant' and not justification:
-        raise ErrorCodeException(status_code=400, error_code=ErrorCode.INVALID_INPUT, detail="Justification required for non-compliant status")
+        raise ErrorCodeException(status_code=400, error_code=ErrorCode.INVALID_INPUT)
     
     # Check if assessment already exists
     existing_assessment = crud_sr_assessments.get_sr_assessment_by_sr_and_object(

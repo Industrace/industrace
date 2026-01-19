@@ -155,9 +155,9 @@ make test
 ## 🎯 Default Credentials
 
 - **URL**: http://localhost:5173
-- **Admin**: admin@example.com / admin123
-- **Editor**: editor@example.com / editor123
-- **Viewer**: viewer@example.com / viewer123
+- **Admin**: admin@example.com / Admin@123456!
+- **Editor**: editor@example.com / Editor@123456!
+- **Viewer**: viewer@example.com / Viewer@123456!
 
 ## 📊 Demo Data Included
 

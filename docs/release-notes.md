@@ -144,7 +144,7 @@ open https://localhost
 #### Default Credentials
 - **URL**: https://localhost
 - **Email**: admin@example.com
-- **Password**: admin123
+- **Password**: Admin@123456!
 
 ### API Features
 

@@ -72,7 +72,7 @@ open http://localhost:5173
 ### Default Credentials
 - **URL**: http://localhost:5173
 - **Email**: admin@example.com
-- **Password**: admin123
+- **Password**: Admin@123456!
 
 ## System Overview
 

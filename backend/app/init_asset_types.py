@@ -58,10 +58,7 @@ def setup_asset_types(tenant_id=None):
                 created_types.append(tipo["name"])
         
         db.commit()
-        if created_types:
-            print(f"✅ Asset types created for tenant '{tenant.name}': {', '.join(created_types)}")
-        else:
-            print(f"ℹ️  All asset types already exist for tenant '{tenant.name}'")
+        # Silently complete - no output needed
             
     except Exception as e:
         db.rollback()

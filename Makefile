@@ -34,6 +34,7 @@ help:
 	@echo ""
 	@echo "🔒 Security & Compliance:"
 	@echo "  make reset-security-requirements - Reset ISA/IEC 62443 Security Requirements"
+	@echo "  make update-roles - Update roles with latest permissions"
 	@echo ""
 
 
@@ -76,11 +77,8 @@ prod:
 	@echo "SECRET_KEY=prod-$$(openssl rand -hex 32)" >> .env.prod
 	docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d
 	@echo "⏳ Waiting for services to start..."
-	sleep 15
-	@echo "📊 Running database migrations..."
-	docker-compose -f docker-compose.prod.yml exec backend alembic upgrade head || true
-	@echo "🌱 Seeding demo data (if database is empty)..."
-	docker-compose -f docker-compose.prod.yml exec backend python -m app.init_demo_data || true
+	@echo "   (Migrations and initialization are automatic on first startup)"
+	sleep 20
 	@echo "✅ Production environment started!"
 	@echo "🌐 Access your application at: https://localhost or https://industrace.local"
 	@echo "⚠️  Note: You'll see a security warning due to self-signed certificates"
@@ -135,6 +133,12 @@ rebuild:
 	@echo "🔨 Rebuilding images (no cache)..."
 	docker-compose -f docker-compose.prod.yml build --no-cache
 
+# Rebuild backend only (faster)
+rebuild-backend:
+	@echo "🔨 Rebuilding backend..."
+	docker-compose -f docker-compose.prod.yml build backend
+	@echo "✅ Backend rebuilt. Restart with: make stop && make prod"
+
 # Check system status
 status:
 	@echo "📊 System status:"
@@ -181,9 +185,9 @@ info:
 	@echo "API Docs: https://localhost/api/docs"
 	@echo ""
 	@echo "Default credentials:"
-	@echo "Admin:   admin@example.com / admin123"
-	@echo "Editor:  editor@example.com / editor123"
-	@echo "Viewer:  viewer@example.com / viewer123"
+	@echo "Admin:   admin@example.com / Admin@123456!"
+	@echo "Editor:  editor@example.com / Editor@123456!"
+	@echo "Viewer:  viewer@example.com / Viewer@123456!"
 
 # Show configuration info
 config:
@@ -332,3 +336,9 @@ list-admins:
 reset-security-requirements:
 	@echo "🔄 Resetting ISA/IEC 62443 Security Requirements..."
 	docker-compose -f docker-compose.prod.yml exec backend python app/reset_security_requirements.py
+
+# Update Roles Permissions
+update-roles:
+	@echo "🔄 Updating roles with latest permissions..."
+	docker-compose -f docker-compose.prod.yml exec backend python scripts/update_roles.py
+	@echo "✅ Roles updated successfully!"
