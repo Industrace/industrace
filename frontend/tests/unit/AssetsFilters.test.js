@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
+import PrimeVue from 'primevue/config'
 import AssetsFilters from '../../src/components/features/assets/AssetsFilters.vue'
 
 // Mock i18n
@@ -97,7 +98,7 @@ describe('AssetsFilters', () => {
         locations: []
       },
       global: {
-        plugins: [pinia, i18n],
+        plugins: [pinia, i18n, PrimeVue],
         components: mockComponents
       }
     })
@@ -117,7 +118,7 @@ describe('AssetsFilters', () => {
         locations: []
       },
       global: {
-        plugins: [pinia, i18n],
+        plugins: [pinia, i18n, PrimeVue],
         components: mockComponents
       }
     })
@@ -145,7 +146,7 @@ describe('AssetsFilters', () => {
         locations: []
       },
       global: {
-        plugins: [pinia, i18n],
+        plugins: [pinia, i18n, PrimeVue],
         components: mockComponents
       }
     })
@@ -166,7 +167,7 @@ describe('AssetsFilters', () => {
         locations: [{ id: '1', name: 'Location 1' }]
       },
       global: {
-        plugins: [pinia, i18n],
+        plugins: [pinia, i18n, PrimeVue],
         components: mockComponents
       }
     })
@@ -192,7 +193,7 @@ describe('AssetsFilters', () => {
         locations: []
       },
       global: {
-        plugins: [pinia, i18n],
+        plugins: [pinia, i18n, PrimeVue],
         components: mockComponents
       }
     })
