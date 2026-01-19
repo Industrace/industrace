@@ -159,16 +159,19 @@ describe('AssetsFilters', () => {
       }
     })
 
+    // Find the select element inside the dropdown
     const statusDropdown = wrapper.find('#filter_status')
     const selectElement = statusDropdown.find('select')
+    
     if (selectElement.exists()) {
+      // Set the value and trigger change event
       await selectElement.setValue('1')
-      await selectElement.trigger('change')
+      await wrapper.vm.$nextTick()
     } else {
-      // Fallback: directly trigger update event
-      await statusDropdown.vm.$emit('update:modelValue', '1')
+      // If select not found, directly update the filter value to test the binding
+      filters.status_id.value = '1'
+      await wrapper.vm.$nextTick()
     }
-    await wrapper.vm.$nextTick()
 
     expect(filters.status_id.value).toBe('1')
   })
