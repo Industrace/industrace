@@ -1268,7 +1268,7 @@ def update_asset(
     from app.services.dashboard_cache import invalidate_dashboard_cache
     invalidate_dashboard_cache(str(current_user.tenant_id))
     
-    # Auto-match vulnerabilities in background se asset ha info rilevanti
+    # Auto-match vulnerabilities in background if asset has relevant info
     from app.services.vulnerability_auto_match import VulnerabilityAutoMatcher
     if VulnerabilityAutoMatcher.should_auto_match_asset(result):
         # Controlla se manufacturer, model o firmware sono stati aggiornati
