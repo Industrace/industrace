@@ -13,13 +13,15 @@ DATABASE_URL = os.getenv(
 )
 
 # Configure engine with connection pool settings for better reliability
+# Increased pool size to handle initialization and concurrent requests
 engine = create_engine(
     DATABASE_URL,
     poolclass=QueuePool,
-    pool_size=5,
-    max_overflow=10,
+    pool_size=10,  # Increased from 5 to handle initialization
+    max_overflow=20,  # Increased from 10 to handle peak loads
     pool_pre_ping=True,  # Verify connections before using them (prevents stale connections)
     pool_recycle=3600,  # Recycle connections after 1 hour
+    pool_timeout=60,  # Increased timeout to 60 seconds
     echo=False,
     connect_args={
         "connect_timeout": 10,

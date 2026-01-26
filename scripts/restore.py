@@ -63,7 +63,7 @@ class IndustraceRestore:
             
             logger.info("Restore completed successfully")
             print("✅ Restore completed successfully!")
-            print("🚀 You can now start Industrace with: docker-compose up -d")
+            print("🚀 You can now start Industrace with: make prod")
             
         except Exception as e:
             logger.error(f"Restore failed: {e}")
@@ -115,18 +115,29 @@ class IndustraceRestore:
         logger.info("Stopping services...")
         
         try:
-            # Check if docker-compose is running
-            result = subprocess.run(
-                ["docker-compose", "ps", "-q"], 
-                capture_output=True, 
-                text=True
-            )
+            # Try different docker-compose files
+            compose_files = ["docker-compose.prod.yml", "docker-compose.yml", "docker-compose.dev.yml"]
+            stopped = False
             
-            if result.stdout.strip():
-                logger.info("Stopping docker-compose services...")
-                subprocess.run(["docker-compose", "down"], check=True)
-                logger.info("Services stopped")
-            else:
+            for compose_file in compose_files:
+                if not Path(compose_file).exists():
+                    continue
+                    
+                # Check if docker-compose is running
+                result = subprocess.run(
+                    ["docker-compose", "-f", compose_file, "ps", "-q"], 
+                    capture_output=True, 
+                    text=True
+                )
+                
+                if result.stdout.strip():
+                    logger.info(f"Stopping docker-compose services ({compose_file})...")
+                    subprocess.run(["docker-compose", "-f", compose_file, "down"], check=True)
+                    logger.info("Services stopped")
+                    stopped = True
+                    break
+            
+            if not stopped:
                 logger.info("No running services found")
                 
         except subprocess.CalledProcessError as e:
@@ -135,19 +146,70 @@ class IndustraceRestore:
             logger.warning("docker-compose not found, skipping service stop")
     
     def restore_database(self):
-        """Restore PostgreSQL database"""
+        """Restore PostgreSQL database using docker-compose exec"""
         logger.info("Restoring database...")
         
         try:
-            # Get database connection details from environment
+            # Try to use docker-compose exec first (if containers are running)
+            compose_file = None
+            for compose_file_option in ["docker-compose.prod.yml", "docker-compose.yml", "docker-compose.dev.yml"]:
+                if Path(compose_file_option).exists():
+                    compose_file = compose_file_option
+                    break
+            
+            # Database dump file
+            dump_file = self.extracted_dir / "database.sql"
+            
+            if compose_file:
+                # Check if database container is running
+                result = subprocess.run(
+                    ["docker-compose", "-f", compose_file, "ps", "-q", "db"],
+                    capture_output=True,
+                    text=True
+                )
+                
+                if result.returncode == 0 and result.stdout.strip():
+                    # Use docker-compose exec to restore from container
+                    logger.info(f"Using docker-compose exec with {compose_file}")
+                    
+                    # Drop and recreate database
+                    logger.info("Dropping existing database...")
+                    drop_cmd = [
+                        "docker-compose", "-f", compose_file, "exec", "-T", "db",
+                        "psql", "-U", "industrace_user", "-d", "postgres",
+                        "-c", "DROP DATABASE IF EXISTS industrace;"
+                    ]
+                    subprocess.run(drop_cmd, check=True)
+                    
+                    logger.info("Creating new database...")
+                    create_cmd = [
+                        "docker-compose", "-f", compose_file, "exec", "-T", "db",
+                        "psql", "-U", "industrace_user", "-d", "postgres",
+                        "-c", "CREATE DATABASE industrace;"
+                    ]
+                    subprocess.run(create_cmd, check=True)
+                    
+                    logger.info("Restoring database from dump...")
+                    with open(dump_file, 'r') as f:
+                        restore_cmd = [
+                            "docker-compose", "-f", compose_file, "exec", "-T", "db",
+                            "psql", "-U", "industrace_user", "-d", "industrace"
+                        ]
+                        subprocess.run(restore_cmd, stdin=f, check=True)
+                    
+                    logger.info("Database restore completed")
+                    return
+            
+            # Fallback: direct connection (if containers are not running)
+            logger.info("Containers not running, trying direct connection...")
             db_host = os.getenv("DB_HOST", "localhost")
             db_port = os.getenv("DB_PORT", "5432")
             db_name = os.getenv("DB_NAME", "industrace")
             db_user = os.getenv("DB_USER", "industrace_user")
-            db_password = os.getenv("DB_PASSWORD", "secure_password_123")
+            db_password = os.getenv("DB_PASSWORD")
             
-            # Database dump file
-            dump_file = self.extracted_dir / "database.sql"
+            if not db_password:
+                raise Exception("DB_PASSWORD environment variable is required when containers are not running")
             
             # Set PGPASSWORD environment variable
             env = os.environ.copy()

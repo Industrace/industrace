@@ -13,6 +13,7 @@ from app.database import get_db
 from app.models import User
 from app.schemas import TokenData
 from app.config import settings
+from app.services.security_logging import log_unauthorized_access
 
 logger = logging.getLogger(__name__)
 

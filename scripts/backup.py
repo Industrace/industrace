@@ -77,16 +77,59 @@ class IndustraceBackup:
             raise
     
     def backup_database(self):
-        """Backup PostgreSQL database"""
+        """Backup PostgreSQL database using docker-compose exec"""
         logger.info("Backing up database...")
         
         try:
-            # Get database connection details from environment
+            # Try to use docker-compose exec first (if containers are running)
+            # This is the preferred method as it works with the containerized database
+            compose_file = None
+            for compose_file_option in ["docker-compose.prod.yml", "docker-compose.yml", "docker-compose.dev.yml"]:
+                if Path(compose_file_option).exists():
+                    compose_file = compose_file_option
+                    break
+            
+            if compose_file:
+                # Check if database container is running
+                result = subprocess.run(
+                    ["docker-compose", "-f", compose_file, "ps", "-q", "db"],
+                    capture_output=True,
+                    text=True
+                )
+                
+                if result.returncode == 0 and result.stdout.strip():
+                    # Use docker-compose exec to backup from container
+                    logger.info(f"Using docker-compose exec with {compose_file}")
+                    dump_file = self.backup_path / "database.sql"
+                    
+                    cmd = [
+                        "docker-compose", "-f", compose_file, "exec", "-T", "db",
+                        "pg_dump",
+                        "-U", "industrace_user",
+                        "industrace",
+                        "--clean",
+                        "--if-exists"
+                    ]
+                    
+                    with open(dump_file, 'w') as f:
+                        result = subprocess.run(cmd, stdout=f, stderr=subprocess.PIPE, text=True)
+                    
+                    if result.returncode != 0:
+                        raise Exception(f"Database backup failed: {result.stderr}")
+                    
+                    logger.info("Database backup completed")
+                    return
+            
+            # Fallback: direct connection (if containers are not running)
+            logger.info("Containers not running, trying direct connection...")
             db_host = os.getenv("DB_HOST", "localhost")
             db_port = os.getenv("DB_PORT", "5432")
             db_name = os.getenv("DB_NAME", "industrace")
             db_user = os.getenv("DB_USER", "industrace_user")
-            db_password = os.getenv("DB_PASSWORD", "secure_password_123")
+            db_password = os.getenv("DB_PASSWORD")
+            
+            if not db_password:
+                raise Exception("DB_PASSWORD environment variable is required when containers are not running")
             
             # Create database dump
             dump_file = self.backup_path / "database.sql"
@@ -103,10 +146,8 @@ class IndustraceBackup:
                 "-U", db_user,
                 "-d", db_name,
                 "--no-password",
-                "--verbose",
                 "--clean",
                 "--if-exists",
-                "--create",
                 "-f", str(dump_file)
             ]
             
@@ -138,10 +179,15 @@ class IndustraceBackup:
         logger.info("Backing up configuration...")
         
         config_files = [
-            "backend/.env",
+            ".env.prod",
+            ".env.prod-cloud",
+            "custom-certs.env",
             "docker-compose.yml",
             "docker-compose.prod.yml",
-            "production.env.example"
+            "docker-compose.dev.yml",
+            "docker-compose.custom-certs.yml",
+            "backend/production.env.example",
+            "backend/development.env.example"
         ]
         
         config_dir = self.backup_path / "config"
@@ -152,7 +198,7 @@ class IndustraceBackup:
                 shutil.copy2(config_file, config_dir)
                 logger.info(f"Backed up: {config_file}")
             else:
-                logger.warning(f"Config file not found: {config_file}")
+                logger.debug(f"Config file not found (skipping): {config_file}")
     
     def backup_logs(self):
         """Backup log files"""

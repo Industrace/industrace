@@ -332,21 +332,22 @@ async def startup_event():
             except Exception as e:
                 logger.error(f"Notification templates initialization failed: {e}")
             
-            # Check if demo data exists and seed only if needed in development environment
+            # Check if demo data exists and seed if no assets found (first initialization)
+            # This ensures demo data is created even in production during first setup
             from app.config import settings
-            if settings.ENVIRONMENT == "development":
-                from app.models import Asset
-                asset_count = db.query(Asset).count()
-                if asset_count == 0:
-                    try:
-                        from app.init_demo_data import seed_demo_data
-                        logger.info("Seeding demo data using Python...")
-                        seed_demo_data()
-                        logger.info("Demo data seeding completed successfully!")
-                    except Exception as e:
-                        logger.error(f"Demo data seeding failed: {e}", exc_info=True)
-                else:
-                    logger.info(f"Demo data already exists ({asset_count} assets found)")
+            from app.models import Asset
+            asset_count = db.query(Asset).count()
+            
+            if asset_count == 0:
+                try:
+                    from app.init_demo_data import seed_demo_data
+                    logger.info("No assets found. Seeding demo data...")
+                    seed_demo_data()
+                    logger.info("Demo data seeding completed successfully!")
+                except Exception as e:
+                    logger.error(f"Demo data seeding failed: {e}", exc_info=True)
+            else:
+                logger.info(f"Demo data already exists ({asset_count} assets found)")
         
         db.close()
         

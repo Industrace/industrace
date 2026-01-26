@@ -29,20 +29,19 @@ def seed_demo_data(verbose=False):
 def seed_demo_data_python():
     """Populate database with realistic demo data using Python"""
     db: Session = SessionLocal()
-    
     # Get or create tenant
     tenant = db.query(Tenant).first()
     if not tenant:
-        tenant = Tenant(
-            id=uuid.uuid4(),
-            name="Industrial Solutions Corp",
-            slug="industrial-solutions",
-            settings={"theme": "industrial", "language": "en"}
-        )
-        db.add(tenant)
-        db.commit()
-        db.refresh(tenant)
-        vprint(f"✅ Created tenant: {tenant.name}")
+            tenant = Tenant(
+                id=uuid.uuid4(),
+                name="Industrial Solutions Corp",
+                slug="industrial-solutions",
+                settings={"theme": "industrial", "language": "en"}
+            )
+            db.add(tenant)
+            db.commit()
+            db.refresh(tenant)
+            vprint(f"✅ Created tenant: {tenant.name}")
     
     # Get roles
     admin_role = db.query(Role).filter_by(name="admin").first()
@@ -64,34 +63,32 @@ def seed_demo_data_python():
     
     # Ensure we have at least one asset type and status
     if not asset_types:
-        print("❌ No asset types found. Cannot create assets.")
-        db.close()
-        return
+            print("❌ No asset types found. Cannot create assets.")
+            return
     if not asset_statuses:
-        print("❌ No asset statuses found. Cannot create assets.")
-        db.close()
-        return
+            print("❌ No asset statuses found. Cannot create assets.")
+            return
     
     # Create demo sites
     sites_data = [
-        {
+    {
             "name": "Main Production Plant",
             "code": "MPP",
             "description": "Primary manufacturing facility for automotive components",
             "address": "123 Industrial Blvd, Detroit, MI 48201"
-        },
-        {
+    },
+    {
             "name": "Research & Development Center",
             "code": "RDC",
             "description": "Innovation hub for new product development",
             "address": "456 Tech Park Dr, Austin, TX 78701"
-        },
-        {
+    },
+    {
             "name": "Distribution Warehouse",
             "code": "DW",
             "description": "Central logistics and distribution facility",
             "address": "789 Logistics Way, Chicago, IL 60601"
-        }
+    }
     ]
     
     sites = []
@@ -116,23 +113,23 @@ def seed_demo_data_python():
     
     # Create demo areas for each site
     areas_data = [
-        # Main Production Plant areas
-        {"name": "Assembly Line A", "code": "ALA", "notes": "Primary assembly line for engine components"},
-        {"name": "Assembly Line B", "code": "ALB", "notes": "Secondary assembly line for transmission parts"},
-        {"name": "Quality Control Lab", "code": "QCL", "notes": "Testing and quality assurance facility"},
-        {"name": "Maintenance Bay", "code": "MB", "notes": "Equipment maintenance and repair area"},
-        {"name": "Control Room", "code": "CR", "notes": "Central monitoring and control center"},
-        
-        # R&D Center areas
-        {"name": "Prototype Lab", "code": "PL", "notes": "New product prototyping and testing"},
-        {"name": "Materials Lab", "code": "ML", "notes": "Material science research and testing"},
-        {"name": "Software Development", "code": "SD", "notes": "Control system software development"},
-        {"name": "Testing Chamber", "code": "TC", "notes": "Environmental and stress testing"},
-        
-        # Distribution Warehouse areas
-        {"name": "Receiving/Shipping Docks", "code": "RSD", "notes": "Incoming and outgoing logistics"},
-        {"name": "Storage Zone A", "code": "SZA", "notes": "High-value component storage"},
-        {"name": "Storage Zone B", "code": "SZB", "notes": "Bulk material storage"}
+    # Main Production Plant areas
+    {"name": "Assembly Line A", "code": "ALA", "notes": "Primary assembly line for engine components"},
+    {"name": "Assembly Line B", "code": "ALB", "notes": "Secondary assembly line for transmission parts"},
+    {"name": "Quality Control Lab", "code": "QCL", "notes": "Testing and quality assurance facility"},
+    {"name": "Maintenance Bay", "code": "MB", "notes": "Equipment maintenance and repair area"},
+    {"name": "Control Room", "code": "CR", "notes": "Central monitoring and control center"},
+    
+    # R&D Center areas
+    {"name": "Prototype Lab", "code": "PL", "notes": "New product prototyping and testing"},
+    {"name": "Materials Lab", "code": "ML", "notes": "Material science research and testing"},
+    {"name": "Software Development", "code": "SD", "notes": "Control system software development"},
+    {"name": "Testing Chamber", "code": "TC", "notes": "Environmental and stress testing"},
+    
+    # Distribution Warehouse areas
+    {"name": "Receiving/Shipping Docks", "code": "RSD", "notes": "Incoming and outgoing logistics"},
+    {"name": "Storage Zone A", "code": "SZA", "notes": "High-value component storage"},
+    {"name": "Storage Zone B", "code": "SZB", "notes": "Bulk material storage"}
     ]
     
     areas = []
@@ -165,30 +162,30 @@ def seed_demo_data_python():
     
     # Create demo locations
     locations_data = [
-        # Production Plant locations
-        {"name": "Control Panel A1", "code": "CPA1", "description": "Main control panel for Assembly Line A", "area": "Assembly Line A"},
-        {"name": "Control Panel A2", "code": "CPA2", "description": "Secondary control panel for Assembly Line A", "area": "Assembly Line A"},
-        {"name": "Control Panel B1", "code": "CPB1", "description": "Main control panel for Assembly Line B", "area": "Assembly Line B"},
-        {"name": "Quality Station 1", "code": "QS1", "description": "Primary quality control station", "area": "Quality Control Lab"},
-        {"name": "Quality Station 2", "code": "QS2", "description": "Secondary quality control station", "area": "Quality Control Lab"},
-        {"name": "Maintenance Bay 1", "code": "MB1", "description": "Primary maintenance work area", "area": "Maintenance Bay"},
-        {"name": "Maintenance Bay 2", "code": "MB2", "description": "Secondary maintenance work area", "area": "Maintenance Bay"},
-        {"name": "Control Room Console", "code": "CRC", "description": "Main control room console", "area": "Control Room"},
-        {"name": "Control Room Display", "code": "CRD", "description": "Control room display wall", "area": "Control Room"},
-        
-        # R&D Center locations
-        {"name": "Prototype Station 1", "code": "PS1", "description": "Primary prototype development station", "area": "Prototype Lab"},
-        {"name": "Prototype Station 2", "code": "PS2", "description": "Secondary prototype development station", "area": "Prototype Lab"},
-        {"name": "Materials Testing Station", "code": "MTS", "description": "Materials testing and analysis station", "area": "Materials Lab"},
-        {"name": "Software Development Station", "code": "SDS", "description": "Software development and testing station", "area": "Software Development"},
-        {"name": "Testing Chamber 1", "code": "TC1", "description": "Primary environmental testing chamber", "area": "Testing Chamber"},
-        
-        # Warehouse locations
-        {"name": "Receiving Dock 1", "code": "RD1", "description": "Primary receiving dock", "area": "Receiving/Shipping Docks"},
-        {"name": "Shipping Dock 1", "code": "SD1", "description": "Primary shipping dock", "area": "Receiving/Shipping Docks"},
-        {"name": "Storage Rack A1", "code": "SRA1", "description": "High-value component storage rack", "area": "Storage Zone A"},
-        {"name": "Storage Rack A2", "code": "SRA2", "description": "Secondary high-value storage rack", "area": "Storage Zone A"},
-        {"name": "Bulk Storage Area 1", "code": "BSA1", "description": "Primary bulk material storage area", "area": "Storage Zone B"}
+    # Production Plant locations
+    {"name": "Control Panel A1", "code": "CPA1", "description": "Main control panel for Assembly Line A", "area": "Assembly Line A"},
+    {"name": "Control Panel A2", "code": "CPA2", "description": "Secondary control panel for Assembly Line A", "area": "Assembly Line A"},
+    {"name": "Control Panel B1", "code": "CPB1", "description": "Main control panel for Assembly Line B", "area": "Assembly Line B"},
+    {"name": "Quality Station 1", "code": "QS1", "description": "Primary quality control station", "area": "Quality Control Lab"},
+    {"name": "Quality Station 2", "code": "QS2", "description": "Secondary quality control station", "area": "Quality Control Lab"},
+    {"name": "Maintenance Bay 1", "code": "MB1", "description": "Primary maintenance work area", "area": "Maintenance Bay"},
+    {"name": "Maintenance Bay 2", "code": "MB2", "description": "Secondary maintenance work area", "area": "Maintenance Bay"},
+    {"name": "Control Room Console", "code": "CRC", "description": "Main control room console", "area": "Control Room"},
+    {"name": "Control Room Display", "code": "CRD", "description": "Control room display wall", "area": "Control Room"},
+    
+    # R&D Center locations
+    {"name": "Prototype Station 1", "code": "PS1", "description": "Primary prototype development station", "area": "Prototype Lab"},
+    {"name": "Prototype Station 2", "code": "PS2", "description": "Secondary prototype development station", "area": "Prototype Lab"},
+    {"name": "Materials Testing Station", "code": "MTS", "description": "Materials testing and analysis station", "area": "Materials Lab"},
+    {"name": "Software Development Station", "code": "SDS", "description": "Software development and testing station", "area": "Software Development"},
+    {"name": "Testing Chamber 1", "code": "TC1", "description": "Primary environmental testing chamber", "area": "Testing Chamber"},
+    
+    # Warehouse locations
+    {"name": "Receiving Dock 1", "code": "RD1", "description": "Primary receiving dock", "area": "Receiving/Shipping Docks"},
+    {"name": "Shipping Dock 1", "code": "SD1", "description": "Primary shipping dock", "area": "Receiving/Shipping Docks"},
+    {"name": "Storage Rack A1", "code": "SRA1", "description": "High-value component storage rack", "area": "Storage Zone A"},
+    {"name": "Storage Rack A2", "code": "SRA2", "description": "Secondary high-value storage rack", "area": "Storage Zone A"},
+    {"name": "Bulk Storage Area 1", "code": "BSA1", "description": "Primary bulk material storage area", "area": "Storage Zone B"}
     ]
     
     locations = []
@@ -217,10 +214,10 @@ def seed_demo_data_python():
     
     # Create demo manufacturers
     manufacturers_data = [
-        {"name": "Siemens", "description": "Industrial automation and control systems"},
-        {"name": "Rockwell Automation", "description": "Industrial automation and information solutions"},
-        {"name": "Schneider Electric", "description": "Energy management and automation"},
-        {"name": "ABB", "description": "Power and automation technologies"}
+    {"name": "Siemens", "description": "Industrial automation and control systems"},
+    {"name": "Rockwell Automation", "description": "Industrial automation and information solutions"},
+    {"name": "Schneider Electric", "description": "Energy management and automation"},
+    {"name": "ABB", "description": "Power and automation technologies"}
     ]
     
     manufacturers = []
@@ -243,10 +240,10 @@ def seed_demo_data_python():
     
     # Create demo suppliers
     suppliers_data = [
-        {"name": "Siemens Industrial Automation", "description": "PLC and HMI systems supplier"},
-        {"name": "Rockwell Automation Solutions", "description": "Allen-Bradley products and services"},
-        {"name": "Schneider Electric Systems", "description": "Modicon and Telemecanique products"},
-        {"name": "ABB Industrial Solutions", "description": "AC500 and 800xA systems"}
+    {"name": "Siemens Industrial Automation", "description": "PLC and HMI systems supplier"},
+    {"name": "Rockwell Automation Solutions", "description": "Allen-Bradley products and services"},
+    {"name": "Schneider Electric Systems", "description": "Modicon and Telemecanique products"},
+    {"name": "ABB Industrial Solutions", "description": "AC500 and 800xA systems"}
     ]
     
     suppliers = []
@@ -269,12 +266,12 @@ def seed_demo_data_python():
     
     # Create demo contacts
     contacts_data = [
-        {"first_name": "John", "last_name": "Smith", "email": "john.smith@siemens-automation.com", "phone1": "+1-555-0101", "type": "Sales Manager", "supplier": "Siemens Industrial Automation"},
-        {"first_name": "Sarah", "last_name": "Johnson", "email": "sarah.johnson@rockwell.com", "phone1": "+1-555-0102", "type": "Technical Support", "supplier": "Rockwell Automation Solutions"},
-        {"first_name": "Mike", "last_name": "Davis", "email": "mike.davis@schneider-electric.com", "phone1": "+1-555-0103", "type": "Account Manager", "supplier": "Schneider Electric Systems"},
-        {"first_name": "Lisa", "last_name": "Wilson", "email": "lisa.wilson@abb.com", "phone1": "+1-555-0104", "type": "Product Specialist", "supplier": "ABB Industrial Solutions"},
-        {"first_name": "David", "last_name": "Brown", "email": "david.brown@siemens-automation.com", "phone1": "+1-555-0105", "type": "Service Engineer", "supplier": "Siemens Industrial Automation"},
-        {"first_name": "Emily", "last_name": "Taylor", "email": "emily.taylor@rockwell.com", "phone1": "+1-555-0106", "type": "Sales Representative", "supplier": "Rockwell Automation Solutions"}
+    {"first_name": "John", "last_name": "Smith", "email": "john.smith@siemens-automation.com", "phone1": "+1-555-0101", "type": "Sales Manager", "supplier": "Siemens Industrial Automation"},
+    {"first_name": "Sarah", "last_name": "Johnson", "email": "sarah.johnson@rockwell.com", "phone1": "+1-555-0102", "type": "Technical Support", "supplier": "Rockwell Automation Solutions"},
+    {"first_name": "Mike", "last_name": "Davis", "email": "mike.davis@schneider-electric.com", "phone1": "+1-555-0103", "type": "Account Manager", "supplier": "Schneider Electric Systems"},
+    {"first_name": "Lisa", "last_name": "Wilson", "email": "lisa.wilson@abb.com", "phone1": "+1-555-0104", "type": "Product Specialist", "supplier": "ABB Industrial Solutions"},
+    {"first_name": "David", "last_name": "Brown", "email": "david.brown@siemens-automation.com", "phone1": "+1-555-0105", "type": "Service Engineer", "supplier": "Siemens Industrial Automation"},
+    {"first_name": "Emily", "last_name": "Taylor", "email": "emily.taylor@rockwell.com", "phone1": "+1-555-0106", "type": "Sales Representative", "supplier": "Rockwell Automation Solutions"}
     ]
     
     contacts = []
@@ -303,7 +300,7 @@ def seed_demo_data_python():
     
     # Create demo assets
     assets_data = [
-        {
+    {
             "name": "PLC Controller A1",
             "tag": "PLC-A1",
             "description": "Siemens S7-1500 PLC for Assembly Line A",
@@ -318,8 +315,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Siemens Industrial Automation",
             "contact": "john.smith@siemens-automation.com"
-        },
-        {
+    },
+    {
             "name": "HMI Display A1",
             "tag": "HMI-A1",
             "description": "Siemens KTP900 HMI for Assembly Line A",
@@ -334,8 +331,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Siemens Industrial Automation",
             "contact": "john.smith@siemens-automation.com"
-        },
-        {
+    },
+    {
             "name": "PLC Controller B1",
             "tag": "PLC-B1",
             "description": "Rockwell ControlLogix PLC for Assembly Line B",
@@ -350,8 +347,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Rockwell Automation Solutions",
             "contact": "sarah.johnson@rockwell.com"
-        },
-        {
+    },
+    {
             "name": "Quality Control Robot",
             "tag": "ROBOT-QC1",
             "description": "ABB IRB 1200 robot for quality inspection",
@@ -366,8 +363,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "ABB Industrial Solutions",
             "contact": "lisa.wilson@abb.com"
-        },
-        {
+    },
+    {
             "name": "Network Switch A",
             "tag": "SW-A1",
             "description": "Cisco Catalyst switch for production network",
@@ -382,8 +379,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Siemens Industrial Automation",
             "contact": "david.brown@siemens-automation.com"
-        },
-        {
+    },
+    {
             "name": "Temperature Sensor Array",
             "tag": "SENSOR-TEMP1",
             "description": "Temperature monitoring sensors for Assembly Line A",
@@ -398,8 +395,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Siemens Industrial Automation",
             "contact": "john.smith@siemens-automation.com"
-        },
-        {
+    },
+    {
             "name": "Production Server",
             "tag": "SRV-PROD1",
             "description": "Production data collection and analysis server",
@@ -414,8 +411,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Siemens Industrial Automation",
             "contact": "david.brown@siemens-automation.com"
-        },
-        {
+    },
+    {
             "name": "Safety System Controller",
             "tag": "SAFETY-CTRL1",
             "description": "Emergency stop and safety monitoring system",
@@ -430,8 +427,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Schneider Electric Systems",
             "contact": "mike.davis@schneider-electric.com"
-        },
-        {
+    },
+    {
             "name": "HMI Display B1",
             "tag": "HMI-B1",
             "description": "Rockwell PanelView Plus HMI for Assembly Line B",
@@ -446,8 +443,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Rockwell Automation Solutions",
             "contact": "emily.taylor@rockwell.com"
-        },
-        {
+    },
+    {
             "name": "Firewall Gateway",
             "tag": "FW-GW1",
             "description": "Industrial firewall between production and enterprise networks",
@@ -462,8 +459,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Siemens Industrial Automation",
             "contact": "david.brown@siemens-automation.com"
-        },
-        {
+    },
+    {
             "name": "SCADA Server",
             "tag": "SCADA-SRV1",
             "description": "SCADA system server for production monitoring",
@@ -478,8 +475,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Siemens Industrial Automation",
             "contact": "john.smith@siemens-automation.com"
-        },
-        {
+    },
+    {
             "name": "VFD Motor Controller A1",
             "tag": "VFD-A1",
             "description": "Variable Frequency Drive for motor control on Assembly Line A",
@@ -494,8 +491,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "ABB Industrial Solutions",
             "contact": "lisa.wilson@abb.com"
-        },
-        {
+    },
+    {
             "name": "Pressure Sensor Array",
             "tag": "SENSOR-PRESS1",
             "description": "Pressure monitoring sensors for hydraulic systems",
@@ -510,8 +507,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Siemens Industrial Automation",
             "contact": "john.smith@siemens-automation.com"
-        },
-        {
+    },
+    {
             "name": "Network Switch B",
             "tag": "SW-B1",
             "description": "Secondary network switch for redundancy",
@@ -526,8 +523,8 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Siemens Industrial Automation",
             "contact": "david.brown@siemens-automation.com"
-        },
-        {
+    },
+    {
             "name": "Data Historian",
             "tag": "HIST-SRV1",
             "description": "Production data historian for long-term storage",
@@ -542,7 +539,7 @@ def seed_demo_data_python():
             "physical_access_ease": "internal",
             "supplier": "Siemens Industrial Automation",
             "contact": "john.smith@siemens-automation.com"
-        }
+    }
     ]
     
     assets = []
@@ -615,42 +612,42 @@ def seed_demo_data_python():
             
             assets.append(asset)
             vprint(f"✅ Created asset: {asset.name}")
-        else:
+    else:
             assets.append(existing_asset)
     
     db.commit()
     
     # Create demo interfaces for assets
     interfaces_data = [
-        {"asset": "PLC Controller A1", "name": "Ethernet Port 1", "ip_address": "192.168.1.10", "mac_address": "00:1B:44:11:3A:B7", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
-        {"asset": "PLC Controller A1", "name": "Serial Port 1", "ip_address": None, "mac_address": None, "type": "Serial", "protocols": ["Modbus RTU"]},
-        {"asset": "HMI Display A1", "name": "Ethernet Port 1", "ip_address": "192.168.1.11", "mac_address": "00:1B:44:11:3A:B8", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
-        {"asset": "PLC Controller B1", "name": "Ethernet Port 1", "ip_address": "192.168.1.12", "mac_address": "00:1B:44:11:3A:B9", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
-        {"asset": "Quality Control Robot", "name": "Ethernet Port 1", "ip_address": "192.168.1.13", "mac_address": "00:1B:44:11:3A:BA", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
-        {"asset": "Network Switch A", "name": "Port 1", "ip_address": "192.168.1.1", "mac_address": "00:1B:44:11:3A:BB", "type": "Ethernet", "protocols": ["Ethernet"]},
-        {"asset": "Network Switch A", "name": "Port 2", "ip_address": "192.168.1.1", "mac_address": "00:1B:44:11:3A:BC", "type": "Ethernet", "protocols": ["Ethernet"]},
-        {"asset": "Temperature Sensor Array", "name": "Analog Output", "ip_address": None, "mac_address": None, "type": "Analog", "protocols": ["4-20mA"]},
-        {"asset": "Production Server", "name": "Ethernet Port 1", "ip_address": "192.168.2.20", "mac_address": "00:1B:44:11:3A:BD", "type": "Ethernet", "protocols": ["Ethernet"]},
-        {"asset": "Production Server", "name": "Ethernet Port 2", "ip_address": "192.168.10.20", "mac_address": "00:1B:44:11:3A:BE", "type": "Ethernet", "protocols": ["Ethernet"]},
-        {"asset": "Safety System Controller", "name": "Safety Network", "ip_address": "192.168.2.10", "mac_address": "00:1B:44:11:3A:BF", "type": "Safety", "protocols": ["SafetyNet"]},
-        {"asset": "HMI Display B1", "name": "Ethernet Port 1", "ip_address": "192.168.1.14", "mac_address": "00:1B:44:11:3A:C0", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
-        {"asset": "Firewall Gateway", "name": "Control Network Interface", "ip_address": "192.168.1.254", "mac_address": "00:1B:44:11:3A:C1", "type": "Ethernet", "protocols": ["Ethernet"]},
-        {"asset": "Firewall Gateway", "name": "DMZ Network Interface", "ip_address": "192.168.10.1", "mac_address": "00:1B:44:11:3A:C2", "type": "Ethernet", "protocols": ["Ethernet"]},
-        {"asset": "Firewall Gateway", "name": "Enterprise Network Interface", "ip_address": "10.0.0.1", "mac_address": "00:1B:44:11:3A:C3", "type": "Ethernet", "protocols": ["Ethernet"]},
-        {"asset": "SCADA Server", "name": "Ethernet Port 1", "ip_address": "192.168.2.30", "mac_address": "00:1B:44:11:3A:C4", "type": "Ethernet", "protocols": ["Ethernet"]},
-        {"asset": "SCADA Server", "name": "Ethernet Port 2", "ip_address": "192.168.10.30", "mac_address": "00:1B:44:11:3A:C5", "type": "Ethernet", "protocols": ["Ethernet"]},
-        {"asset": "VFD Motor Controller A1", "name": "Ethernet Port 1", "ip_address": "192.168.1.15", "mac_address": "00:1B:44:11:3A:C6", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
-        {"asset": "Pressure Sensor Array", "name": "Analog Output", "ip_address": None, "mac_address": None, "type": "Analog", "protocols": ["4-20mA"]},
-        {"asset": "Network Switch B", "name": "Port 1", "ip_address": "192.168.1.2", "mac_address": "00:1B:44:11:3A:C7", "type": "Ethernet", "protocols": ["Ethernet"]},
-        {"asset": "Network Switch B", "name": "Port 2", "ip_address": "192.168.1.2", "mac_address": "00:1B:44:11:3A:C8", "type": "Ethernet", "protocols": ["Ethernet"]},
-        {"asset": "Data Historian", "name": "Ethernet Port 1", "ip_address": "192.168.2.40", "mac_address": "00:1B:44:11:3A:C9", "type": "Ethernet", "protocols": ["Ethernet"]}
+    {"asset": "PLC Controller A1", "name": "Ethernet Port 1", "ip_address": "192.168.1.10", "mac_address": "00:1B:44:11:3A:B7", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
+    {"asset": "PLC Controller A1", "name": "Serial Port 1", "ip_address": None, "mac_address": None, "type": "Serial", "protocols": ["Modbus RTU"]},
+    {"asset": "HMI Display A1", "name": "Ethernet Port 1", "ip_address": "192.168.1.11", "mac_address": "00:1B:44:11:3A:B8", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
+    {"asset": "PLC Controller B1", "name": "Ethernet Port 1", "ip_address": "192.168.1.12", "mac_address": "00:1B:44:11:3A:B9", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
+    {"asset": "Quality Control Robot", "name": "Ethernet Port 1", "ip_address": "192.168.1.13", "mac_address": "00:1B:44:11:3A:BA", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
+    {"asset": "Network Switch A", "name": "Port 1", "ip_address": "192.168.1.1", "mac_address": "00:1B:44:11:3A:BB", "type": "Ethernet", "protocols": ["Ethernet"]},
+    {"asset": "Network Switch A", "name": "Port 2", "ip_address": "192.168.1.1", "mac_address": "00:1B:44:11:3A:BC", "type": "Ethernet", "protocols": ["Ethernet"]},
+    {"asset": "Temperature Sensor Array", "name": "Analog Output", "ip_address": None, "mac_address": None, "type": "Analog", "protocols": ["4-20mA"]},
+    {"asset": "Production Server", "name": "Ethernet Port 1", "ip_address": "192.168.2.20", "mac_address": "00:1B:44:11:3A:BD", "type": "Ethernet", "protocols": ["Ethernet"]},
+    {"asset": "Production Server", "name": "Ethernet Port 2", "ip_address": "192.168.10.20", "mac_address": "00:1B:44:11:3A:BE", "type": "Ethernet", "protocols": ["Ethernet"]},
+    {"asset": "Safety System Controller", "name": "Safety Network", "ip_address": "192.168.2.10", "mac_address": "00:1B:44:11:3A:BF", "type": "Safety", "protocols": ["SafetyNet"]},
+    {"asset": "HMI Display B1", "name": "Ethernet Port 1", "ip_address": "192.168.1.14", "mac_address": "00:1B:44:11:3A:C0", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
+    {"asset": "Firewall Gateway", "name": "Control Network Interface", "ip_address": "192.168.1.254", "mac_address": "00:1B:44:11:3A:C1", "type": "Ethernet", "protocols": ["Ethernet"]},
+    {"asset": "Firewall Gateway", "name": "DMZ Network Interface", "ip_address": "192.168.10.1", "mac_address": "00:1B:44:11:3A:C2", "type": "Ethernet", "protocols": ["Ethernet"]},
+    {"asset": "Firewall Gateway", "name": "Enterprise Network Interface", "ip_address": "10.0.0.1", "mac_address": "00:1B:44:11:3A:C3", "type": "Ethernet", "protocols": ["Ethernet"]},
+    {"asset": "SCADA Server", "name": "Ethernet Port 1", "ip_address": "192.168.2.30", "mac_address": "00:1B:44:11:3A:C4", "type": "Ethernet", "protocols": ["Ethernet"]},
+    {"asset": "SCADA Server", "name": "Ethernet Port 2", "ip_address": "192.168.10.30", "mac_address": "00:1B:44:11:3A:C5", "type": "Ethernet", "protocols": ["Ethernet"]},
+    {"asset": "VFD Motor Controller A1", "name": "Ethernet Port 1", "ip_address": "192.168.1.15", "mac_address": "00:1B:44:11:3A:C6", "type": "Ethernet", "protocols": ["Ethernet/IP"]},
+    {"asset": "Pressure Sensor Array", "name": "Analog Output", "ip_address": None, "mac_address": None, "type": "Analog", "protocols": ["4-20mA"]},
+    {"asset": "Network Switch B", "name": "Port 1", "ip_address": "192.168.1.2", "mac_address": "00:1B:44:11:3A:C7", "type": "Ethernet", "protocols": ["Ethernet"]},
+    {"asset": "Network Switch B", "name": "Port 2", "ip_address": "192.168.1.2", "mac_address": "00:1B:44:11:3A:C8", "type": "Ethernet", "protocols": ["Ethernet"]},
+    {"asset": "Data Historian", "name": "Ethernet Port 1", "ip_address": "192.168.2.40", "mac_address": "00:1B:44:11:3A:C9", "type": "Ethernet", "protocols": ["Ethernet"]}
     ]
     
     interfaces = []
     for interface_data in interfaces_data:
         # Find the asset for this interface
         asset = next((a for a in assets if a.name == interface_data["asset"]), None)
-        if asset:
+    if asset:
             existing_interface = db.query(AssetInterface).filter_by(
                 name=interface_data["name"], 
                 asset_id=asset.id
@@ -677,19 +674,19 @@ def seed_demo_data_python():
     
     # Create demo connections between assets
     connections_data = [
-        {"parent": "PLC Controller A1", "child": "HMI Display A1", "connection_type": "Ethernet/IP", "parent_interface": "Ethernet Port 1", "child_interface": "Ethernet Port 1", "description": "Control communication"},
-        {"parent": "PLC Controller A1", "child": "Network Switch A", "connection_type": "Ethernet", "parent_interface": "Ethernet Port 1", "child_interface": "Port 1", "description": "Network connectivity"},
-        {"parent": "PLC Controller B1", "child": "HMI Display B1", "connection_type": "Ethernet/IP", "parent_interface": "Ethernet Port 1", "child_interface": "Ethernet Port 1", "description": "Control communication"},
-        {"parent": "PLC Controller B1", "child": "Network Switch A", "connection_type": "Ethernet", "parent_interface": "Ethernet Port 1", "child_interface": "Port 2", "description": "Network connectivity"},
-        {"parent": "Quality Control Robot", "child": "PLC Controller A1", "connection_type": "Ethernet/IP", "parent_interface": "Ethernet Port 1", "child_interface": "Ethernet Port 1", "description": "Robot control"},
-        {"parent": "VFD Motor Controller A1", "child": "PLC Controller A1", "connection_type": "Ethernet/IP", "parent_interface": "Ethernet Port 1", "child_interface": "Ethernet Port 1", "description": "Motor control"},
-        {"parent": "Production Server", "child": "Network Switch A", "connection_type": "Ethernet", "parent_interface": "Ethernet Port 1", "child_interface": "Port 1", "description": "Data collection"},
-        {"parent": "SCADA Server", "child": "Network Switch A", "connection_type": "Ethernet", "parent_interface": "Ethernet Port 1", "child_interface": "Port 1", "description": "SCADA data collection"},
-        {"parent": "Data Historian", "child": "SCADA Server", "connection_type": "Ethernet", "parent_interface": "Ethernet Port 1", "child_interface": "Ethernet Port 1", "description": "Historical data storage"},
-        {"parent": "Safety System Controller", "child": "PLC Controller A1", "connection_type": "SafetyNet", "parent_interface": "Safety Network", "child_interface": "Ethernet Port 1", "description": "Safety monitoring"},
-        {"parent": "Firewall Gateway", "child": "Network Switch A", "connection_type": "Ethernet", "parent_interface": "Control Network Interface", "child_interface": "Port 1", "description": "Network security"},
-        {"parent": "Temperature Sensor Array", "child": "PLC Controller A1", "connection_type": "Analog", "parent_interface": "Analog Output", "child_interface": "Serial Port 1", "description": "Temperature monitoring"},
-        {"parent": "Pressure Sensor Array", "child": "PLC Controller A1", "connection_type": "Analog", "parent_interface": "Analog Output", "child_interface": "Serial Port 1", "description": "Pressure monitoring"}
+    {"parent": "PLC Controller A1", "child": "HMI Display A1", "connection_type": "Ethernet/IP", "parent_interface": "Ethernet Port 1", "child_interface": "Ethernet Port 1", "description": "Control communication"},
+    {"parent": "PLC Controller A1", "child": "Network Switch A", "connection_type": "Ethernet", "parent_interface": "Ethernet Port 1", "child_interface": "Port 1", "description": "Network connectivity"},
+    {"parent": "PLC Controller B1", "child": "HMI Display B1", "connection_type": "Ethernet/IP", "parent_interface": "Ethernet Port 1", "child_interface": "Ethernet Port 1", "description": "Control communication"},
+    {"parent": "PLC Controller B1", "child": "Network Switch A", "connection_type": "Ethernet", "parent_interface": "Ethernet Port 1", "child_interface": "Port 2", "description": "Network connectivity"},
+    {"parent": "Quality Control Robot", "child": "PLC Controller A1", "connection_type": "Ethernet/IP", "parent_interface": "Ethernet Port 1", "child_interface": "Ethernet Port 1", "description": "Robot control"},
+    {"parent": "VFD Motor Controller A1", "child": "PLC Controller A1", "connection_type": "Ethernet/IP", "parent_interface": "Ethernet Port 1", "child_interface": "Ethernet Port 1", "description": "Motor control"},
+    {"parent": "Production Server", "child": "Network Switch A", "connection_type": "Ethernet", "parent_interface": "Ethernet Port 1", "child_interface": "Port 1", "description": "Data collection"},
+    {"parent": "SCADA Server", "child": "Network Switch A", "connection_type": "Ethernet", "parent_interface": "Ethernet Port 1", "child_interface": "Port 1", "description": "SCADA data collection"},
+    {"parent": "Data Historian", "child": "SCADA Server", "connection_type": "Ethernet", "parent_interface": "Ethernet Port 1", "child_interface": "Ethernet Port 1", "description": "Historical data storage"},
+    {"parent": "Safety System Controller", "child": "PLC Controller A1", "connection_type": "SafetyNet", "parent_interface": "Safety Network", "child_interface": "Ethernet Port 1", "description": "Safety monitoring"},
+    {"parent": "Firewall Gateway", "child": "Network Switch A", "connection_type": "Ethernet", "parent_interface": "Control Network Interface", "child_interface": "Port 1", "description": "Network security"},
+    {"parent": "Temperature Sensor Array", "child": "PLC Controller A1", "connection_type": "Analog", "parent_interface": "Analog Output", "child_interface": "Serial Port 1", "description": "Temperature monitoring"},
+    {"parent": "Pressure Sensor Array", "child": "PLC Controller A1", "connection_type": "Analog", "parent_interface": "Analog Output", "child_interface": "Serial Port 1", "description": "Pressure monitoring"}
     ]
     
     connections = []
@@ -762,23 +759,23 @@ def seed_demo_data_python():
     # Create ISA62443 Security Zones
     print("\n🔒 Creating ISA62443 Security Zones...")
     security_zones_data = [
-        {
+    {
             "name": "Level 3 - Control Zone",
             "description": "Production control systems zone (Purdue Level 3)",
             "zone_type": "control",
             "security_level_target": 3,
             "site": "Main Production Plant",
             "network_segment": "192.168.1.0/24"
-        },
-        {
+    },
+    {
             "name": "Level 2 - Supervisory Zone",
             "description": "SCADA and supervisory systems zone (Purdue Level 2)",
             "zone_type": "supervisory",
             "security_level_target": 3,
             "site": "Main Production Plant",
             "network_segment": "192.168.2.0/24"
-        },
-        {
+    },
+    {
             "name": "Level 3.5 - DMZ Zone",
             "description": "Demilitarized zone for data exchange between control and enterprise",
             "zone_type": "dmz",
@@ -786,23 +783,23 @@ def seed_demo_data_python():
             "site": "Main Production Plant",
             "network_segment": "192.168.10.0/24",
             "is_dmz": True
-        },
-        {
+    },
+    {
             "name": "Level 4 - Enterprise Zone",
             "description": "Enterprise IT systems zone (Purdue Level 4)",
             "zone_type": "enterprise",
             "security_level_target": 2,
             "site": "Main Production Plant",
             "network_segment": "10.0.0.0/24"
-        },
-        {
+    },
+    {
             "name": "Safety Zone",
             "description": "Safety instrumented systems zone",
             "zone_type": "safety",
             "security_level_target": 4,
             "site": "Main Production Plant",
             "network_segment": "192.168.2.0/24"
-        }
+    }
     ]
     
     security_zones = []
@@ -810,7 +807,7 @@ def seed_demo_data_python():
     
     for zone_data in security_zones_data:
         existing_zone = db.query(SecurityZone).filter_by(name=zone_data["name"], tenant_id=tenant.id).first()
-        if not existing_zone:
+    if not existing_zone:
             zone = SecurityZone(
                 id=uuid.uuid4(),
                 tenant_id=tenant.id,
@@ -826,7 +823,7 @@ def seed_demo_data_python():
             db.add(zone)
             security_zones.append(zone)
             vprint(f"✅ Created security zone: {zone.name} (SL-T: {zone.security_level_target})")
-        else:
+    else:
             security_zones.append(existing_zone)
     
     db.commit()
@@ -834,37 +831,37 @@ def seed_demo_data_python():
     # Create Asset Zone Memberships
     print("\n🔗 Linking assets to Security Zones...")
     zone_memberships_data = [
-        # Control Zone (Level 3) assets
-        {"asset": "PLC Controller A1", "zone": "Level 3 - Control Zone", "role": "primary", "sl_target": 3},
-        {"asset": "PLC Controller B1", "zone": "Level 3 - Control Zone", "role": "primary", "sl_target": 3},
-        {"asset": "HMI Display A1", "zone": "Level 3 - Control Zone", "role": "operator_interface", "sl_target": 3},
-        {"asset": "HMI Display B1", "zone": "Level 3 - Control Zone", "role": "operator_interface", "sl_target": 3},
-        {"asset": "VFD Motor Controller A1", "zone": "Level 3 - Control Zone", "role": "supporting", "sl_target": 3},
-        {"asset": "Temperature Sensor Array", "zone": "Level 3 - Control Zone", "role": "monitoring", "sl_target": 2},
-        {"asset": "Pressure Sensor Array", "zone": "Level 3 - Control Zone", "role": "monitoring", "sl_target": 2},
-        {"asset": "Network Switch A", "zone": "Level 3 - Control Zone", "role": "supporting", "sl_target": 3},
-        {"asset": "Network Switch B", "zone": "Level 3 - Control Zone", "role": "supporting", "sl_target": 3},
-        
-        # Supervisory Zone (Level 2) assets
-        {"asset": "SCADA Server", "zone": "Level 2 - Supervisory Zone", "role": "primary", "sl_target": 3},
-        {"asset": "Production Server", "zone": "Level 2 - Supervisory Zone", "role": "data_collector", "sl_target": 3},
-        {"asset": "Data Historian", "zone": "Level 2 - Supervisory Zone", "role": "data_collector", "sl_target": 3},
-        
-        # DMZ Zone assets
-        {"asset": "Firewall Gateway", "zone": "Level 3.5 - DMZ Zone", "role": "boundary", "sl_target": 2},
-        {"asset": "Production Server", "zone": "Level 3.5 - DMZ Zone", "role": "data_publisher", "sl_target": 2, "interface_scope": "Ethernet Port 1"},
-        
-        # Safety Zone assets
-        {"asset": "Safety System Controller", "zone": "Safety Zone", "role": "primary", "sl_target": 4},
-        {"asset": "Quality Control Robot", "zone": "Safety Zone", "role": "supporting", "sl_target": 3}
+    # Control Zone (Level 3) assets
+    {"asset": "PLC Controller A1", "zone": "Level 3 - Control Zone", "role": "primary", "sl_target": 3},
+    {"asset": "PLC Controller B1", "zone": "Level 3 - Control Zone", "role": "primary", "sl_target": 3},
+    {"asset": "HMI Display A1", "zone": "Level 3 - Control Zone", "role": "operator_interface", "sl_target": 3},
+    {"asset": "HMI Display B1", "zone": "Level 3 - Control Zone", "role": "operator_interface", "sl_target": 3},
+    {"asset": "VFD Motor Controller A1", "zone": "Level 3 - Control Zone", "role": "supporting", "sl_target": 3},
+    {"asset": "Temperature Sensor Array", "zone": "Level 3 - Control Zone", "role": "monitoring", "sl_target": 2},
+    {"asset": "Pressure Sensor Array", "zone": "Level 3 - Control Zone", "role": "monitoring", "sl_target": 2},
+    {"asset": "Network Switch A", "zone": "Level 3 - Control Zone", "role": "supporting", "sl_target": 3},
+    {"asset": "Network Switch B", "zone": "Level 3 - Control Zone", "role": "supporting", "sl_target": 3},
+    
+    # Supervisory Zone (Level 2) assets
+    {"asset": "SCADA Server", "zone": "Level 2 - Supervisory Zone", "role": "primary", "sl_target": 3},
+    {"asset": "Production Server", "zone": "Level 2 - Supervisory Zone", "role": "data_collector", "sl_target": 3},
+    {"asset": "Data Historian", "zone": "Level 2 - Supervisory Zone", "role": "data_collector", "sl_target": 3},
+    
+    # DMZ Zone assets
+    {"asset": "Firewall Gateway", "zone": "Level 3.5 - DMZ Zone", "role": "boundary", "sl_target": 2},
+    {"asset": "Production Server", "zone": "Level 3.5 - DMZ Zone", "role": "data_publisher", "sl_target": 2, "interface_scope": "Ethernet Port 1"},
+    
+    # Safety Zone assets
+    {"asset": "Safety System Controller", "zone": "Safety Zone", "role": "primary", "sl_target": 4},
+    {"asset": "Quality Control Robot", "zone": "Safety Zone", "role": "supporting", "sl_target": 3}
     ]
     
     zone_memberships = []
     for membership_data in zone_memberships_data:
         asset = next((a for a in assets if a.name == membership_data["asset"]), None)
-        zone = next((z for z in security_zones if z.name == membership_data["zone"]), None)
-        
-        if asset and zone:
+    zone = next((z for z in security_zones if z.name == membership_data["zone"]), None)
+    
+    if asset and zone:
             existing_membership = db.query(AssetZoneMembership).filter_by(
                 asset_id=asset.id,
                 security_zone_id=zone.id,
@@ -892,7 +889,7 @@ def seed_demo_data_python():
     # Create Conduits between Security Zones
     print("\n🌉 Creating Conduits between Security Zones...")
     conduits_data = [
-        {
+    {
             "name": "Control to Supervisory Conduit",
             "description": "Data flow from control systems to SCADA",
             "from_zone": "Level 3 - Control Zone",
@@ -906,8 +903,8 @@ def seed_demo_data_python():
             "authentication_method": "certificate",
             "security_level_target": 3,
             "flow_justification": "Production data collection for monitoring and analysis"
-        },
-        {
+    },
+    {
             "name": "Supervisory to DMZ Conduit",
             "description": "Data flow from SCADA to DMZ for enterprise access",
             "from_zone": "Level 2 - Supervisory Zone",
@@ -921,8 +918,8 @@ def seed_demo_data_python():
             "authentication_method": "certificate",
             "security_level_target": 2,
             "flow_justification": "Enterprise reporting and business intelligence"
-        },
-        {
+    },
+    {
             "name": "DMZ to Enterprise Conduit",
             "description": "Data flow from DMZ to enterprise IT systems",
             "from_zone": "Level 3.5 - DMZ Zone",
@@ -936,8 +933,8 @@ def seed_demo_data_python():
             "authentication_method": "certificate",
             "security_level_target": 2,
             "flow_justification": "Business data integration with ERP and MES systems"
-        },
-        {
+    },
+    {
             "name": "Control to Safety Conduit",
             "description": "Safety monitoring data from control systems",
             "from_zone": "Level 3 - Control Zone",
@@ -949,15 +946,15 @@ def seed_demo_data_python():
             "authentication_required": False,
             "security_level_target": 4,
             "flow_justification": "Real-time safety monitoring and emergency stop signals"
-        }
+    }
     ]
     
     conduits = []
     for conduit_data in conduits_data:
         from_zone = next((z for z in security_zones if z.name == conduit_data["from_zone"]), None)
-        to_zone = next((z for z in security_zones if z.name == conduit_data["to_zone"]), None)
-        
-        if from_zone and to_zone:
+    to_zone = next((z for z in security_zones if z.name == conduit_data["to_zone"]), None)
+    
+    if from_zone and to_zone:
             existing_conduit = db.query(Conduit).filter_by(
                 name=conduit_data["name"],
                 tenant_id=tenant.id

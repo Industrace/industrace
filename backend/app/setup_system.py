@@ -118,9 +118,22 @@ def setup_system():
     except Exception as e:
         print(f"⚠️  SR-Capability mappings initialization failed: {e}")
 
-    # Add demo data if in development environment
+    # Add demo data if no assets exist (first initialization)
+    # This ensures demo data is created even in production during first setup
     from app.config import settings
-    if settings.ENVIRONMENT == "development":
+    from app.models import Asset
+    asset_count = db.query(Asset).count()
+    
+    if asset_count == 0:
+        try:
+            from app.init_demo_data import seed_demo_data
+            print("🌱 No assets found. Seeding demo data...")
+            seed_demo_data()
+            print("✅ Demo data seeded successfully!")
+        except Exception as e:
+            print(f"⚠️  Demo data seeding failed: {e}")
+    elif settings.ENVIRONMENT == "development":
+        # In development, always seed demo data if requested
         try:
             from app.init_demo_data import seed_demo_data
             seed_demo_data()

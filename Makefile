@@ -1,7 +1,7 @@
 # Industrace Development Makefile
 # ===============================
 
-.PHONY: help clean demo test dev prod
+.PHONY: help clean clean-all demo prod prod-cloud logs logs-backend logs-frontend stop build rebuild rebuild-backend status shell migrate migration reset-db restart info config traefik create-tenant create-tenant-default custom-certs-setup custom-certs-start custom-certs-stop custom-certs-logs reset-admin-password list-tenants list-admins reset-security-requirements update-roles backup backup-full backup-list restore
 
 # Default target
 help:
@@ -13,8 +13,21 @@ help:
 	@echo "  make prod-cloud - Start CLOUD production environment (HTTPS + Traefik + Let's Encrypt)"
 	@echo "  make demo      - Add demo data to existing system"
 	@echo "  make clean     - Clean system completely"
+	@echo "  make clean-all - Clean everything including images"
 	@echo "  make logs      - Show logs"
+	@echo "  make logs-backend - Show backend logs only"
+	@echo "  make logs-frontend - Show frontend logs only"
 	@echo "  make stop      - Stop all containers"
+	@echo "  make build     - Build containers"
+	@echo "  make rebuild   - Rebuild containers (no cache)"
+	@echo "  make rebuild-backend - Rebuild backend only (faster)"
+	@echo "  make status    - Show system status"
+	@echo "  make shell     - Open backend shell"
+	@echo "  make migrate   - Run database migrations"
+	@echo "  make migration - Create new migration (requires message=)"
+	@echo "  make reset-db  - Reset database (drop and recreate)"
+	@echo "  make restart   - Quick restart"
+	@echo "  make info      - Show system information"
 	@echo "  make config    - Show configuration information"
 	@echo "  make traefik   - Show Traefik dashboard information"
 	@echo "  make create-tenant - Create new tenant (see usage below)"
@@ -36,11 +49,21 @@ help:
 	@echo "  make reset-security-requirements - Reset ISA/IEC 62443 Security Requirements"
 	@echo "  make update-roles - Update roles with latest permissions"
 	@echo ""
+	@echo "💾 Backup & Restore:"
+	@echo "  make backup - Create system backup (database + uploads + config)"
+	@echo "  make backup-full - Create full backup (including logs)"
+	@echo "  make backup-list - List available backups"
+	@echo "  make restore BACKUP_FILE=backups/industrace_backup_YYYYMMDD_HHMMSS.tar.gz - Restore from backup"
+	@echo ""
 
 
 # Add demo data to existing system
 demo:
 	@echo "🌱 Adding demo data to existing system..."
+	@if ! docker-compose -f docker-compose.prod.yml ps -q backend > /dev/null 2>&1; then \
+		echo "❌ Backend container is not running. Please start with: make prod"; \
+		exit 1; \
+	fi
 	docker-compose -f docker-compose.prod.yml exec backend python -m app.init_demo_data
 	@echo "✅ Demo data added successfully!"
 
@@ -65,13 +88,23 @@ clean-all:
 
 # Start production environment (Nginx + self-signed certificates)
 prod:
+	@echo "🔒 Running security checks..."
+	@./scripts/check-secrets.sh || (echo ""; echo "❌ Security check failed. Please fix the issues above before starting production."; exit 1)
+	@echo ""
 	@echo "🚀 Starting production environment with Nginx..."
 	@if [ ! -f "nginx/ssl/cert.pem" ] || [ ! -f "nginx/ssl/key.pem" ]; then \
 		echo "🔐 SSL certificates not found. Generating self-signed certificates..."; \
 		./scripts/generate-ssl-certs.sh; \
 	fi
 	@echo "📝 Setting up production environment..."
-	@echo "CORS_ORIGINS=https://localhost,https://127.0.0.1,https://industrace.local" > .env.prod
+	@if [ -z "$$DB_PASSWORD" ]; then \
+		echo "🔐 Generating secure database password..."; \
+		DB_PASSWORD=$$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32); \
+		echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod; \
+	else \
+		echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod; \
+	fi
+	@echo "CORS_ORIGINS=https://localhost,https://127.0.0.1,https://industrace.local" >> .env.prod
 	@echo "SECURE_COOKIES=true" >> .env.prod
 	@echo "SAME_SITE_COOKIES=strict" >> .env.prod
 	@echo "SECRET_KEY=prod-$$(openssl rand -hex 32)" >> .env.prod
@@ -83,15 +116,36 @@ prod:
 	@echo "🌐 Access your application at: https://localhost or https://industrace.local"
 	@echo "⚠️  Note: You'll see a security warning due to self-signed certificates"
 	@echo "   This is normal for local development. Click 'Advanced' and 'Proceed'"
+	@echo ""
+	@echo "🔍 Checking for initialization credentials..."
+	@sleep 5
+	@BACKEND_LOGS=$$(docker-compose -f docker-compose.prod.yml logs --tail=200 backend 2>/dev/null); \
+	if echo "$$BACKEND_LOGS" | grep -q "SYSTEM INITIALIZATION COMPLETED"; then \
+		echo ""; \
+		echo "🔐 Default Login Credentials:"; \
+		echo "$$BACKEND_LOGS" | grep -A 10 "SYSTEM INITIALIZATION COMPLETED" | grep -E "(Admin|Editor|Viewer|IMPORTANT)" | sed 's/^[^:]*://' || true; \
+		echo ""; \
+	fi
 
 # Start cloud production environment (Traefik + Let's Encrypt)
 prod-cloud:
+	@echo "🔒 Running security checks..."
+	@./scripts/check-secrets.sh || (echo ""; echo "❌ Security check failed. Please fix the issues above before starting production."; exit 1)
+	@echo ""
 	@echo "☁️  Starting cloud production environment with Traefik..."
-	@echo "📝 Setting CORS for cloud production (HTTPS)..."
-	@echo "CORS_ORIGINS=https://industrace.local,https://www.industrace.local" > .env.prod-cloud
+	@echo "📝 Setting up cloud production environment..."
+	@if [ -z "$$DB_PASSWORD" ]; then \
+		echo "🔐 Generating secure database password..."; \
+		DB_PASSWORD=$$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32); \
+		echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod-cloud; \
+	else \
+		echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod-cloud; \
+	fi
+	@echo "CORS_ORIGINS=https://industrace.local,https://www.industrace.local" >> .env.prod-cloud
 	@echo "SECURE_COOKIES=true" >> .env.prod-cloud
 	@echo "SAME_SITE_COOKIES=strict" >> .env.prod-cloud
-	docker-compose --env-file .env.prod-cloud up -d
+	@echo "SECRET_KEY=prod-$$(openssl rand -hex 32)" >> .env.prod-cloud
+	docker-compose -f docker-compose.yml --env-file .env.prod-cloud up -d
 	@echo "✅ Cloud production environment started!"
 	@echo "🌐 Access your application at: https://industrace.local"
 	@echo "🦌 Traefik dashboard: http://localhost:8080"
@@ -147,16 +201,33 @@ status:
 # Access backend shell
 shell:
 	@echo "🐚 Opening backend shell..."
+	@if ! docker-compose -f docker-compose.prod.yml ps -q backend > /dev/null 2>&1; then \
+		echo "❌ Backend container is not running. Please start with: make prod"; \
+		exit 1; \
+	fi
 	docker-compose -f docker-compose.prod.yml exec backend bash
 
 # Run database migrations
 migrate:
 	@echo "📊 Running database migrations..."
+	@if ! docker-compose -f docker-compose.prod.yml ps -q backend > /dev/null 2>&1; then \
+		echo "❌ Backend container is not running. Please start with: make prod"; \
+		exit 1; \
+	fi
 	docker-compose -f docker-compose.prod.yml exec backend alembic upgrade head
 
 # Create new migration
 migration:
 	@echo "📝 Creating new migration..."
+	@if [ -z "$(message)" ]; then \
+		echo "❌ Please provide message parameter"; \
+		echo "Example: make migration message=\"Add new field to assets\""; \
+		exit 1; \
+	fi
+	@if ! docker-compose -f docker-compose.prod.yml ps -q backend > /dev/null 2>&1; then \
+		echo "❌ Backend container is not running. Please start with: make prod"; \
+		exit 1; \
+	fi
 	docker-compose -f docker-compose.prod.yml exec backend alembic revision --autogenerate -m "$(message)"
 
 # Reset database (drop and recreate)
@@ -184,10 +255,12 @@ info:
 	@echo "Backend:  https://localhost/api"
 	@echo "API Docs: https://localhost/api/docs"
 	@echo ""
-	@echo "Default credentials:"
+	@echo "Default credentials (if system is initialized):"
 	@echo "Admin:   admin@example.com / Admin@123456!"
 	@echo "Editor:  editor@example.com / Editor@123456!"
 	@echo "Viewer:  viewer@example.com / Viewer@123456!"
+	@echo ""
+	@echo "💡 Run 'make prod' to start the system and see actual credentials"
 
 # Show configuration info
 config:
@@ -240,6 +313,10 @@ traefik:
 create-tenant:
 	@echo "🏗️  Creating new tenant..."
 	@echo "Usage: make create-tenant TENANT_NAME=\"My Company\" TENANT_SLUG=\"my-company\" ADMIN_EMAIL=\"admin@mycompany.com\""
+	@if ! docker-compose -f docker-compose.prod.yml ps -q backend > /dev/null 2>&1; then \
+		echo "❌ Backend container is not running. Please start with: make prod"; \
+		exit 1; \
+	fi
 	@if [ -z "$(TENANT_NAME)" ] || [ -z "$(TENANT_SLUG)" ] || [ -z "$(ADMIN_EMAIL)" ]; then \
 		echo "❌ Please provide TENANT_NAME, TENANT_SLUG, and ADMIN_EMAIL parameters"; \
 		echo "Example: make create-tenant TENANT_NAME=\"My Company\" TENANT_SLUG=\"my-company\" ADMIN_EMAIL=\"admin@mycompany.com\""; \
@@ -258,10 +335,14 @@ create-tenant:
 # Create tenant with default values
 create-tenant-default:
 	@echo "🏗️  Creating tenant with default values..."
+	@if ! docker-compose -f docker-compose.prod.yml ps -q backend > /dev/null 2>&1; then \
+		echo "❌ Backend container is not running. Please start with: make prod"; \
+		exit 1; \
+	fi
 	@echo "🔐 Generating secure password..."
 	@PASSWORD=$$(openssl rand -base64 12 | tr -d "=+/" | cut -c1-12); \
 	echo "Generated password: $$PASSWORD"; \
-	docker-compose -f docker-compose.prod.yml exec backend python -m app.init_tenant "Nuovo Tenant" "nuovo-tenant" "admin@example.com" "$$PASSWORD"
+	docker-compose -f docker-compose.prod.yml exec backend python -m app.init_tenant "New Tenant" "new-tenant" "admin@example.com" "$$PASSWORD"
 
 # Custom Certificates Commands
 # ============================
@@ -281,6 +362,9 @@ custom-certs-setup:
 
 # Start with custom certificates
 custom-certs-start:
+	@echo "🔒 Running security checks..."
+	@./scripts/check-secrets.sh || (echo ""; echo "❌ Security check failed. Please fix the issues above before starting production."; exit 1)
+	@echo ""
 	@echo "🚀 Starting Industrace with custom certificates..."
 	@if [ ! -f "custom-certs.env" ]; then \
 		echo "❌ custom-certs.env not found!"; \
@@ -304,6 +388,10 @@ custom-certs-logs:
 # Reset admin password
 reset-admin-password:
 	@echo "🔐 Resetting admin password..."
+	@if ! docker-compose -f docker-compose.prod.yml ps -q backend > /dev/null 2>&1; then \
+		echo "❌ Backend container is not running. Please start with: make prod"; \
+		exit 1; \
+	fi
 	@if [ -z "$(TENANT_SLUG)" ] || [ -z "$(ADMIN_EMAIL)" ]; then \
 		echo "❌ Please provide TENANT_SLUG and ADMIN_EMAIL parameters"; \
 		echo "Example: make reset-admin-password TENANT_SLUG=\"my-company\" ADMIN_EMAIL=\"admin@mycompany.com\""; \
@@ -320,11 +408,19 @@ reset-admin-password:
 # List all tenants
 list-tenants:
 	@echo "🏢 Listing all tenants..."
+	@if ! docker-compose -f docker-compose.prod.yml ps -q backend > /dev/null 2>&1; then \
+		echo "❌ Backend container is not running. Please start with: make prod"; \
+		exit 1; \
+	fi
 	docker-compose -f docker-compose.prod.yml exec backend python app/reset_password.py list-tenants
 
 # List admin users in a tenant
 list-admins:
 	@echo "👤 Listing admin users in tenant..."
+	@if ! docker-compose -f docker-compose.prod.yml ps -q backend > /dev/null 2>&1; then \
+		echo "❌ Backend container is not running. Please start with: make prod"; \
+		exit 1; \
+	fi
 	@if [ -z "$(TENANT_SLUG)" ]; then \
 		echo "❌ Please provide TENANT_SLUG parameter"; \
 		echo "Example: make list-admins TENANT_SLUG=\"my-company\""; \
@@ -335,10 +431,52 @@ list-admins:
 # Reset Security Requirements
 reset-security-requirements:
 	@echo "🔄 Resetting ISA/IEC 62443 Security Requirements..."
+	@if ! docker-compose -f docker-compose.prod.yml ps -q backend > /dev/null 2>&1; then \
+		echo "❌ Backend container is not running. Please start with: make prod"; \
+		exit 1; \
+	fi
 	docker-compose -f docker-compose.prod.yml exec backend python app/reset_security_requirements.py
 
 # Update Roles Permissions
 update-roles:
 	@echo "🔄 Updating roles with latest permissions..."
+	@if ! docker-compose -f docker-compose.prod.yml ps -q backend > /dev/null 2>&1; then \
+		echo "❌ Backend container is not running. Please start with: make prod"; \
+		exit 1; \
+	fi
 	docker-compose -f docker-compose.prod.yml exec backend python scripts/update_roles.py
 	@echo "✅ Roles updated successfully!"
+
+# Backup system
+backup:
+	@echo "💾 Creating Industrace backup..."
+	@python3 scripts/backup.py --backup-dir backups
+	@echo "✅ Backup completed!"
+
+# Backup with logs
+backup-full:
+	@echo "💾 Creating full Industrace backup (including logs)..."
+	@python3 scripts/backup.py --backup-dir backups --include-logs
+	@echo "✅ Full backup completed!"
+
+# List backups
+backup-list:
+	@echo "📋 Listing available backups..."
+	@python3 scripts/backup.py --list
+
+# Restore from backup
+restore:
+	@echo "⚠️  Restore will stop services and restore from backup"
+	@echo "Usage: make restore BACKUP_FILE=backups/industrace_backup_YYYYMMDD_HHMMSS.tar.gz"
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo "❌ Please specify BACKUP_FILE"; \
+		echo "Example: make restore BACKUP_FILE=backups/industrace_backup_20240101_120000.tar.gz"; \
+		echo ""; \
+		echo "Available backups:"; \
+		python3 scripts/backup.py --list; \
+		exit 1; \
+	fi
+	@echo "🔄 Restoring from $(BACKUP_FILE)..."
+	@python3 scripts/restore.py "$(BACKUP_FILE)"
+	@echo "✅ Restore completed!"
+	@echo "🚀 You can now start Industrace with: make prod"

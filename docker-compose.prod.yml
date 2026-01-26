@@ -22,7 +22,7 @@ services:
     image: postgres:15
     environment:
       POSTGRES_USER: industrace_user
-      POSTGRES_PASSWORD: secure_password_123
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: industrace
     volumes:
       - industrace_postgres_data:/var/lib/postgresql/data
@@ -40,7 +40,7 @@ services:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
     environment:
-      - DATABASE_URL=postgresql://industrace_user:secure_password_123@db:5432/industrace
+      - DATABASE_URL=postgresql://industrace_user:${DB_PASSWORD}@db:5432/industrace
       - SECRET_KEY=${SECRET_KEY}
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
       - CORS_ORIGINS=https://localhost,https://127.0.0.1,https://industrace.local
