@@ -1,5 +1,91 @@
 # Release Notes
 
+## License and Author (all versions)
+
+- **License**: GNU Affero General Public License v3.0 (AGPL-3.0)
+- **Author**: Maurizio Bertaboni
+- **Website**: https://besafe.it/industrace
+- **Contact**: industrace@besafe.it
+
+---
+
+## Version 2.0.0
+
+**Release Date**: February 12, 2026
+
+### Overview
+
+Industrace v2.0.0 is a major release introducing ISA/IEC 62443 compliance, Security Zones, Vulnerability Intelligence, Asset Dependencies and Review, a full Notification system, Single Sign-On (Azure AD), and extended RBAC with a stronger password policy. The Asset Detail page has been redesigned with a new layout and additional tabs. This release requires database migrations and configuration updates when upgrading from v1.x; see the upgrade guide before installing.
+
+### Key Features
+
+#### ISA/IEC 62443 and Security Zones
+- **Security Zones**: Full CRUD for zones, asset–zone membership, conduits between zones; zone risk calculation and risk propagation
+- **Compliance engine**: SL-A, SL-C, security requirements and capabilities, SR assessments with evidence
+- **Evidence system**: Compliance evidence model and API for conformity documentation
+- **UI**: SecurityZones, SecurityZoneDetail, Conduits pages; Asset Detail IEC 62443 tab; Compliance page
+
+#### Vulnerability Intelligence
+- **Vulnerability and CVE management**: CRUD, feeds, automatic matching to assets
+- **Integration**: Vulnerability impact on risk scoring; Asset Detail Vulnerabilities tab
+- **Pages**: Vulnerabilities, VulnerabilityDetail, VulnerabilityFeeds
+
+#### Asset Dependencies and Review
+- **Asset dependencies**: Model and CRUD; dependency graph and risk propagation visualization
+- **Asset Review**: Maintenance/review scheduling; AssetReviews page and Asset Detail Review tab
+
+#### Notifications
+- **Notification system**: Templates, queue, logs, user preferences
+- **Email**: Notification service and email queue processor; SMTP configuration per tenant
+- **UI**: Notifications page (Templates, Queue, Logs, Preferences, Test tabs)
+
+#### Single Sign-On (SSO) / Enterprise Auth
+- **Azure AD SSO**: Tenant SSO configuration, encrypted client secrets, Login integration
+- **Pages**: SSOConfig, SSOSuccess, SSOError
+- **Documentation**: See `docs/SSO_AZURE_AD_SETUP.md`
+
+#### Security and Permissions
+- **Extended RBAC**: New permissions for vulnerabilities, asset_reviews, asset_dependencies, compliance, security_zones, evidence, notifications, sso, api_keys
+- **Password policy**: Stronger requirements (12+ characters, upper, lower, digit, special character); see `docs/UPGRADE_PASSWORD_POLICY.md`
+- **Hardening**: Security logging, account lockout, SSO secret encryption
+
+#### UI and Asset Detail
+- **New Asset Detail layout**: Header, Sidebar, tabs for Management, Overview, Relations, Security, Risk, Connections, Dependencies, Vulnerabilities, IEC 62443, Review
+- **Dashboard**: New card and section components; recent changes list
+- **Print**: Improved asset card print and multilingual printed kit
+
+### Migration from v1.x
+
+- **Required**: Backup before upgrade; run all Alembic migrations; update environment variables (see `.env.example` and `docs/UPGRADE_v1_TO_v2.md`)
+- **Password policy**: Existing users keep current password until next change; new passwords must meet the new policy
+- **Roles**: Permissions are extended automatically for new modules; verify role assignments after upgrade
+
+See **docs/UPGRADE_v1_TO_v2.md** and **docs/UPGRADE.md** for the full procedure.
+
+### Breaking Changes and Removed Items
+
+- Default passwords and password rules have changed; see `UPGRADE_NOTES_v1.1.0.md` and `docs/UPGRADE_PASSWORD_POLICY.md`
+- Removed: `SECURITY_REVIEW.md`, some frontend design docs, legacy backend tests (`test_performance.py`, `test_auth.py`, `test_comprehensive.py`), `scripts/deploy.sh`, `AssetsAdvancedFilters.vue` (merged into `AssetsFilters.vue`)
+
+### Documentation (2.0.0)
+
+- `docs/ISA62443_DESIGN.md`, `docs/ISA_IEC_62443_IMPLEMENTATION_RECAP.md`
+- `docs/IMPLEMENTATION_STATUS.md`, `docs/BACKEND_DATABASE_ANALYSIS.md`
+- `docs/UPGRADE_v1_TO_v2.md`, `docs/UPGRADE.md`, `docs/UPGRADE_PASSWORD_POLICY.md`
+- `docs/SSO_AZURE_AD_SETUP.md`, `docs/ENTERPRISE_AUTH_DESIGN.md`
+- `docs/RBAC_PERMISSIONS.md`, `docs/VULNERABILITIES_DESIGN.md`, `docs/VULNERABILITIES_STATUS.md`
+- `docs/EVIDENCE_SYSTEM.md`, `docs/TEST_EVIDENCE_API.md`
+- `UPGRADE_NOTES_v1.1.0.md`
+
+### Support and Documentation
+
+- **Email**: industrace@besafe.it
+- **Website**: https://besafe.it/industrace
+- GitHub issues for bug reports
+- See `docs/README.md` for documentation index
+
+---
+
 ## Version 1.0.0 - Initial Release
 
 **Release Date**: August 20, 2025
@@ -7,13 +93,6 @@
 ### Overview
 
 Industrace v1.0.0 represents the first stable release of the Configuration Management Database for Industrial Control Systems. This release provides a comprehensive solution for managing industrial assets, network analysis, and risk assessment.
-
-### License and Author
-
-- **License**: GNU Affero General Public License v3.0 (AGPL-3.0)
-- **Author**: Maurizio Bertaboni
-- **Website**: https://besafe.it/industrace
-- **Contact**: industrace@besafe.it
 
 ### Key Features
 

@@ -2,6 +2,18 @@
 
 This guide explains how to upgrade Industrace from a previous version to the latest version.
 
+**When many changes exist between versions, upgrade risk increases.** To reduce it (backup, staging, rollback, checklist), see **[UPGRADE_SAFETY.md](UPGRADE_SAFETY.md)**.
+
+## 🚀 Major Upgrade (v1 → v2)
+
+If you are upgrading from **v1.x to v2**, many things may have changed (breaking changes, new env vars, new migrations). Use the dedicated guide:
+
+- **[UPGRADE_v1_TO_v2.md](UPGRADE_v1_TO_v2.md)** – Planning, procedure, backup, staging, rollback, and checklist for the v1→v2 upgrade.
+
+For minor/patch upgrades (e.g. 1.0 → 1.1), the procedure below is usually sufficient.
+
+---
+
 ## ⚡ Automatic Upgrade
 
 **Good news**: Industrace automatically handles database updates thanks to **Alembic** and the automatic startup system.
@@ -218,6 +230,7 @@ docker-compose -f docker-compose.prod.yml exec backend alembic history
 
 ## 🔗 Additional Resources
 
+- [Upgrade v1 to v2](UPGRADE_v1_TO_v2.md) – Major upgrade guide (v1.x → v2)
 - [Alembic Documentation](https://alembic.sqlalchemy.org/)
 - [Installation Guide](installation.md)
 - [Troubleshooting Guide](troubleshooting.md)

@@ -41,6 +41,8 @@
   "setupGuide": "Setup Guide",
   "setupGuideDescription": "Follow the step-by-step guide to configure Azure AD (Microsoft 365) for SSO authentication.",
   "viewSetupGuide": "View Complete Guide",
+  "clientSecretPlaceholder": "Leave empty to keep the existing secret. Enter a new value only to change it.",
+  "clientSecretHelp": "Leave empty to keep the existing secret. Enter a new value only to change it.",
   "success": {
     "title": "Login successful",
     "message": "You will be redirected to the dashboard...",

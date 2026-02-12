@@ -145,6 +145,32 @@ docker-compose restart db
 make restart
 ```
 
+#### Password authentication failed for user "industrace_user"
+**Symptoms**: `FATAL: password authentication failed for user "industrace_user"` (SQLAlchemy/psycopg2)
+
+**Cause**: PostgreSQL sets the user password only when the data directory is created (first run). If you later change `DB_PASSWORD` in `.env`, the backend uses the new value but the database still has the old one.
+
+**Solution (choose one)**:
+
+1. **Use the same password as at first run**  
+   In the project root, create or edit `.env` and set `DB_PASSWORD` to the value that was used when the DB was first started (e.g. if you never set it, the default was `changeme`):
+   ```bash
+   DB_PASSWORD=changeme
+   ```
+   Then restart: `docker-compose restart backend` (or `make restart`).
+
+2. **Reinitialize the database with the current password** (all DB data will be lost):
+   ```bash
+   # Stop services
+   docker-compose down
+   # Remove the Postgres data volume so the DB is re-created with the password from .env
+   docker volume rm industrace_industrace_postgres_data
+   # Start again (ensure .env has the desired DB_PASSWORD)
+   docker-compose up -d
+   make migrate
+   ```
+   The volume name is usually `industrace_industrace_postgres_data` (project name + volume name). To list volumes: `docker volume ls | grep postgres`. For other compose files use the same steps with that file and the corresponding volume name.
+
 #### Database Migration Issues
 **Symptoms**: `Migration failed` or `Database schema error`
 

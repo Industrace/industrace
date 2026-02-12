@@ -54,6 +54,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:-changeme}
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
       - CORS_ORIGINS=http://industrace.local,https://industrace.local,http://localhost,https://localhost
+      - SSO_REDIRECT_URI=${SSO_REDIRECT_URI}
       - ENVIRONMENT=development
       - DEBUG=true
       # ENCRYPTION_KEY: Optional in development (temporary key will be generated and saved to logs/.encryption_key_temp)

@@ -72,6 +72,8 @@ clean:
 	@echo "🧹 Cleaning Industrace system..."
 	docker-compose -f docker-compose.prod.yml down -v
 	docker-compose down -v
+	@echo "🧹 Removing database volume (ensures fresh DB after make prod)..."
+	-docker volume rm industrace_industrace_postgres_data 2>/dev/null || true
 	docker system prune -f
 	@echo "🧹 Cleaning temporary files..."
 	@rm -f .env.prod .env.prod-cloud .env.custom
@@ -105,9 +107,21 @@ prod:
 		echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod; \
 	fi
 	@echo "CORS_ORIGINS=https://localhost,https://127.0.0.1,https://industrace.local" >> .env.prod
+	@echo "SSO_REDIRECT_URI=https://localhost/auth/sso/callback" >> .env.prod
 	@echo "SECURE_COOKIES=true" >> .env.prod
 	@echo "SAME_SITE_COOKIES=strict" >> .env.prod
 	@echo "SECRET_KEY=prod-$$(openssl rand -hex 32)" >> .env.prod
+	@if [ -z "$$ENCRYPTION_KEY" ]; then \
+		echo "🔐 Generating encryption key for SSO..."; \
+		if ! python3 -c "from cryptography.fernet import Fernet" 2>/dev/null; then \
+			echo "⚠️  Warning: cryptography module not found. Installing..."; \
+			pip3 install cryptography > /dev/null 2>&1 || (echo "❌ Failed to install cryptography. Please install manually: pip3 install cryptography"; exit 1); \
+		fi; \
+		ENCRYPTION_KEY=$$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"); \
+		echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod; \
+	else \
+		echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod; \
+	fi
 	docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d
 	@echo "⏳ Waiting for services to start..."
 	@echo "   (Migrations and initialization are automatic on first startup)"
@@ -142,9 +156,21 @@ prod-cloud:
 		echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod-cloud; \
 	fi
 	@echo "CORS_ORIGINS=https://industrace.local,https://www.industrace.local" >> .env.prod-cloud
+	@echo "SSO_REDIRECT_URI=https://industrace.local/auth/sso/callback" >> .env.prod-cloud
 	@echo "SECURE_COOKIES=true" >> .env.prod-cloud
 	@echo "SAME_SITE_COOKIES=strict" >> .env.prod-cloud
 	@echo "SECRET_KEY=prod-$$(openssl rand -hex 32)" >> .env.prod-cloud
+	@if [ -z "$$ENCRYPTION_KEY" ]; then \
+		echo "🔐 Generating encryption key for SSO..."; \
+		if ! python3 -c "from cryptography.fernet import Fernet" 2>/dev/null; then \
+			echo "⚠️  Warning: cryptography module not found. Installing..."; \
+			pip3 install cryptography > /dev/null 2>&1 || (echo "❌ Failed to install cryptography. Please install manually: pip3 install cryptography"; exit 1); \
+		fi; \
+		ENCRYPTION_KEY=$$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"); \
+		echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod-cloud; \
+	else \
+		echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod-cloud; \
+	fi
 	docker-compose -f docker-compose.yml --env-file .env.prod-cloud up -d
 	@echo "✅ Cloud production environment started!"
 	@echo "🌐 Access your application at: https://industrace.local"
@@ -370,6 +396,25 @@ custom-certs-start:
 		echo "❌ custom-certs.env not found!"; \
 		echo "📋 Please run 'make custom-certs-setup' first"; \
 		exit 1; \
+	fi
+	@echo "📝 Setting up security variables..."
+	@if ! grep -q "^DB_PASSWORD=" custom-certs.env 2>/dev/null; then \
+		echo "🔐 Generating secure database password..."; \
+		DB_PASSWORD=$$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32); \
+		echo "DB_PASSWORD=$$DB_PASSWORD" >> custom-certs.env; \
+	fi
+	@if ! grep -q "^SECRET_KEY=" custom-certs.env 2>/dev/null; then \
+		echo "🔐 Generating secure JWT secret key..."; \
+		echo "SECRET_KEY=prod-$$(openssl rand -hex 32)" >> custom-certs.env; \
+	fi
+	@if ! grep -q "^ENCRYPTION_KEY=" custom-certs.env 2>/dev/null; then \
+		echo "🔐 Generating encryption key for SSO..."; \
+		if ! python3 -c "from cryptography.fernet import Fernet" 2>/dev/null; then \
+			echo "⚠️  Warning: cryptography module not found. Installing..."; \
+			pip3 install cryptography > /dev/null 2>&1 || (echo "❌ Failed to install cryptography. Please install manually: pip3 install cryptography"; exit 1); \
+		fi; \
+		ENCRYPTION_KEY=$$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"); \
+		echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> custom-certs.env; \
 	fi
 	docker-compose -f docker-compose.custom-certs.yml --env-file custom-certs.env up -d
 	@echo "✅ Services started with custom certificates!"

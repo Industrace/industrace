@@ -22,7 +22,7 @@ Industrace provides a comprehensive REST API built with FastAPI and OpenAPI stan
 - **ReDoc Documentation**: `https://yourdomain.com/api/redoc`
 - **OpenAPI JSON**: `https://yourdomain.com/api/openapi.json`
 
-**Version**: 1.0.0
+**Version**: 2.0.0 (see [Release Notes](release-notes.md) for full API coverage)
 
 ## Authentication
 

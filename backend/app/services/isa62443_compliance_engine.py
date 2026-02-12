@@ -10,7 +10,8 @@ from app.models import (
     Asset,
     SecurityRequirement,
     SecurityRequirementCompliance,
-    AssetZoneMembership
+    AssetZoneMembership,
+    SRAssessment,
 )
 from app.models.security_capability import SecurityCapability
 from app.models.asset_capability import AssetCapability
@@ -59,21 +60,41 @@ class ISA62443ComplianceEngine:
         if not all_requirements:
             return None
         
-        # Get compliance records for this zone
-        compliance_records = (
-            db.query(SecurityRequirementCompliance)
-            .filter(
-                SecurityRequirementCompliance.zone_id == zone.id,
-                SecurityRequirementCompliance.tenant_id == zone.tenant_id
+        # Prefer SRAssessment (new model); fallback to SecurityRequirementCompliance (legacy)
+        compliance_map = {}  # req.id (UUID) -> status or record
+        try:
+            zone_assessments = (
+                db.query(SRAssessment)
+                .filter(
+                    SRAssessment.object_type == 'zone',
+                    SRAssessment.object_id == zone.id,
+                    SRAssessment.tenant_id == zone.tenant_id
+                )
+                .all()
             )
-            .all()
-        )
+            if zone_assessments:
+                for a in zone_assessments:
+                    compliance_map[a.sr_id] = a.status
+        except Exception as e:
+            logger.debug(f"SRAssessment not available for zone SL-A, using legacy: {e}")
+        if not compliance_map:
+            compliance_records = (
+                db.query(SecurityRequirementCompliance)
+                .filter(
+                    SecurityRequirementCompliance.zone_id == zone.id,
+                    SecurityRequirementCompliance.tenant_id == zone.tenant_id
+                )
+                .all()
+            )
+            compliance_map = {record.requirement_id: record for record in compliance_records}
         
-        # Create compliance map
-        compliance_map = {
-            record.requirement_id: record
-            for record in compliance_records
-        }
+        # Helper: is this requirement compliant? (map value is either status string or legacy record)
+        def is_compliant(req_id, val):
+            if val is None:
+                return False
+            if isinstance(val, str):
+                return val == 'compliant'
+            return getattr(val, 'compliance_status', None) == 'compliant'
         
         # Calculate SL-A: highest SL where ALL requirements are compliant
         # Requirements are cumulative: SL-2 includes all SL-1 requirements, etc.
@@ -100,13 +121,8 @@ class ISA62443ComplianceEngine:
             missing_requirements = []
             
             for req in sl_requirements:
-                compliance = compliance_map.get(req.id)
-                if not compliance:
-                    # Not assessed = not compliant
-                    all_compliant = False
-                    missing_requirements.append(req.requirement_id)
-                elif compliance.compliance_status != 'compliant':
-                    # Partial or non_compliant = not compliant
+                val = compliance_map.get(req.id)
+                if not is_compliant(req.id, val):
                     all_compliant = False
                     missing_requirements.append(req.requirement_id)
             
@@ -336,8 +352,35 @@ class ISA62443ComplianceEngine:
         """
         Calculate overall compliance status for a zone.
         Returns: 'compliant', 'non_compliant', 'partial', 'not_assessed'
+        Uses SRAssessment when available; falls back to SecurityRequirementCompliance.
         """
-        # Get all compliance records for the zone
+        # Prefer SRAssessment (new model)
+        try:
+            zone_assessments = (
+                db.query(SRAssessment)
+                .filter(
+                    SRAssessment.object_type == 'zone',
+                    SRAssessment.object_id == zone.id,
+                    SRAssessment.tenant_id == zone.tenant_id
+                )
+                .all()
+            )
+            if zone_assessments:
+                compliant_count = sum(1 for a in zone_assessments if a.status == 'compliant')
+                partial_count = sum(1 for a in zone_assessments if a.status == 'partial')
+                non_compliant_count = sum(1 for a in zone_assessments if a.status == 'non_compliant')
+                total_count = len(zone_assessments)
+                if total_count > 0:
+                    compliance_percentage = (compliant_count / total_count) * 100
+                    if compliance_percentage >= 80:
+                        return 'compliant'
+                    if compliance_percentage >= 50 or partial_count > 0:
+                        return 'partial'
+                    return 'non_compliant'
+        except Exception as e:
+            logger.debug(f"SRAssessment not available for zone compliance status, using legacy: {e}")
+        
+        # Fallback: SecurityRequirementCompliance (legacy)
         compliance_records = (
             db.query(SecurityRequirementCompliance)
             .filter(
@@ -346,35 +389,19 @@ class ISA62443ComplianceEngine:
             )
             .all()
         )
-        
         if not compliance_records:
             return 'not_assessed'
-        
-        compliant_count = sum(
-            1 for record in compliance_records
-            if record.compliance_status == 'compliant'
-        )
-        partial_count = sum(
-            1 for record in compliance_records
-            if record.compliance_status == 'partial'
-        )
-        non_compliant_count = sum(
-            1 for record in compliance_records
-            if record.compliance_status == 'non_compliant'
-        )
+        compliant_count = sum(1 for r in compliance_records if r.compliance_status == 'compliant')
+        partial_count = sum(1 for r in compliance_records if r.compliance_status == 'partial')
         total_count = len(compliance_records)
-        
         if total_count == 0:
             return 'not_assessed'
-        
         compliance_percentage = (compliant_count / total_count) * 100
-        
         if compliance_percentage >= 80:
             return 'compliant'
-        elif compliance_percentage >= 50 or partial_count > 0:
+        if compliance_percentage >= 50 or partial_count > 0:
             return 'partial'
-        else:
-            return 'non_compliant'
+        return 'non_compliant'
     
     @staticmethod
     def calculate_zone_security_level_capability(
@@ -556,22 +583,8 @@ class ISA62443ComplianceEngine:
         
         gap = (sl_t - sl_a) if (sl_t and sl_a) else None
         
-        # Get non-compliant requirements
-        compliance_records = (
-            db.query(SecurityRequirementCompliance)
-            .filter(
-                SecurityRequirementCompliance.zone_id == zone.id,
-                SecurityRequirementCompliance.tenant_id == zone.tenant_id
-            )
-            .all()
-        )
-        
-        non_compliant = [
-            record for record in compliance_records
-            if record.compliance_status in ['non_compliant', 'partial']
-        ]
-        
-        # Get missing requirements (not assessed)
+        # Requirements applicable to zone for this SL-T (for missing list)
+        all_requirements = []
         if sl_t:
             all_requirements = (
                 db.query(SecurityRequirement)
@@ -581,14 +594,57 @@ class ISA62443ComplianceEngine:
                 )
                 .all()
             )
-            
-            assessed_requirement_ids = {record.requirement_id for record in compliance_records}
-            missing_requirements = [
-                req for req in all_requirements
-                if req.id not in assessed_requirement_ids
+        
+        non_compliant_list = []
+        assessed_requirement_ids = set()
+        zone_assessments = []
+        
+        try:
+            zone_assessments = (
+                db.query(SRAssessment)
+                .filter(
+                    SRAssessment.object_type == 'zone',
+                    SRAssessment.object_id == zone.id,
+                    SRAssessment.tenant_id == zone.tenant_id
+                )
+                .all()
+            )
+            if zone_assessments:
+                for a in zone_assessments:
+                    assessed_requirement_ids.add(a.sr_id)
+                    if a.status in ('non_compliant', 'partial'):
+                        sr = db.query(SecurityRequirement).filter(SecurityRequirement.id == a.sr_id).first()
+                        if sr:
+                            non_compliant_list.append({
+                                'requirement_id': sr.requirement_id,
+                                'title': sr.title,
+                                'status': a.status
+                            })
+        except Exception as e:
+            logger.debug(f"SRAssessment not available for gap analysis, using legacy: {e}")
+        
+        if not zone_assessments:
+            # Fallback: SecurityRequirementCompliance (legacy)
+            compliance_records = (
+                db.query(SecurityRequirementCompliance)
+                .filter(
+                    SecurityRequirementCompliance.zone_id == zone.id,
+                    SecurityRequirementCompliance.tenant_id == zone.tenant_id
+                )
+                .all()
+            )
+            non_compliant_list = [
+                {
+                    'requirement_id': record.requirement.requirement_id,
+                    'title': record.requirement.title,
+                    'status': record.compliance_status
+                }
+                for record in compliance_records
+                if record.compliance_status in ('non_compliant', 'partial')
             ]
-        else:
-            missing_requirements = []
+            assessed_requirement_ids = {record.requirement_id for record in compliance_records}
+        
+        missing_requirements = [req for req in all_requirements if req.id not in assessed_requirement_ids]
         
         return {
             'zone_id': str(zone.id),
@@ -597,21 +653,11 @@ class ISA62443ComplianceEngine:
             'security_level_achieved': sl_a,
             'gap': gap,
             'compliance_status': zone.compliance_status,
-            'non_compliant_count': len(non_compliant),
-            'non_compliant_requirements': [
-                {
-                    'requirement_id': record.requirement.requirement_id,
-                    'title': record.requirement.title,
-                    'status': record.compliance_status
-                }
-                for record in non_compliant
-            ],
+            'non_compliant_count': len(non_compliant_list),
+            'non_compliant_requirements': non_compliant_list,
             'missing_requirements_count': len(missing_requirements),
             'missing_requirements': [
-                {
-                    'requirement_id': req.requirement_id,
-                    'title': req.title
-                }
+                {'requirement_id': req.requirement_id, 'title': req.title}
                 for req in missing_requirements
             ]
         }

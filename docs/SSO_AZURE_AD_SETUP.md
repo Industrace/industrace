@@ -1,246 +1,245 @@
-# Guida alla Configurazione SSO con Azure AD (Microsoft 365)
+# SSO Configuration Guide with Azure AD (Microsoft 365)
 
-Questa guida ti aiuterà a configurare l'autenticazione Single Sign-On (SSO) tra Industrace e Azure AD (Microsoft 365 / Entra ID).
+This guide will help you configure Single Sign-On (SSO) authentication between Industrace and Azure AD (Microsoft 365 / Entra ID).
 
-## Prerequisiti
+## Prerequisites
 
-- Accesso amministratore a Microsoft Azure Portal
-- Accesso amministratore a Industrace
-- Tenant Microsoft 365 / Azure AD attivo
+- Administrator access to Microsoft Azure Portal
+- Administrator access to Industrace
+- Active Microsoft 365 / Azure AD tenant
 
-## Passo 1: Registrare l'Applicazione in Azure AD
+## Step 1: Register the Application in Azure AD
 
-### 1.1 Accedi al Azure Portal
+### 1.1 Sign in to Azure Portal
 
-1. Vai su [https://portal.azure.com](https://portal.azure.com)
-2. Accedi con un account amministratore del tenant
-3. Naviga su **Azure Active Directory** (o **Microsoft Entra ID**)
+1. Go to [https://portal.azure.com](https://portal.azure.com)
+2. Sign in with a tenant administrator account
+3. Navigate to **Azure Active Directory** (or **Microsoft Entra ID**)
 
-### 1.2 Registra una Nuova Applicazione
+### 1.2 Register a New Application
 
-1. Nel menu laterale, seleziona **App registrations** (Registrazioni app)
-2. Clicca su **+ New registration** (+ Nuova registrazione)
-3. Compila il form:
-   - **Name**: `Industrace SSO` (o un nome a tua scelta)
-   - **Supported account types**: 
-     - Seleziona **Accounts in this organizational directory only** (Solo account in questa directory organizzativa) per massima sicurezza
-     - Oppure **Accounts in any organizational directory** se devi supportare più tenant
-   - **Redirect URI**: 
+1. In the left menu, select **App registrations**
+2. Click **+ New registration**
+3. Fill in the form:
+   - **Name**: `Industrace SSO` (or a name of your choice)
+   - **Supported account types**:
+     - Select **Accounts in this organizational directory only** for maximum security
+     - Or **Accounts in any organizational directory** if you need to support multiple tenants
+   - **Redirect URI**:
      - Platform: **Web**
-     - URI: `https://tuodominio.com/api/auth/sso/azure_ad/callback`
-     - ⚠️ **IMPORTANTE**: Sostituisci `tuodominio.com` con il tuo dominio effettivo
-     - Esempio: `https://industrace.local/api/auth/sso/azure_ad/callback` (per sviluppo locale)
-     - Esempio: `https://app.industrace.com/api/auth/sso/azure_ad/callback` (per produzione)
-4. Clicca su **Register** (Registra)
+     - URI: `https://yourdomain.com/api/auth/sso/azure_ad/callback`
+     - ⚠️ **IMPORTANT**: Replace `yourdomain.com` with your actual domain
+     - Example: `https://industrace.local/api/auth/sso/azure_ad/callback` (for local development)
+     - Example: `https://app.industrace.com/api/auth/sso/azure_ad/callback` (for production)
+4. Click **Register**
 
-### 1.3 Annota le Informazioni dell'Applicazione
+### 1.3 Note the Application Information
 
-Dopo la registrazione, annota queste informazioni:
+After registration, note the following:
 
-- **Application (client) ID**: Questo è il tuo `Client ID`
-- **Directory (tenant) ID**: Questo è il tuo `Tenant Domain` (puoi usare anche il nome del tenant, es: `contoso.onmicrosoft.com`)
+- **Application (client) ID**: This is your `Client ID`
+- **Directory (tenant) ID**: This is your `Tenant Domain` (you can also use the tenant name, e.g. `contoso.onmicrosoft.com`)
 
-## Passo 2: Configurare l'Autenticazione
+## Step 2: Configure Authentication
 
-### 2.1 Configurare i Redirect URI
+### 2.1 Configure Redirect URIs
 
-1. Nella pagina dell'applicazione, vai su **Authentication** (Autenticazione)
-2. In **Redirect URIs**, aggiungi:
-   - `https://tuodominio.com/api/auth/sso/azure_ad/callback`
-   - `https://tuodominio.com/api/auth/sso/azure_ad/authorize` (opzionale, per redirect diretto)
-3. In **Implicit grant and hybrid flows**, assicurati che:
-   - ✅ **ID tokens** sia selezionato (necessario per OIDC)
-   - ❌ **Access tokens** può essere deselezionato (non necessario per il flusso base)
-4. Clicca su **Save** (Salva)
+1. On the application page, go to **Authentication**
+2. Under **Redirect URIs**, add:
+   - `https://yourdomain.com/api/auth/sso/azure_ad/callback`
+   - `https://yourdomain.com/api/auth/sso/azure_ad/authorize` (optional, for direct redirect)
+3. Under **Implicit grant and hybrid flows**, ensure:
+   - ✅ **ID tokens** is selected (required for OIDC)
+   - ❌ **Access tokens** can be unchecked (not required for the base flow)
+4. Click **Save**
 
-### 2.2 Configurare le API Permissions
+### 2.2 Configure API Permissions
 
-1. Vai su **API permissions** (Autorizzazioni API)
-2. Verifica che siano presenti:
-   - **Microsoft Graph** > **openid** (Delegated) - ✅ Già presente
-   - **Microsoft Graph** > **profile** (Delegated) - ✅ Già presente
-   - **Microsoft Graph** > **email** (Delegated) - ✅ Già presente
-   - **Microsoft Graph** > **User.Read** (Delegated) - Aggiungi se non presente
-3. **IMPORTANTE**: Se devi importare utenti, aggiungi anche:
-   - **Microsoft Graph** > **User.Read.All** (Application) - ⚠️ **OBBLIGATORIO** per importare utenti
-   - Questo permesso deve essere di tipo **Application** (non Delegated) per funzionare con il client credentials flow
-   - ⚠️ **Richiede il consenso dell'amministratore**
-4. Clicca su **Grant admin consent** (Concedi consenso amministratore) - **OBBLIGATORIO** per i permessi Application
-5. ⚠️ **Nota**: Senza il permesso **User.Read.All (Application)** e il consenso amministratore, l'importazione utenti non funzionerà
+1. Go to **API permissions**
+2. Verify the following are present:
+   - **Microsoft Graph** > **openid** (Delegated) - ✅ Already present
+   - **Microsoft Graph** > **profile** (Delegated) - ✅ Already present
+   - **Microsoft Graph** > **email** (Delegated) - ✅ Already present
+   - **Microsoft Graph** > **User.Read** (Delegated) - Add if not present
+3. **IMPORTANT**: If you need to import users, also add:
+   - **Microsoft Graph** > **User.Read.All** (Application) - ⚠️ **REQUIRED** to import users
+   - This permission must be of type **Application** (not Delegated) to work with the client credentials flow
+   - ⚠️ **Requires admin consent**
+4. Click **Grant admin consent** - **REQUIRED** for Application permissions
+5. ⚠️ **Note**: Without **User.Read.All (Application)** permission and admin consent, user import will not work
 
-## Passo 3: Creare un Client Secret
+## Step 3: Create a Client Secret
 
-### 3.1 Generare il Secret
+### 3.1 Generate the Secret
 
-1. Vai su **Certificates & secrets** (Certificati e segreti)
-2. Nella sezione **Client secrets**, clicca su **+ New client secret**
-3. Compila:
-   - **Description**: `Industrace SSO Secret` (o un nome descrittivo)
-   - **Expires**: Scegli una scadenza (consigliato: 24 mesi per produzione)
-4. Clicca su **Add** (Aggiungi)
-5. ⚠️ **IMPORTANTE**: Copia immediatamente il **Value** del secret (lo vedrai solo una volta!)
-   - Questo è il tuo `Client Secret`
+1. Go to **Certificates & secrets**
+2. Under **Client secrets**, click **+ New client secret**
+3. Fill in:
+   - **Description**: `Industrace SSO Secret` (or a descriptive name)
+   - **Expires**: Choose an expiry (recommended: 24 months for production)
+4. Click **Add**
+5. ⚠️ **IMPORTANT**: Copy the **Value** of the secret immediately (you will only see it once!)
+   - This is your `Client Secret`
 
-## Passo 4: Configurare Industrace
+## Step 4: Configure Industrace
 
-### 4.1 Accedi alla Configurazione SSO
+### 4.1 Access SSO Configuration
 
-1. Accedi a Industrace come amministratore
-2. Vai su **SSO Config** (o **Configurazione SSO**)
-3. Se non esiste ancora una configurazione, clicca su **Start Setup** (Inizia Configurazione)
+1. Log in to Industrace as an administrator
+2. Go to **SSO Config**
+3. If no configuration exists yet, click **Start Setup**
 
-### 4.2 Compilare il Form di Configurazione
+### 4.2 Fill in the Configuration Form
 
-Compila i seguenti campi:
+Fill in the following fields:
 
-- **Provider Type**: Seleziona `Azure AD (EntraID)`
-- **Enabled**: Attiva quando sei pronto a testare
-- **Client ID**: Incolla l'**Application (client) ID** dal Passo 1.3
-- **Client Secret**: Incolla il **Value** del secret dal Passo 3.1
-- **Tenant Domain**: 
-  - Puoi usare il **Directory (tenant) ID** (UUID)
-  - Oppure il nome del tenant (es: `contoso.onmicrosoft.com`)
-  - Oppure `common` per supportare account Microsoft personali (non consigliato per enterprise)
-- **Redirect URI**: 
-  - Deve corrispondere esattamente a quello configurato in Azure AD
-  - Esempio: `https://tuodominio.com/api/auth/sso/azure_ad/callback`
-- **Auto-Provisioning**: 
-  - ⚠️ **Consigliato: DISABILITATO** per massima sicurezza
-  - Se disabilitato, solo gli utenti già esistenti in Industrace possono accedere
-  - Gli utenti esistenti vengono collegati automaticamente se l'email corrisponde
-- **Domain Restriction** (opzionale):
-  - Esempio: `contoso.com` per permettere solo utenti da questo dominio
+- **Provider Type**: Select `Azure AD (EntraID)`
+- **Enabled**: Enable when you are ready to test
+- **Client ID**: Paste the **Application (client) ID** from Step 1.3
+- **Client Secret**: Paste the **Value** of the secret from Step 3.1
+- **Tenant Domain**:
+  - You can use the **Directory (tenant) ID** (UUID)
+  - Or the tenant name (e.g. `contoso.onmicrosoft.com`)
+  - Or `common` to support personal Microsoft accounts (not recommended for enterprise)
+- **Redirect URI**:
+  - Must match exactly what is configured in Azure AD
+  - Example: `https://yourdomain.com/api/auth/sso/azure_ad/callback`
+- **Auto-Provisioning**:
+  - ⚠️ **Recommended: DISABLED** for maximum security
+  - If disabled, only users who already exist in Industrace can sign in
+  - Existing users are linked automatically if the email matches
+- **Domain Restriction** (optional):
+  - Example: `contoso.com` to allow only users from this domain
 
-### 4.3 Testare la Connessione
+### 4.3 Test the Connection
 
-1. Clicca su **Test Connection** (Test Connessione)
-2. Se il test ha successo, procedi al passo successivo
-3. Se fallisce, verifica:
-   - Client ID e Client Secret corretti
-   - Redirect URI corrisponde esattamente
-   - Le API permissions sono configurate correttamente
+1. Click **Test Connection**
+2. If the test succeeds, proceed to the next step
+3. If it fails, verify:
+   - Client ID and Client Secret are correct
+   - Redirect URI matches exactly
+   - API permissions are configured correctly
 
-### 4.4 Salvare la Configurazione
+### 4.4 Save the Configuration
 
-1. Clicca su **Save** (Salva)
-2. Attiva **Enabled** se non l'hai già fatto
-3. La configurazione è ora attiva!
+1. Click **Save**
+2. Enable **Enabled** if you have not already
+3. The configuration is now active!
 
-## Passo 5: Importare Utenti (Opzionale)
+## Step 5: Import Users (Optional)
 
-### 5.1 Importare Utenti da Azure AD
+### 5.1 Import Users from Azure AD
 
-1. Nella pagina SSO Config, vai sul tab **Import Users**
-2. Cerca gli utenti che vuoi importare (puoi filtrare per nome o email)
-3. Seleziona gli utenti che vuoi importare
-4. Scegli il **Ruolo** da assegnare agli utenti importati
-5. Clicca su **Import Selected** (Importa Selezionati)
+1. On the SSO Config page, go to the **Import Users** tab
+2. Search for users you want to import (you can filter by name or email)
+3. Select the users to import
+4. Choose the **Role** to assign to the imported users
+5. Click **Import Selected**
 
-### 5.2 Verificare gli Utenti Importati
+### 5.2 Verify Imported Users
 
-1. Vai su **Users** (Utenti) in Industrace
-2. Verifica che gli utenti siano stati creati correttamente
-3. Gli utenti importati avranno:
-   - Email corrispondente a quella in Azure AD
-   - Ruolo assegnato durante l'importazione
-   - `auth_provider` impostato su `azure_ad`
+1. Go to **Users** in Industrace
+2. Verify that the users were created correctly
+3. Imported users will have:
+   - Email matching the one in Azure AD
+   - Role assigned during import
+   - `auth_provider` set to `azure_ad`
 
-## Passo 6: Testare il Login SSO
+## Step 6: Test SSO Login
 
-### 6.1 Testare il Login
+### 6.1 Test Login
 
-1. Esci da Industrace (logout)
-2. Vai alla pagina di login
-3. Dovresti vedere un pulsante **"Accedi con Microsoft"** (o simile)
-4. Clicca sul pulsante
-5. Verrai reindirizzato a Microsoft per l'autenticazione
-6. Dopo l'autenticazione, verrai reindirizzato automaticamente a Industrace
+1. Log out of Industrace
+2. Go to the login page
+3. You should see a **"Sign in with Microsoft"** button (or similar)
+4. Click the button
+5. You will be redirected to Microsoft for authentication
+6. After authentication, you will be redirected back to Industrace automatically
 
-### 6.2 Verificare il Collegamento Utente
+### 6.2 Verify User Linking
 
-1. Dopo il login SSO, vai su **Profile** (Profilo)
-2. Verifica che l'utente sia stato collegato correttamente:
-   - L'utente dovrebbe avere `auth_provider` = `azure_ad`
-   - L'utente dovrebbe avere `external_id` popolato
+1. After SSO login, go to **Profile**
+2. Verify that the user was linked correctly:
+   - The user should have `auth_provider` = `azure_ad`
+   - The user should have `external_id` populated
 
 ## Troubleshooting
 
-### Problema: "Invalid redirect URI"
+### Issue: "Invalid redirect URI"
 
-**Causa**: Il Redirect URI in Industrace non corrisponde a quello configurato in Azure AD.
+**Cause**: The Redirect URI in Industrace does not match the one configured in Azure AD.
 
-**Soluzione**: 
-- Verifica che il Redirect URI in Industrace corrisponda esattamente a quello in Azure AD
-- Controlla che non ci siano spazi o caratteri speciali
-- Assicurati che il protocollo sia corretto (http vs https)
+**Solution**:
+- Verify that the Redirect URI in Industrace matches exactly the one in Azure AD
+- Check for extra spaces or special characters
+- Ensure the protocol is correct (http vs https)
 
-### Problema: "Invalid client secret"
+### Issue: "Invalid client secret"
 
-**Causa**: Il Client Secret è scaduto o errato.
+**Cause**: The Client Secret has expired or is incorrect.
 
-**Soluzione**:
-- Genera un nuovo Client Secret in Azure AD
-- Aggiorna la configurazione in Industrace con il nuovo secret
+**Solution**:
+- Generate a new Client Secret in Azure AD
+- Update the configuration in Industrace with the new secret
 
-### Problema: "User not found" durante il login
+### Issue: "User not found" during login
 
-**Causa**: L'utente non esiste in Industrace e l'auto-provisioning è disabilitato.
+**Cause**: The user does not exist in Industrace and auto-provisioning is disabled.
 
-**Soluzione**:
-- Importa l'utente manualmente tramite la funzionalità "Import Users"
-- Oppure abilita l'auto-provisioning (non consigliato per sicurezza)
+**Solution**:
+- Import the user manually via the "Import Users" feature
+- Or enable auto-provisioning (not recommended for security)
 
-### Problema: "Domain restriction violation"
+### Issue: "Domain restriction violation"
 
-**Causa**: L'email dell'utente non corrisponde al dominio configurato in Domain Restriction.
+**Cause**: The user's email does not match the domain configured in Domain Restriction.
 
-**Soluzione**:
-- Verifica il dominio dell'utente in Azure AD
-- Aggiorna Domain Restriction per includere il dominio corretto
-- Oppure rimuovi Domain Restriction se non necessario
+**Solution**:
+- Verify the user's domain in Azure AD
+- Update Domain Restriction to include the correct domain
+- Or remove Domain Restriction if not needed
 
-### Problema: Il pulsante SSO non appare nella pagina di login
+### Issue: SSO button does not appear on the login page
 
-**Causa**: La configurazione SSO non è abilitata o non è configurata correttamente.
+**Cause**: SSO configuration is not enabled or is not configured correctly.
 
-**Soluzione**:
-- Verifica che `Enabled` sia attivo nella configurazione SSO
-- Verifica che la configurazione sia stata salvata correttamente
-- Controlla i log del backend per eventuali errori
+**Solution**:
+- Verify that **Enabled** is turned on in the SSO configuration
+- Verify that the configuration was saved correctly
+- Check backend logs for any errors
 
-### Problema: Errore 500 quando si cerca di elencare/importare utenti Azure AD
+### Issue: Error 500 when listing/importing Azure AD users
 
-**Causa**: L'applicazione Azure AD non ha i permessi corretti o il consenso amministratore non è stato concesso.
+**Cause**: The Azure AD application does not have the correct permissions or admin consent has not been granted.
 
-**Soluzione**:
-1. Verifica che il permesso **User.Read.All (Application)** sia stato aggiunto (non Delegated!)
-2. Verifica che il **consenso amministratore** sia stato concesso (Grant admin consent)
-3. Controlla i log del backend per vedere l'errore specifico:
-   - Se vedi "Failed to authenticate" → problema con Client ID/Secret o tenant
-   - Se vedi "Insufficient privileges" → manca il permesso User.Read.All (Application)
-   - Se vedi "consent required" → manca il consenso amministratore
-4. Dopo aver aggiunto i permessi, attendi qualche minuto prima di riprovare (Azure AD può richiedere tempo per propagare i permessi)
+**Solution**:
+1. Verify that **User.Read.All (Application)** permission has been added (not Delegated!)
+2. Verify that **admin consent** has been granted (Grant admin consent)
+3. Check backend logs for the specific error:
+   - If you see "Failed to authenticate" → issue with Client ID/Secret or tenant
+   - If you see "Insufficient privileges" → User.Read.All (Application) permission is missing
+   - If you see "consent required" → admin consent is missing
+4. After adding permissions, wait a few minutes before retrying (Azure AD may take time to propagate permissions)
 
-## Note Importanti
+## Important Notes
 
-### Sicurezza
+### Security
 
-- ⚠️ **Mai condividere il Client Secret**: È un segreto sensibile
-- ⚠️ **Usa HTTPS in produzione**: Il Redirect URI deve usare HTTPS
-- ⚠️ **Auto-provisioning disabilitato**: Consigliato per massima sicurezza
-- ⚠️ **Domain Restriction**: Usa per limitare l'accesso a domini specifici
+- ⚠️ **Never share the Client Secret**: It is a sensitive credential
+- ⚠️ **Use HTTPS in production**: The Redirect URI must use HTTPS
+- ⚠️ **Auto-provisioning disabled**: Recommended for maximum security
+- ⚠️ **Domain Restriction**: Use to limit access to specific domains
 
 ### Best Practices
 
-1. **Test in ambiente di sviluppo prima di produzione**
-2. **Usa segreti con scadenza lunga** (24 mesi) per evitare interruzioni
-3. **Documenta la configurazione** per il team
-4. **Monitora i log** per eventuali problemi
-5. **Mantieni aggiornati i segreti** prima della scadenza
+1. **Test in a development environment before production**
+2. **Use long-expiry secrets** (24 months) to avoid disruption
+3. **Document the configuration** for your team
+4. **Monitor logs** for any issues
+5. **Rotate secrets** before they expire
 
-## Supporto
+## Support
 
-Per problemi o domande:
-- Consulta la documentazione di Azure AD: [https://docs.microsoft.com/azure/active-directory/](https://docs.microsoft.com/azure/active-directory/)
-- Contatta il supporto Industrace
-
+For issues or questions:
+- See Azure AD documentation: [https://docs.microsoft.com/azure/active-directory/](https://docs.microsoft.com/azure/active-directory/)
+- Contact Industrace support

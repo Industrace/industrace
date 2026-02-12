@@ -44,6 +44,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
       - CORS_ORIGINS=https://localhost,https://127.0.0.1,https://industrace.local
+      - SSO_REDIRECT_URI=${SSO_REDIRECT_URI}
       - ENVIRONMENT=production
       - DEBUG=false
       - SECURE_COOKIES=true

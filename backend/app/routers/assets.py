@@ -346,7 +346,8 @@ def get_assets_for_network_map(
             } if asset.site else None,
             "asset_type": {
                 "id": str(asset.asset_type.id),
-                "name": asset.asset_type.name
+                "name": asset.asset_type.name,
+                "purdue_level": asset.asset_type.purdue_level
             } if asset.asset_type else None,
             "location": {
                 "id": str(asset.location.id),

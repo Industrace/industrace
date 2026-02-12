@@ -332,6 +332,48 @@ async def startup_event():
             except Exception as e:
                 logger.error(f"Notification templates initialization failed: {e}")
             
+            # Initialize ISA/IEC 62443 Security Requirements if not present (system-wide)
+            try:
+                from app.models import SecurityRequirement
+                from app.init_data.init_security_requirements import init_security_requirements
+                req_count = db.query(SecurityRequirement).count()
+                if req_count == 0:
+                    logger.info("Initializing ISA/IEC 62443 Security Requirements...")
+                    created = init_security_requirements(db)
+                    logger.info(f"ISA/IEC 62443 Security Requirements initialized ({created} created)")
+                else:
+                    logger.debug(f"ISA/IEC 62443 Security Requirements already exist ({req_count} found)")
+            except Exception as e:
+                logger.error(f"Security Requirements initialization failed: {e}", exc_info=True)
+            
+            # Initialize ISA/IEC 62443 Security Capabilities if not present (system-wide)
+            try:
+                from app.models.security_capability import SecurityCapability
+                from app.init_data.init_security_capabilities import init_security_capabilities
+                cap_count = db.query(SecurityCapability).count()
+                if cap_count == 0:
+                    logger.info("Initializing ISA/IEC 62443 Security Capabilities...")
+                    created = init_security_capabilities(db)
+                    logger.info(f"ISA/IEC 62443 Security Capabilities initialized ({created} created)")
+                else:
+                    logger.debug(f"ISA/IEC 62443 Security Capabilities already exist ({cap_count} found)")
+            except Exception as e:
+                logger.error(f"Security Capabilities initialization failed: {e}", exc_info=True)
+            
+            # Initialize ISA/IEC 62443 SR-Capability Mappings if not present (system-wide)
+            try:
+                from app.models.sr_capability import SRCapability
+                from app.init_data.init_sr_capability_mappings import init_sr_capability_mappings
+                mapping_count = db.query(SRCapability).count()
+                if mapping_count == 0:
+                    logger.info("Initializing ISA/IEC 62443 SR-Capability Mappings...")
+                    created = init_sr_capability_mappings(db)
+                    logger.info(f"ISA/IEC 62443 SR-Capability Mappings initialized ({created} created)")
+                else:
+                    logger.debug(f"ISA/IEC 62443 SR-Capability Mappings already exist ({mapping_count} found)")
+            except Exception as e:
+                logger.error(f"SR-Capability Mappings initialization failed: {e}", exc_info=True)
+            
             # Check if demo data exists and seed if no assets found (first initialization)
             # This ensures demo data is created even in production during first setup
             from app.config import settings

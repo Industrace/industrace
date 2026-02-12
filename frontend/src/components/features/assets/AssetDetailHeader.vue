@@ -13,6 +13,9 @@
       <div class="asset-meta">
         <Tag v-if="asset.status?.name" :value="asset.status.name" :style="{ background: asset.status?.color, color: '#fff' }" />
         <span class="type">{{ asset.asset_type?.name || t('common.strings.na') }}</span>
+        <span class="purdue-level" v-if="purdueLevelDisplay">
+          {{ t('assets.fields.purdueLevel') }}: <strong>{{ purdueLevelDisplay }}</strong>
+        </span>
         <span class="site">{{ asset.site?.name || t('common.strings.na') }}</span>
         <span class="area" v-if="asset.area_name">{{ asset.area_name }}</span>
         <CriticalityBadge
@@ -92,6 +95,14 @@ const emit = defineEmits(['back', 'edit', 'print', 'position-saved'])
 // State
 const showPositioningDialog = ref(false)
 
+// Purdue level dall'asset_type (esplicito in testata)
+const purdueLevelDisplay = computed(() => {
+  const level = props.asset?.asset_type?.purdue_level
+  if (level === null || level === undefined) return null
+  const key = level === 1.5 ? 'level1_5' : `level${level}`
+  return t('assettypes.' + key)
+})
+
 // Computed properties
 const hasFloorplan = computed(() => !!(props.asset?.location?.floorplan?.id))
 
@@ -145,6 +156,13 @@ function onAssetPositionSaved({ id, map_x, map_y }) {
   gap: 0.5rem;
   align-items: center;
   margin-top: 0.5rem;
+}
+.purdue-level {
+  font-size: 0.9em;
+  color: var(--p-text-muted-color, #6c757d);
+}
+.purdue-level strong {
+  color: var(--p-text-color, inherit);
 }
 .criticality-badge, .risk-badge {
   font-size: 0.9em;

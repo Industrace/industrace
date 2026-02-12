@@ -43,6 +43,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
       - CORS_ORIGINS=https://${DOMAIN},https://${WWW_DOMAIN}
+      - SSO_REDIRECT_URI=https://${DOMAIN}/auth/sso/callback
       - ENVIRONMENT=production
       - DEBUG=false
       - SECURE_COOKIES=true

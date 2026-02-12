@@ -387,6 +387,18 @@ def calculate_zone_security_level(
     return SecurityZoneResponse.from_orm(updated_zone)
 
 
+@router.post("/{zone_id}/recalculate-sla", response_model=SecurityZoneResponse)
+@audit_log_action("recalculate_zone_sla", "SecurityZone", model_class=SecurityZone)
+def recalculate_zone_sla(
+    zone_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("security_zones", 3)),
+):
+    """Alias for calculate-sl: recalculate Security Level Achieved for a zone"""
+    return calculate_zone_security_level(zone_id, current_user, db, perm)
+
+
 @router.get("/{zone_id}/risk", response_model=dict)
 def get_zone_risk(
     zone_id: uuid.UUID,

@@ -106,7 +106,7 @@ Open your browser and go to:
    - After 5 failed login attempts, your account will be temporarily locked for 30 minutes
    - Login attempts are rate-limited to prevent brute-force attacks
 
-2. **Demo Data**: The system automatically populates with realistic demo data when using `make prod` or `make prod-cloud` including:
+4. **Demo Data**: The system automatically populates with realistic demo data when using `make prod` or `make prod-cloud` including:
    - 3 Sites (Production Plant, R&D Center, Distribution Warehouse)
    - 12 Areas (Assembly Lines, Labs, Control Rooms, etc.)
    - 19 Locations (Control Panels, Quality Stations, etc.)
@@ -116,7 +116,7 @@ Open your browser and go to:
    - 4 Suppliers (Siemens, Rockwell, Schneider, ABB)
    - 6 Contacts (Sales, Support, Management)
 
-3. **Initial Setup**: The system will automatically guide you through the first tenant configuration
+5. **Initial Setup**: The system will automatically guide you through the first tenant configuration
 
 ## Main File Structure
 

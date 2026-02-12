@@ -982,8 +982,15 @@ async function saveAssessment() {
     // Reload assessment data to get updated status
     await selectSecurityRequirement(selectedSR.value)
     
-    // Emit zone-updated event to refresh parent
-    emit('zone-updated', props.zone)
+    // Emit zone-updated with recalculated SL-A and compliance from backend
+    const zoneUpdated = res.data?.zone_updated
+    if (zoneUpdated) {
+      emit('zone-updated', { ...props.zone, ...zoneUpdated })
+    } else {
+      emit('zone-updated', props.zone)
+    }
+    // Refresh dashboard summary (compliant/partial/non_compliant counts)
+    await loadSummary()
   } catch (error) {
     console.error('Error saving assessment:', error)
     toast.add({

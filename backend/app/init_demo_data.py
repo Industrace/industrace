@@ -807,7 +807,7 @@ def seed_demo_data_python():
     
     for zone_data in security_zones_data:
         existing_zone = db.query(SecurityZone).filter_by(name=zone_data["name"], tenant_id=tenant.id).first()
-    if not existing_zone:
+        if not existing_zone:
             zone = SecurityZone(
                 id=uuid.uuid4(),
                 tenant_id=tenant.id,
@@ -823,9 +823,9 @@ def seed_demo_data_python():
             db.add(zone)
             security_zones.append(zone)
             vprint(f"✅ Created security zone: {zone.name} (SL-T: {zone.security_level_target})")
-    else:
+        else:
             security_zones.append(existing_zone)
-    
+
     db.commit()
     
     # Create Asset Zone Memberships
@@ -859,15 +859,15 @@ def seed_demo_data_python():
     zone_memberships = []
     for membership_data in zone_memberships_data:
         asset = next((a for a in assets if a.name == membership_data["asset"]), None)
-    zone = next((z for z in security_zones if z.name == membership_data["zone"]), None)
-    
-    if asset and zone:
+        zone = next((z for z in security_zones if z.name == membership_data["zone"]), None)
+
+        if asset and zone:
             existing_membership = db.query(AssetZoneMembership).filter_by(
                 asset_id=asset.id,
                 security_zone_id=zone.id,
                 role=membership_data["role"]
             ).first()
-            
+
             if not existing_membership:
                 membership = AssetZoneMembership(
                     id=uuid.uuid4(),
@@ -883,7 +883,7 @@ def seed_demo_data_python():
                 vprint(f"✅ Linked {asset.name} to {zone.name} as {membership_data['role']}")
             else:
                 zone_memberships.append(existing_membership)
-    
+
     db.commit()
     
     # Create Conduits between Security Zones
@@ -952,14 +952,14 @@ def seed_demo_data_python():
     conduits = []
     for conduit_data in conduits_data:
         from_zone = next((z for z in security_zones if z.name == conduit_data["from_zone"]), None)
-    to_zone = next((z for z in security_zones if z.name == conduit_data["to_zone"]), None)
-    
-    if from_zone and to_zone:
+        to_zone = next((z for z in security_zones if z.name == conduit_data["to_zone"]), None)
+
+        if from_zone and to_zone:
             existing_conduit = db.query(Conduit).filter_by(
                 name=conduit_data["name"],
                 tenant_id=tenant.id
             ).first()
-            
+
             if not existing_conduit:
                 conduit = Conduit(
                     id=uuid.uuid4(),
@@ -984,7 +984,7 @@ def seed_demo_data_python():
                 vprint(f"✅ Created conduit: {conduit.name} ({from_zone.name} → {to_zone.name})")
             else:
                 conduits.append(existing_conduit)
-    
+
     db.commit()
     
     # Only show detailed summary if verbose mode is enabled

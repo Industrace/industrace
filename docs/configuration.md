@@ -11,21 +11,21 @@ Industrace supports two main deployment scenarios with automatic configuration:
 #### **Production Local** (Recommended for first time)
 - **Frontend**: https://localhost (Nginx + self-signed certificates)
 - **Backend**: https://localhost/api (Nginx proxy)
-- **CORS**: Configurato per localhost e industrace.local
+- **CORS**: Configured for localhost and industrace.local
 - **Cookies**: Secure, SameSite=strict
 - **Proxy**: Nginx + self-signed certificates
 
 #### **Production Cloud** (HTTPS with Traefik)
 - **Frontend**: https://industrace.local (Traefik)
 - **Backend**: https://industrace.local/api (Traefik proxy)
-- **CORS**: Configurato per dominio di produzione
+- **CORS**: Configured for production domain
 - **Cookies**: Secure, SameSite=strict
 - **Proxy**: Traefik + Let's Encrypt
 
 #### **Custom Certificates** (HTTPS with Nginx)
 - **Frontend**: https://yourdomain.com (nginx)
 - **Backend**: https://yourdomain.com/api (nginx proxy)
-- **CORS**: Configurato per dominio personalizzato
+- **CORS**: Configured for custom domain
 - **Cookies**: Secure, SameSite=strict
 - **Proxy**: Nginx + Custom certificates
 
@@ -310,7 +310,7 @@ ALERT_MEMORY_THRESHOLD=85
 ```bash
 # Application branding
 APP_NAME=Industrace
-APP_VERSION=1.0.0
+APP_VERSION=2.0.0
 APP_DESCRIPTION=Configuration Management Database for Industrial Control Systems
 ```
 

@@ -16,216 +16,216 @@ The RBAC system uses a model based on **sections** and **levels**:
   - **3**: Delete (administration)
   - **4**: Bulk/Advanced (bulk operations and advanced analytics)
 
-## Sezioni di Permessi
+## Permission Sections
 
-### Sezioni Esistenti
+### Existing Sections
 
-Queste sezioni erano già presenti nel sistema originale:
+These sections were already present in the original system:
 
-- `assets` - Gestione asset industriali
-- `sites` - Gestione siti
-- `areas` - Gestione aree
-- `locations` - Gestione ubicazioni
-- `suppliers` - Gestione fornitori
-- `contacts` - Gestione contatti
-- `manufacturers` - Gestione produttori
-- `asset_types` - Gestione tipi di asset
-- `asset_statuses` - Gestione stati asset
-- `users` - Gestione utenti
-- `roles` - Gestione ruoli
-- `audit_logs` - Visualizzazione log di audit
-- `utility` - Funzioni di utilità
-- `asset_documents` - Gestione documenti asset
-- `asset_photos` - Gestione foto asset
-- `locations_floormap` - Gestione mappe dei piani
-- `reset_user_password` - Reset password utenti
+- `assets` - Industrial asset management
+- `sites` - Site management
+- `areas` - Area management
+- `locations` - Location management
+- `suppliers` - Supplier management
+- `contacts` - Contact management
+- `manufacturers` - Manufacturer management
+- `asset_types` - Asset type management
+- `asset_statuses` - Asset status management
+- `users` - User management
+- `roles` - Role management
+- `audit_logs` - Audit log viewing
+- `utility` - Utility functions
+- `asset_documents` - Asset document management
+- `asset_photos` - Asset photo management
+- `locations_floormap` - Floor plan management
+- `reset_user_password` - User password reset
 
-### Nuove Sezioni
+### New Sections
 
 #### `vulnerabilities`
-**Descrizione**: Gestione vulnerabilità e CVE
+**Description**: Vulnerability and CVE management
 
-- **Livello 1 (Read)**: Visualizzare vulnerabilità e vulnerabilità asset
-- **Livello 2 (Write)**: Creare/modificare vulnerabilità, gestire status vulnerabilità asset
-- **Livello 3 (Delete)**: Eliminare vulnerabilità, gestire feed di vulnerabilità
-- **Livello 4 (Bulk)**: Operazioni bulk su vulnerabilità
+- **Level 1 (Read)**: View vulnerabilities and asset vulnerabilities
+- **Level 2 (Write)**: Create/update vulnerabilities, manage asset vulnerability status
+- **Level 3 (Delete)**: Delete vulnerabilities, manage vulnerability feeds
+- **Level 4 (Bulk)**: Bulk operations on vulnerabilities
 
-**Endpoint protetti**:
-- GET `/vulnerabilities` - Lista vulnerabilità
-- GET `/vulnerabilities/{id}` - Dettaglio vulnerabilità
-- POST `/vulnerabilities` - Crea vulnerabilità
-- GET `/vulnerabilities/assets/{asset_id}` - Vulnerabilità di un asset
-- PUT `/vulnerabilities/assets/{asset_id}/vulnerabilities/{id}` - Aggiorna status vulnerabilità
-- GET/POST `/vulnerabilities/feeds` - Gestione feed vulnerabilità
+**Protected endpoints**:
+- GET `/vulnerabilities` - List vulnerabilities
+- GET `/vulnerabilities/{id}` - Vulnerability detail
+- POST `/vulnerabilities` - Create vulnerability
+- GET `/vulnerabilities/assets/{asset_id}` - Asset vulnerabilities
+- PUT `/vulnerabilities/assets/{asset_id}/vulnerabilities/{id}` - Update vulnerability status
+- GET/POST `/vulnerabilities/feeds` - Vulnerability feed management
 
 #### `asset_reviews`
-**Descrizione**: Gestione review e manutenzione asset
+**Description**: Asset review and maintenance management
 
-- **Livello 1 (Read)**: Visualizzare review status e asset in scadenza
-- **Livello 2 (Write)**: Marcare asset come reviewati, saltare review
-- **Livello 3 (Delete)**: Ricalcolare tutte le date review, operazioni bulk
-- **Livello 4 (Bulk)**: Gestione completa review
+- **Level 1 (Read)**: View review status and due/overdue assets
+- **Level 2 (Write)**: Mark assets as reviewed, skip review
+- **Level 3 (Delete)**: Recalculate all review dates, bulk operations
+- **Level 4 (Bulk)**: Full review management
 
-**Endpoint protetti**:
-- GET `/assets/{id}/review-status` - Status review asset
-- POST `/assets/{id}/review` - Marca asset come reviewato
-- POST `/assets/{id}/review/skip` - Salta review
-- GET `/assets/review/due` - Asset in scadenza
-- GET `/assets/review/overdue` - Asset scaduti
-- POST `/assets/review/bulk` - Review bulk
-- POST `/assets/review/recalculate-all` - Ricalcola tutte le date
+**Protected endpoints**:
+- GET `/assets/{id}/review-status` - Asset review status
+- POST `/assets/{id}/review` - Mark asset as reviewed
+- POST `/assets/{id}/review/skip` - Skip review
+- GET `/assets/review/due` - Due assets
+- GET `/assets/review/overdue` - Overdue assets
+- POST `/assets/review/bulk` - Bulk review
+- POST `/assets/review/recalculate-all` - Recalculate all dates
 
 #### `asset_dependencies`
-**Descrizione**: Gestione dipendenze tra asset
+**Description**: Asset dependency management
 
-- **Livello 1 (Read)**: Visualizzare dipendenze tra asset
-- **Livello 2 (Write)**: Creare/modificare dipendenze
-- **Livello 3 (Delete)**: Eliminare dipendenze
-- **Livello 4 (Bulk)**: Eseguire analisi avanzate (propagazione rischio, impact analysis)
+- **Level 1 (Read)**: View asset dependencies
+- **Level 2 (Write)**: Create/update dependencies
+- **Level 3 (Delete)**: Delete dependencies
+- **Level 4 (Bulk)**: Run advanced analysis (risk propagation, impact analysis)
 
-**Endpoint protetti**:
-- GET `/asset-dependencies` - Lista dipendenze
-- POST `/asset-dependencies` - Crea dipendenza
-- PUT/DELETE `/asset-dependencies/{id}` - Modifica/elimina dipendenza
-- GET `/asset-dependencies/assets/{id}/risk-propagation` - Propagazione rischio
-- GET `/asset-dependencies/assets/{id}/impact-analysis` - Analisi impatto
+**Protected endpoints**:
+- GET `/asset-dependencies` - List dependencies
+- POST `/asset-dependencies` - Create dependency
+- PUT/DELETE `/asset-dependencies/{id}` - Update/delete dependency
+- GET `/asset-dependencies/assets/{id}/risk-propagation` - Risk propagation
+- GET `/asset-dependencies/assets/{id}/impact-analysis` - Impact analysis
 
 #### `compliance`
-**Descrizione**: Gestione compliance ISA/IEC 62443
+**Description**: ISA/IEC 62443 compliance management
 
-- **Livello 1 (Read)**: Visualizzare stato compliance, assessment SR
-- **Livello 2 (Write)**: Creare/modificare assessment SR, gestire evidence
-- **Livello 3 (Delete)**: Gestire completamente compliance, zone, conduits, capabilities
-- **Livello 4 (Bulk)**: Amministrazione completa compliance
+- **Level 1 (Read)**: View compliance status, SR assessments
+- **Level 2 (Write)**: Create/update SR assessments, manage evidence
+- **Level 3 (Delete)**: Full compliance, zones, conduits, capabilities management
+- **Level 4 (Bulk)**: Full compliance administration
 
-**Endpoint protetti**:
+**Protected endpoints**:
 - GET `/compliance/zone/{id}/foundation-requirements` - Foundation Requirements
 - GET `/compliance/zone/{id}/security-requirements/{fr_id}` - Security Requirements
-- GET `/compliance/zone/{id}/sr/{sr_id}/assessment-assist` - Assist assessment
-- POST `/compliance/zone/{id}/sr/{sr_id}/assessment` - Crea/aggiorna assessment
+- GET `/compliance/zone/{id}/sr/{sr_id}/assessment-assist` - Assessment assist
+- POST `/compliance/zone/{id}/sr/{sr_id}/assessment` - Create/update assessment
 - GET `/compliance/gap-analysis` - Gap analysis
 
 #### `security_zones`
-**Descrizione**: Gestione security zones
+**Description**: Security zone management
 
-- **Livello 1 (Read)**: Visualizzare security zones e membership
-- **Livello 2 (Write)**: Creare/modificare zone, gestire membership asset
-- **Livello 3 (Delete)**: Eliminare zone, calcolare security level
-- **Livello 4 (Bulk)**: Gestione completa zone e analisi rischio
+- **Level 1 (Read)**: View security zones and membership
+- **Level 2 (Write)**: Create/update zones, manage asset membership
+- **Level 3 (Delete)**: Delete zones, calculate security level
+- **Level 4 (Bulk)**: Full zone management and risk analysis
 
-**Endpoint protetti**:
-- GET `/security-zones` - Lista zone
-- POST `/security-zones` - Crea zone
-- PUT/DELETE `/security-zones/{id}` - Modifica/elimina zone
-- GET `/security-zones/{id}/assets` - Asset in zona
-- GET `/security-zones/{id}/compliance` - Compliance zona
-- POST `/security-zones/{id}/calculate-sl` - Calcola Security Level
-- POST `/security-zones/{id}/memberships` - Gestione membership
+**Protected endpoints**:
+- GET `/security-zones` - List zones
+- POST `/security-zones` - Create zone
+- PUT/DELETE `/security-zones/{id}` - Update/delete zone
+- GET `/security-zones/{id}/assets` - Assets in zone
+- GET `/security-zones/{id}/compliance` - Zone compliance
+- POST `/security-zones/{id}/calculate-sl` - Calculate Security Level
+- POST `/security-zones/{id}/memberships` - Membership management
 
 #### `notifications`
-**Descrizione**: Gestione notifiche e preferenze
+**Description**: Notification and preference management
 
-- **Livello 1 (Read)**: Visualizzare notifiche personali e log
-- **Livello 2 (Write)**: Gestire preferenze personali, inviare notifiche di test
-- **Livello 3 (Delete)**: Gestire template notifiche, coda notifiche
-- **Livello 4 (Bulk)**: Amministrazione completa notifiche
+- **Level 1 (Read)**: View personal notifications and logs
+- **Level 2 (Write)**: Manage personal preferences, send test notifications
+- **Level 3 (Delete)**: Manage notification templates, notification queue
+- **Level 4 (Bulk)**: Full notification administration
 
-**Endpoint protetti**:
-- GET `/notifications/preferences` - Preferenze personali
-- POST/PUT/DELETE `/notifications/preferences/{id}` - Gestione preferenze
-- GET `/notifications/templates` - Template notifiche
-- PUT `/notifications/templates/{code}` - Modifica template (admin)
-- GET `/notifications/queue` - Coda notifiche (admin)
-- POST `/notifications/test` - Test notifica
+**Protected endpoints**:
+- GET `/notifications/preferences` - Personal preferences
+- POST/PUT/DELETE `/notifications/preferences/{id}` - Preference management
+- GET `/notifications/templates` - Notification templates
+- PUT `/notifications/templates/{code}` - Update template (admin)
+- GET `/notifications/queue` - Notification queue (admin)
+- POST `/notifications/test` - Test notification
 
 #### `sso`
-**Descrizione**: Gestione Single Sign-On
+**Description**: Single Sign-On management
 
-- **Livello 1 (Read)**: Visualizzare configurazione SSO (solo se abilitato)
-- **Livello 2 (Write)**: Configurare SSO, testare connessione
-- **Livello 3 (Delete)**: Importare utenti da provider SSO
-- **Livello 4 (Bulk)**: Amministrazione completa SSO
+- **Level 1 (Read)**: View SSO configuration (only if enabled)
+- **Level 2 (Write)**: Configure SSO, test connection
+- **Level 3 (Delete)**: Import users from SSO provider
+- **Level 4 (Bulk)**: Full SSO administration
 
-**Endpoint protetti**:
-- GET `/auth/sso/config` - Configurazione SSO
-- POST/PUT/DELETE `/auth/sso/config` - Gestione configurazione
-- POST `/auth/sso/test` - Test connessione
-- GET `/auth/sso/azure-ad/users` - Lista utenti Azure AD
-- POST `/auth/sso/azure-ad/import` - Importa utenti
+**Protected endpoints**:
+- GET `/auth/sso/config` - SSO configuration
+- POST/PUT/DELETE `/auth/sso/config` - Configuration management
+- POST `/auth/sso/test` - Test connection
+- GET `/auth/sso/azure-ad/users` - Azure AD user list
+- POST `/auth/sso/azure-ad/import` - Import users
 
 #### `api_keys`
-**Descrizione**: Gestione API keys per integrazioni esterne
+**Description**: API key management for external integrations
 
-- **Livello 1 (Read)**: Visualizzare API keys proprie
-- **Livello 2 (Write)**: Creare/modificare API keys proprie
-- **Livello 3 (Delete)**: Eliminare API keys proprie, gestire tutte le API keys
-- **Livello 4 (Bulk)**: Amministrazione completa API keys
+- **Level 1 (Read)**: View own API keys
+- **Level 2 (Write)**: Create/update own API keys
+- **Level 3 (Delete)**: Delete own API keys, manage all API keys
+- **Level 4 (Bulk)**: Full API key administration
 
 #### `evidence`
-**Descrizione**: Gestione evidence per compliance
+**Description**: Compliance evidence management
 
-- **Livello 1 (Read)**: Visualizzare evidence
-- **Livello 2 (Write)**: Creare/modificare evidence
-- **Livello 3 (Delete)**: Eliminare evidence
-- **Livello 4 (Bulk)**: Gestione completa evidence
+- **Level 1 (Read)**: View evidence
+- **Level 2 (Write)**: Create/update evidence
+- **Level 3 (Delete)**: Delete evidence
+- **Level 4 (Bulk)**: Full evidence management
 
-## Ruoli Predefiniti
+## Predefined Roles
 
-### Admin (Livello 3 - Amministrazione Completa)
+### Admin (Level 3 - Full Administration)
 
-Accesso completo a tutte le sezioni:
+Full access to all sections:
 
-| Sezione | Livello | Descrizione |
-|---------|---------|-------------|
-| Tutti i moduli base | 3 | Gestione completa asset, siti, aree, etc. |
-| `vulnerabilities` | 3 | Gestione completa vulnerabilità e CVE |
-| `asset_reviews` | 3 | Gestione completa review e manutenzione |
-| `asset_dependencies` | 3 | Gestione completa dipendenze e analisi |
-| `compliance` | 3 | Gestione completa ISA/IEC 62443 |
-| `security_zones` | 3 | Gestione completa zone di sicurezza |
-| `evidence` | 3 | Gestione completa evidence compliance |
-| `notifications` | 3 | Gestione completa notifiche e template |
-| `sso` | 3 | Configurazione completa Single Sign-On |
-| `api_keys` | 3 | Gestione completa API keys |
-| `reset_user_password` | 1 | Reset password utenti |
+| Section | Level | Description |
+|---------|-------|-------------|
+| All base modules | 3 | Full asset, site, area management, etc. |
+| `vulnerabilities` | 3 | Full vulnerability and CVE management |
+| `asset_reviews` | 3 | Full review and maintenance management |
+| `asset_dependencies` | 3 | Full dependency and analysis management |
+| `compliance` | 3 | Full ISA/IEC 62443 management |
+| `security_zones` | 3 | Full security zone management |
+| `evidence` | 3 | Full compliance evidence management |
+| `notifications` | 3 | Full notification and template management |
+| `sso` | 3 | Full Single Sign-On configuration |
+| `api_keys` | 3 | Full API key management |
+| `reset_user_password` | 1 | User password reset |
 
-### Editor (Livello 2 - Modifica)
+### Editor (Level 2 - Edit)
 
-Accesso read/write alle sezioni operative:
+Read/write access to operational sections:
 
-| Sezione | Livello | Descrizione |
-|---------|---------|-------------|
-| Moduli base | 2 | Modifica asset, siti, aree, etc. |
-| `vulnerabilities` | 2 | Gestione vulnerabilità e status |
-| `asset_reviews` | 2 | Gestione review e manutenzione |
-| `asset_dependencies` | 2 | Gestione dipendenze |
-| `security_zones` | 2 | Gestione zone e membership |
-| `evidence` | 2 | Gestione evidence |
-| `notifications` | 2 | Gestione preferenze personali |
-| `compliance` | 1 | Solo lettura ISA/IEC 62443 |
-| `sso` | 1 | Solo lettura configurazione SSO |
-| `api_keys` | 1 | Visualizzazione API keys proprie |
-| `users`, `roles` | 1 | Solo lettura utenti e ruoli |
+| Section | Level | Description |
+|---------|-------|-------------|
+| Base modules | 2 | Edit assets, sites, areas, etc. |
+| `vulnerabilities` | 2 | Vulnerability and status management |
+| `asset_reviews` | 2 | Review and maintenance management |
+| `asset_dependencies` | 2 | Dependency management |
+| `security_zones` | 2 | Zone and membership management |
+| `evidence` | 2 | Evidence management |
+| `notifications` | 2 | Personal preference management |
+| `compliance` | 1 | Read-only ISA/IEC 62443 |
+| `sso` | 1 | Read-only SSO configuration |
+| `api_keys` | 1 | View own API keys |
+| `users`, `roles` | 1 | Read-only users and roles |
 
-### Viewer (Livello 1 - Solo Lettura)
+### Viewer (Level 1 - Read Only)
 
-Accesso read-only alle sezioni:
+Read-only access to sections:
 
-| Sezione | Livello | Descrizione |
-|---------|---------|-------------|
-| Tutti i moduli base | 1 | Solo lettura asset, siti, aree, etc. |
-| `vulnerabilities` | 1 | Solo lettura vulnerabilità |
-| `asset_reviews` | 1 | Solo lettura status review |
-| `asset_dependencies` | 1 | Solo lettura dipendenze |
-| `compliance` | 1 | Solo lettura ISA/IEC 62443 |
-| `security_zones` | 1 | Solo lettura zone di sicurezza |
-| `evidence` | 1 | Solo lettura evidence |
-| `notifications` | 1 | Solo lettura notifiche personali |
-| `users` | 0 | **Nessun accesso** |
-| `sso` | 0 | **Nessun accesso** |
-| `api_keys` | 0 | **Nessun accesso** |
+| Section | Level | Description |
+|---------|-------|-------------|
+| All base modules | 1 | Read-only assets, sites, areas, etc. |
+| `vulnerabilities` | 1 | Read-only vulnerabilities |
+| `asset_reviews` | 1 | Read-only review status |
+| `asset_dependencies` | 1 | Read-only dependencies |
+| `compliance` | 1 | Read-only ISA/IEC 62443 |
+| `security_zones` | 1 | Read-only security zones |
+| `evidence` | 1 | Read-only evidence |
+| `notifications` | 1 | Read-only personal notifications |
+| `users` | 0 | **No access** |
+| `sso` | 0 | **No access** |
+| `api_keys` | 0 | **No access** |
 
-## Utilizzo nel Codice
+## Code Usage
 
 ### Backend (FastAPI)
 
@@ -242,43 +242,43 @@ def my_endpoint(
     pass
 ```
 
-### Verifica Programmatica
+### Programmatic Check
 
 ```python
 from app.services.rbac import check_permission, get_user_permission_level
 
-# Verifica se l'utente ha un permesso
+# Check if the user has a permission
 if check_permission(current_user, "vulnerabilities", 2):
-    # L'utente può modificare vulnerabilità
+    # User can modify vulnerabilities
     pass
 
-# Ottieni il livello di permesso
+# Get the permission level
 level = get_user_permission_level(current_user, "vulnerabilities")
 ```
 
-## Aggiornamento Ruoli
+## Role Update
 
-### Aggiornamento Automatico (Durante Upgrade)
+### Automatic Update (During Upgrade)
 
-Quando si aggiorna il sistema, la migrazione Alembic `update_roles_permissions` aggiornerà automaticamente tutti i ruoli con i permessi mancanti.
+When you upgrade the system, the Alembic migration `update_roles_permissions` will automatically update all roles with the missing permissions.
 
-### Aggiornamento Manuale
+### Manual Update
 
-Per aggiornare manualmente i ruoli esistenti con le nuove sezioni di permessi, eseguire:
+To manually update existing roles with the new permission sections, run:
 
 ```bash
-# Via Makefile (consigliato)
+# Via Makefile (recommended)
 make update-roles
 
-# Oppure direttamente
+# Or directly
 docker-compose -f docker-compose.prod.yml exec backend python scripts/update_roles.py
 ```
 
-Questo script aggiorna automaticamente tutti i ruoli (admin, editor, viewer) per tutti i tenant nel sistema, assicurando che tutti i permessi siano presenti.
+This script automatically updates all roles (admin, editor, viewer) for all tenants in the system, ensuring all permissions are present.
 
-## Note
+## Notes
 
-- I permessi sono ereditati se il ruolo ha un `parent_role` e `is_inheritable` è `True`
-- I permessi del ruolo figlio hanno precedenza su quelli del ruolo padre
-- I permessi sono memorizzati come JSON nel campo `permissions` del modello `Role`
-- Il sistema supporta multi-tenancy: ogni tenant ha i propri ruoli e permessi
+- Permissions are inherited if the role has a `parent_role` and `is_inheritable` is `True`
+- Child role permissions take precedence over parent role permissions
+- Permissions are stored as JSON in the `permissions` field of the `Role` model
+- The system supports multi-tenancy: each tenant has its own roles and permissions

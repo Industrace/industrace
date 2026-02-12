@@ -83,7 +83,7 @@ The `metadata.json` file contains:
   "backup_name": "industrace_backup_20241201_143022",
   "timestamp": "20241201_143022",
   "created_at": "2024-12-01T14:30:22.123456",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "includes_logs": false,
   "files": [
     {

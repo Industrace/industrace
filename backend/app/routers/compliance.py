@@ -949,14 +949,25 @@ def create_or_update_sr_assessment(
     
     db.commit()
     
-    # Recalculate zone SLA
-    # TODO: Implement SLA recalculation based on assessments
+    # Recalculate zone SL-A and compliance status from SRAssessment data
+    try:
+        updated_zone = ISA62443ComplianceEngine.update_zone_security_levels(db, str(zone_id))
+        zone_updated = {
+            'security_level_achieved': updated_zone.security_level_achieved,
+            'compliance_status': updated_zone.compliance_status,
+            'security_level_capability': updated_zone.security_level_capability,
+            'last_assessment_date': updated_zone.last_assessment_date.isoformat() if updated_zone.last_assessment_date else None,
+        }
+    except Exception as e:
+        logger.warning(f"Zone SL recalculation after assessment failed: {e}")
+        zone_updated = None
     
     return {
         'id': str(assessment_id),
         'status': assessment.status,
         'justification': assessment.justification,
-        'evidence_count': len(evidence_list)
+        'evidence_count': len(evidence_list),
+        'zone_updated': zone_updated
     }
 
 

@@ -10,6 +10,124 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Future features and improvements
 
+## [2.0.0] - 2026-02-12
+
+### Added
+
+#### ISA/IEC 62443 and Security Zones
+- **Security Zones**
+  - Models: `SecurityZone`, `AssetZoneMembership`, `Conduit`, `ConduitAsset`
+  - Full CRUD for zones, asset–zone membership, conduits between zones
+  - Routers `security_zones.py`, `conduits.py`; pages SecurityZones, SecurityZoneDetail, Conduits
+  - Zone risk calculation (`ZoneRiskCalculator`), risk propagation
+- **ISA/IEC 62443 Compliance**
+  - Models: `SecurityRequirement`, `SecurityCapability`, `SrAssessment`, `SrAssessmentEvidence`, `SecurityRequirementCompliance`, `SrCapability`
+  - Compliance engine `ISA62443ComplianceEngine` (SL-A, SL-C, capabilities, requirements)
+  - Router `compliance.py`; Asset Detail IEC 62443 tab, Compliance page
+  - Init data: security requirements, capabilities, SR–capability mappings
+- **Evidence System**
+  - Model and CRUD for `Evidence` (compliance evidence)
+  - Evidence API and router; docs `EVIDENCE_SYSTEM.md`, `TEST_EVIDENCE_API.md`
+
+#### Vulnerability Intelligence
+- **Vulnerability and CVE management**
+  - `Vulnerability` model, tables and migrations for vulnerability intelligence
+  - CRUD for vulnerabilities, feeds, automatic matching (`VulnerabilityMatcher`, `VulnerabilityAutoMatch`, `VulnerabilityFeed`, `VulnerabilityImpact`)
+  - Router `vulnerabilities.py`; pages Vulnerabilities, VulnerabilityDetail, VulnerabilityFeeds
+  - Asset Detail Vulnerabilities tab; integration with risk scoring
+- Documentation: `VULNERABILITIES_DESIGN.md`, `VULNERABILITIES_STATUS.md`
+
+#### Asset Dependencies and Review
+- **Asset dependencies**
+  - Model `AssetDependency`; CRUD and router `asset_dependencies.py`
+  - Asset Detail Dependencies tab, risk propagation graph (`ConnectionDependencyAnalyzer`, `RiskPropagation`)
+- **Asset Review (maintenance/review)**
+  - Models and fields for review/next_review; router `asset_reviews.py`, service `AssetReviewService`
+  - AssetReviews page, Asset Detail Review tab, `AssetReviewTable` component
+
+#### Notifications
+- **Notification system**
+  - Models: `NotificationTemplate`, `NotificationQueue`, `NotificationLog`, `NotificationPreference`
+  - Router `notifications.py`; services `NotificationService`, `EmailQueueProcessor`
+  - Notifications page with tabs: Templates, Queue, Logs, Preferences, Test
+  - Migrations and template init (`init_notification_templates`)
+
+#### Single Sign-On (SSO) / Enterprise Auth
+- **Azure AD SSO**
+  - Model `TenantSsoConfig`; services `SSOAuth`, `AzureAdService`, `SSOEncryption`
+  - Router `sso.py`; pages SSOConfig, SSOSuccess, SSOError; Login integration
+  - Migration `add_enterprise_auth`; docs `SSO_AZURE_AD_SETUP.md`, `ENTERPRISE_AUTH_DESIGN.md`
+
+#### Security and Permissions
+- **Extended RBAC**
+  - New permissions: vulnerabilities, asset_reviews, asset_dependencies, compliance, security_zones, evidence, notifications, sso, api_keys
+  - Scripts `expand_rbac_permissions.py`, `update_roles_permissions.py`; doc `RBAC_PERMISSIONS.md`
+- **Password policy**
+  - Stronger requirements (12+ chars, upper, lower, digit, special character)
+  - Doc `UPGRADE_PASSWORD_POLICY.md`; upgrade notes in `UPGRADE_NOTES_v1.1.0.md`
+- **Security logging and hardening**
+  - `SecurityLogging` service; account lockout and additional user fields (migrations)
+  - SSO client secret encryption; encryption initialization fix
+
+#### UI and Asset Detail
+- **New Asset Detail layout**
+  - Page `AssetDetailNew.vue`; Header, Sidebar, tabs: Management, Overview, Relations, Security, Risk, Connections, Dependencies, Vulnerabilities, IEC 62443, Review
+  - Components: `AssetDetailSection`, `AssetDetailSidebar`, `AssetAlertBanner`, `RiskPropagationView`
+- **Dashboard**
+  - Components `DashboardCard`, `SectionHeader`, `RecentChangesList`; Dashboard page extensions
+- **Print**
+  - Improvements to `AssetCardPrint`, language parameter for printed kit
+
+#### Backend and Infrastructure
+- **API and services**
+  - Routers: `asset_capabilities.py`, `asset_reviews.py`, `dashboards.py`, `evidence.py`; extended `smtp_config.py`
+  - Services: `FileValidation`, extended `RateLimiter`, `RiskCache`, `BackgroundTasks`
+- **Database**
+  - Multiple Alembic migrations: capability, ISA62443, notifications, vulnerability, evidence, zone membership, conduit, review, lockout, manufacturer soft-delete, etc.
+- **Configuration**
+  - `custom-certs.env.example`, `docker-compose.custom-certs.yml`; updates to `.env.example`, `docker-compose.yml`, `docker-compose.prod.yml`
+  - Makefile: review and improvements for build, backup, deploy, dev, test targets
+
+#### Documentation
+- `docs/ISA62443_DESIGN.md`, `docs/ISA_IEC_62443_IMPLEMENTATION_RECAP.md`
+- `docs/IMPLEMENTATION_STATUS.md`, `docs/BACKEND_DATABASE_ANALYSIS.md`
+- `docs/UPGRADE_v1_TO_v2.md`, extended `docs/UPGRADE.md`, `docs/UPGRADE_PASSWORD_POLICY.md`
+- `UPGRADE_NOTES_v1.1.0.md` (upgrade and password policy notes)
+- `scripts/check-secrets.sh` for secret verification
+
+### Changed
+- **Assets**: Extended CRUD and router `assets.py` (filters, fields, zone/capability/dependency/vulnerability relations); form and tabs updated; Italian comments/strings translated to English where applicable
+- **Roles and permissions**: `init_roles.py`, `RoleForm.vue`, `RoleDetails.vue`; permissions aligned to new modules
+- **Email**: Improved email queue error handling; `EmailService` and SMTP config updates
+- **Frontend**: `AssetsFilters.vue` (advanced filters); removal of `AssetsAdvancedFilters.vue`; unit tests `AssetsFilters.test.js`; IT/EN translations updated (assets, dashboard, menu, sso, roles, setup, vulnerabilities, assetDependencies, assetReviews, isa62443, notifications)
+- **Configuration**: `config.py`, `main.py` (router mount, middleware, security); `requirements.txt`; `development.env.example`, `production.env.example`
+- **Init and demo**: `init_demo_data.py` extended for zones, conduits, capabilities, vulnerabilities, notifications, SSO; `init_manufacturers.py`, `init_asset_statuses.py`, `init_asset_types.py`
+- **Print**: `print.py` and `AssetCardPrint.vue` with multilingual support and layout improvements
+
+### Fixed
+- Vulnerability matching and PrimeIcons usage
+- SSO: client secret management and encryption initialization
+- Email queue error handling and role permissions update
+- AssetsFilters tests: dropdown value change, filter props, PrimeVue plugin, dependencies
+- Italian comments/strings translated to English in `assets.py`
+
+### Removed
+- `SECURITY_REVIEW.md`
+- `frontend/ASSET_DETAIL_NEW_DESIGN.md`, `frontend/ASSET_DETAIL_NEW_LAYOUT.md`, `frontend/TEST_CHECKLIST_FILTRI.md`
+- Backend tests: `test_performance.py`, `test_auth.py`, `test_comprehensive.py` (and partial test_users removal)
+- `scripts/deploy.sh`
+- `AssetsAdvancedFilters.vue` (logic merged into `AssetsFilters.vue`)
+
+### Migration
+- New tables: asset_dependencies, capability/SR/ISA62443-related, notification_*, vulnerability_*, evidence, security_zone, conduit, asset_zone_membership, tenant_sso_config, enterprise auth
+- New/updated columns: manufacturer `deleted_at`, user (lockout, notifications), asset (review), conduit/governance, vulnerability status default, account lockout, role on asset_contacts, etc.
+- Merge heads and constraint fixes (notification template, vulnerability status, conduit/review)
+
+### Technical
+- Backend: New routers and services for compliance, vulnerabilities, zones, conduits, notifications, SSO, evidence, dashboards, asset capabilities/reviews/dependencies
+- Frontend: New pages and tabs for Security Zones, Conduits, Compliance, Vulnerabilities, Notifications, SSO; redesigned Asset Detail
+- Database: Full set of Alembic migrations for 2.0; see `docs/UPGRADE_v1_TO_v2.md` for upgrade from v1.x
+
 ## [1.1.0] - 2025-12-04
 
 ### Added
@@ -231,4 +349,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **v2.0.0** (February 2026): ISA/IEC 62443 compliance, Security Zones, Vulnerability Intelligence, Asset Dependencies & Review, Notifications, SSO (Azure AD), extended RBAC, password policy, new Asset Detail layout
+- **v1.1.0** (December 2025): Areas trash, multilingual print kit, translation restructure, global search and performance improvements
 - **v1.0.0** (August 2025): Initial release with complete asset management system

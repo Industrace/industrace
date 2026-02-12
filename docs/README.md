@@ -29,22 +29,23 @@ Industrace is fully open source and welcomes contributions from the community. T
 - [Installation Guide](installation.md) - Complete setup instructions
 - [Docker Deployment](docker-deployment.md) - Production deployment with Docker
 - [Configuration Guide](configuration.md) - System configuration options
+- [Custom Certificates](custom-certificates.md) - HTTPS with your own certificates
 
-### User Guides
-- [User Manual](user-manual.md) - Complete user guide
+### User and API
 - [API Documentation](api-documentation.md) - REST API reference
 - [External API Guide](external-api.md) - Integration APIs for third-party systems
 
-### Administration
-- [Administration Guide](administration.md) - System administration tasks
+### Administration and Security
+- [Upgrade Safety](UPGRADE_SAFETY.md) - Reducing upgrade risk (backup, staging, rollback)
 - [Upgrade Guide](UPGRADE.md) - How to upgrade from previous versions
+- [Upgrade v1 to v2](UPGRADE_v1_TO_v2.md) - Major upgrade procedure (v1.x → v2)
+- [Password Policy Upgrade](UPGRADE_PASSWORD_POLICY.md) - New password security requirements
+- [RBAC Permissions](RBAC_PERMISSIONS.md) - Roles and permission sections (v2)
+- [SSO with Azure AD](SSO_AZURE_AD_SETUP.md) - Single Sign-On configuration
 - [Backup and Restore](backup-restore.md) - Data protection procedures
-- [Security Guide](security.md) - Security best practices
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
 
-### Development
-- [Development Guide](development.md) - Development setup and guidelines
-- [API Testing](api-testing.md) - Testing procedures for APIs
+### Reference
 - [Release Notes](release-notes.md) - Version history and changes
 - [Development Roadmap](roadmap.md) - Future development plans and milestones
 
@@ -59,33 +60,39 @@ Industrace is fully open source and welcomes contributions from the community. T
 ### Installation
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/industrace/industrace.git
 cd industrace
 
-# Start the application
-docker-compose up -d
+# Start production (Nginx + self-signed SSL + auto-init DB)
+make prod
 
 # Access the application
-open http://localhost:5173
+open https://localhost
 ```
 
 ### Default Credentials
-- **URL**: http://localhost:5173
+- **URL**: https://localhost (production local) or https://industrace.local (production cloud)
 - **Email**: admin@example.com
 - **Password**: Admin@123456!
+
+See [QUICK_START.md](QUICK_START.md) for other deployment types and [UPGRADE_PASSWORD_POLICY.md](UPGRADE_PASSWORD_POLICY.md) for password requirements (v1.1+).
 
 ## System Overview
 
 Industrace provides:
 
 - **Multi-tenant Architecture**: Complete isolation between organizations
-- **Asset Management**: Comprehensive industrial asset tracking
+- **Asset Management**: Comprehensive industrial asset tracking, dependencies, and reviews
+- **ISA/IEC 62443 Compliance**: Security zones, conduits, requirements, and evidence (v2)
+- **Vulnerability Intelligence**: CVE management, feeds, and risk integration (v2)
 - **Network Analysis**: Connection mapping and protocol analysis
-- **Risk Assessment**: Automated risk scoring and monitoring
+- **Risk Assessment**: Automated risk scoring, propagation, and monitoring
+- **Notifications**: Templates, queue, and user preferences (v2)
+- **Single Sign-On**: Azure AD / Microsoft Entra ID (v2)
 - **Document Management**: File uploads and document tracking
-- **Reporting**: Customizable reports and dashboards
-- **API Integration**: REST APIs for external integrations
-- **Security**: Role-based access control and audit logging
+- **Reporting**: Customizable reports, dashboards, and print
+- **API Integration**: REST APIs and API keys for external integrations
+- **Security**: Role-based access control (RBAC), password policy, audit logging
 
 ## Support
 
@@ -93,7 +100,7 @@ For support and questions:
 1. Check the troubleshooting guide
 2. Review the API documentation
 3. Check system logs: `docker-compose logs backend`
-4. Verify system health: `curl http://localhost:8000/health`
+4. Verify system health: `curl https://localhost/api/health` (or your deployment URL + `/api/health`)
 5. Contact: industrace@besafe.it
 
 ## Contributing

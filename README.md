@@ -27,15 +27,19 @@ We like to think of Industrace as an experiment in human + AI co-creation, where
 Last thing..
 Born in Italy, Industrace combines European attention to industrial processes with a global open-source mindset.
 
-[![Release](https://img.shields.io/badge/Release-v1.1.0-blue.svg)](https://github.com/industrace/industrace/releases/tag/v1.1.0)
+[![Release](https://img.shields.io/badge/Release-v2.0.0-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.0.0)
 
 ## 🌟 Key Features
 
-- **Asset Management**: Complete lifecycle management of industrial assets
+- **Asset Management**: Complete lifecycle management of industrial assets, dependencies, and reviews
+- **ISA/IEC 62443**: Security zones, conduits, compliance engine, and evidence (v2)
+- **Vulnerability Intelligence**: CVE management, feeds, and risk integration (v2)
 - **Network Mapping**: Visual representation of asset connections and communications
-- **Risk Assessment**: Built-in risk scoring and vulnerability assessment
+- **Risk Assessment**: Built-in risk scoring, propagation, and vulnerability assessment
 - **Multi-tenant Architecture**: Support for multiple organizations
-- **Role-based Access Control**: Granular permissions system
+- **Role-based Access Control**: Granular permissions (RBAC) with extended v2 permissions
+- **Notifications**: Templates, queue, and user preferences (v2)
+- **Single Sign-On**: Azure AD / Microsoft Entra ID (v2)
 - **Change Management**: See what's changed with comparisons
 - **Global Search**: Spotlight-style search (Command+K) across all entities with instant results
 - **Asset Timeline**: Complete change history and audit trail for each asset
@@ -177,7 +181,7 @@ make config
 - **Email**: admin@example.com
 - **Password**: Admin@123456!
 
-**Note**: Demo data is automatically populated when using `make prod` or `make prod-cloud`. The system includes sample sites, areas, locations, manufacturers, suppliers, contacts, assets with interfaces, and network connections for testing purposes.
+**Note**: Demo data is automatically populated when using `make prod` or `make prod-cloud`. The system includes sample sites, areas, locations, manufacturers, suppliers, contacts, assets with interfaces, and network connections for testing purposes. On first login you will be required to change your password; see [Password Policy](docs/UPGRADE_PASSWORD_POLICY.md).
 
 ## 📊 Demo Data Included
 
@@ -194,17 +198,32 @@ The system comes pre-populated with comprehensive demo data:
 
 ## Documentation
 
-Complete documentation is available in the [docs](docs/) directory:
+Full index: **[docs/README.md](docs/README.md)**. Quick links:
 
+**Getting started**
 - [Quick Start Guide](docs/QUICK_START.md) - Get up and running in 5 minutes
 - [Installation Guide](docs/installation.md) - Detailed installation instructions
-- [User Manual](docs/user-manual.md) - How to use the application
-- [API Documentation](docs/api-documentation.md) - Complete API reference
-- [Development Guide](docs/development.md) - Development setup and guidelines
-- [Administration Guide](docs/administration.md) - System administration
-- [Security Guide](docs/security.md) - Security best practices
-- [Custom Certificates](docs/custom-certificates.md) - Deploy with internal CA certificates
+- [Docker Deployment](docs/docker-deployment.md) - Production deployment
+- [Configuration](docs/configuration.md) - System configuration
+- [Custom Certificates](docs/custom-certificates.md) - HTTPS with your own certificates
+
+**API & integration**
+- [API Documentation](docs/api-documentation.md) - REST API reference
+- [External API Guide](docs/external-api.md) - Integration APIs for third-party systems
+
+**Upgrades & administration**
+- [Upgrade Safety](docs/UPGRADE_SAFETY.md) - Reducing upgrade risk (backup, staging, rollback)
+- [Upgrade Guide](docs/UPGRADE.md) - How to upgrade from previous versions
+- [Upgrade v1 to v2](docs/UPGRADE_v1_TO_v2.md) - Major upgrade procedure (v1.x → v2)
+- [Password Policy](docs/UPGRADE_PASSWORD_POLICY.md) - Password security requirements
+- [RBAC Permissions](docs/RBAC_PERMISSIONS.md) - Roles and permissions (v2)
+- [SSO with Azure AD](docs/SSO_AZURE_AD_SETUP.md) - Single Sign-On configuration
+- [Backup and Restore](docs/backup-restore.md) - Data protection procedures
 - [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+
+**Reference**
+- [Release Notes](docs/release-notes.md) - Version history and changes
+- [Roadmap](docs/roadmap.md) - Planned features and improvements
 
 ## 🔧 Development
 
@@ -228,22 +247,25 @@ make logs
 
 ### Available Make Commands
 ```bash
-make prod      # Start production environment (Nginx + self-signed certificates + auto-init DB)
-make prod-cloud # Start production environment (Traefik + Let's Encrypt)
-make demo      # Add demo data to existing system
-make clean     # Clean system completely
-make test      # Run tests
-make logs      # View logs
-make stop      # Stop all services
-make build     # Build containers
-make rebuild   # Rebuild containers
-make status    # Show service status
-make shell     # Open backend shell
-make migrate   # Run database migrations
-make reset-db  # Reset database
-make restart   # Restart services
-make info      # Show system information
-make config    # Show configuration options
+make prod        # Start production (Nginx + self-signed certs + auto-init DB)
+make prod-cloud   # Start production (Traefik + Let's Encrypt)
+make demo        # Add demo data to existing system
+make clean       # Clean system completely
+make test        # Run tests
+make logs        # View logs
+make stop       # Stop all services
+make build      # Build containers
+make rebuild    # Rebuild containers
+make status     # Show service status
+make shell      # Open backend shell
+make migrate    # Run database migrations
+make reset-db   # Reset database
+make backup     # Backup database, uploads, config
+make backup-full # Full backup including logs
+make restore    # Restore from backup (see docs/backup-restore.md)
+make restart    # Restart services
+make info       # Show system information
+make config     # Show configuration options
 ```
 
 ## 🤝 Contributing
@@ -263,55 +285,24 @@ See the [LICENSE](LICENSE) file for details.
 
 ## 📋 Changelog
 
+See **[CHANGELOG.md](CHANGELOG.md)** and **[Release Notes](docs/release-notes.md)** for full version history.
+
+### [v2.0.0] - February 2026
+- **ISA/IEC 62443**: Security zones, conduits, compliance engine, evidence
+- **Vulnerability Intelligence**: CVE management, feeds, asset matching, risk integration
+- **Asset Dependencies & Review**: Dependency graph, risk propagation, review scheduling
+- **Notifications**: Templates, queue, logs, user preferences
+- **Single Sign-On**: Azure AD / Microsoft Entra ID
+- **Extended RBAC**: New permissions for zones, compliance, vulnerabilities, notifications, SSO
+- **Password policy**: Stronger requirements; see [UPGRADE_PASSWORD_POLICY.md](docs/UPGRADE_PASSWORD_POLICY.md)
+- **New Asset Detail layout**: Tabs for Overview, Relations, Security, IEC 62443, Review, etc.
+- **Upgrade**: From v1.x see [UPGRADE_v1_TO_v2.md](docs/UPGRADE_v1_TO_v2.md) and [UPGRADE_SAFETY.md](docs/UPGRADE_SAFETY.md)
+
 ### [v1.1.0] - November 2025
-#### ✨ New Features
-- **Trash Management for Areas**: Soft delete, restore, and hard delete functionality aligned with Sites and Locations
-- **Multilingual Printed Kit**: PDF generation in Italian/English with automatic language detection
-- **Restructured Translation System**: Consolidated translation files with complete IT/EN alignment
-- **Improved Global Search**: Enhanced search with auto-search and better result descriptions
-- **Asset Timeline Filtering**: Timeline now shows only changes related to the specific asset
+- Trash management for Areas, multilingual printed kit, global search improvements, asset timeline filtering, performance indexes, translation restructuring. See [CHANGELOG.md](CHANGELOG.md).
 
-#### 🔧 Improvements
-- Performance optimizations with new database indexes
-- Dashboard caching for improved response times
-- Complete translation system restructuring (40 files consolidated into 19)
-- Global search fixes and enhancements
-
-#### 🐛 Fixes
-- Fixed asset timeline showing all changes instead of asset-specific changes
-- Fixed global search not finding Locations results
-- Complete IT/EN translation alignment
-
-#### 📚 Documentation
-- Added comprehensive upgrade guide (`docs/UPGRADE.md`)
-- Added performance optimizations documentation
-
-### [v1.0.0] - august 2025
-#### 🎉 Initial Release
-- **Complete Asset Management System**: Full lifecycle management for industrial assets
-- **Multi-tenant Architecture**: Support for multiple organizations with data isolation
-- **Role-based Access Control**: Granular permissions system (Admin, Editor, Viewer)
-- **Network Topology Visualization**: Interactive network mapping with asset connections
-- **Risk Assessment Engine**: Advanced risk scoring algorithm for industrial assets
-- **Document Management**: Upload and manage asset photos and documents
-- **Audit Trail**: Complete activity logging and change tracking
-- **Import/Export System**: Excel/CSV import with preview and validation
-- **Print System**: Generate PDF reports with QR codes
-- **PCAP Analysis**: Network traffic analysis and protocol detection
-- **Floor Plan Integration**: Visual asset placement on floor plans
-- **Responsive Design**: Works on desktop, tablet, and mobile
-- **Internationalization**: Full Italian and English language support
-- **RESTful API**: Complete API with OpenAPI documentation
-- **Docker Support**: Easy deployment with Docker Compose
-
-#### 🔧 Technical Features
-- FastAPI backend with PostgreSQL database
-- Vue.js 3 frontend with PrimeVue components
-- JWT authentication with secure cookies
-- Real-time dashboard with charts and metrics
-- Comprehensive error handling and validation
-- Automated testing framework
-- Production-ready Docker configuration
+### [v1.0.0] - August 2025
+- Initial release: asset management, multi-tenant, RBAC, network topology, risk assessment, documents, audit trail, import/export, print, floor plans, i18n, REST API, Docker. See [CHANGELOG.md](CHANGELOG.md).
 
 ## 🗺️ Roadmap
 

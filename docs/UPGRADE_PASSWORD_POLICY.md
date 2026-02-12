@@ -175,4 +175,4 @@ docker-compose -f docker-compose.prod.yml exec backend alembic downgrade -1
 
 - [ISA/IEC 62443-3-3](https://www.isa.org/standards-and-publications/isa-standards/isa-iec-62443-series-of-standards) - Security Requirements
 - [NIST Password Guidelines](https://pages.nist.gov/800-63-3/sp800-63b.html)
-- [Industrace Security Documentation](./SECURITY.md)
+- [Industrace Security Documentation](../SECURITY.md)

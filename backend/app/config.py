@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     LOCKOUT_DURATION_MINUTES: int = int(os.getenv("LOCKOUT_DURATION_MINUTES", "15"))
     
     # SSO/Enterprise Auth
-    SSO_REDIRECT_URI: str = os.getenv("SSO_REDIRECT_URI", "http://localhost:5173/auth/sso/callback")
+    SSO_REDIRECT_URI: str = os.getenv("SSO_REDIRECT_URI") or "http://localhost:5173/auth/sso/callback"
     ENCRYPTION_KEY: str = os.getenv("ENCRYPTION_KEY", "")  # For encrypting client secrets (generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
     RATE_LIMIT_STRICT: str = os.getenv("RATE_LIMIT_STRICT", "10/minute")
 
