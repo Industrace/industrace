@@ -7,10 +7,17 @@
     "errors": "In errore",
     "maintenance": "In manutenzione",
     "health": "Salute",
-    "transmissions": "Trasmissioni"
+    "transmissions": "Trasmissioni",
+    "overallHealth": "Salute complessiva",
+    "activeOfTotal": "{active} attive su {total}"
+  },
+  "empty": {
+    "title": "Nessuna sonda trovata",
+    "description": "Quando la sonda invia dati, compariranno qui i risultati."
   },
   "columns": {
     "name": "Nome",
+    "interface": "Interfaccia",
     "site": "Sito",
     "status": "Stato",
     "lastHeartbeat": "Ultimo heartbeat",
@@ -28,23 +35,79 @@
     "editTitle": "Modifica sonda",
     "apiKeyTitle": "API key sonda",
     "apiKeyWarning": "Copia la API key ora. Non verrà mostrata di nuovo.",
-    "deauthorizeConfirm": "De-autorizzare questa sonda? Il client in esecuzione dovrà essere riconfigurato con una nuova key."
+    "deauthorizeConfirm": "De-autorizzare la sonda \"{name}\"? La API key corrente verrà invalidata.",
+    "deleteConfirm": "Eliminare la sonda \"{name}\"? Questa azione rimuove anche lo storico associato."
   },
   "fields": {
     "name": "Nome sonda",
     "description": "Descrizione",
     "interface": "Interfaccia di rete",
+    "interfaceIp": "IP interfaccia (opzionale)",
     "heartbeatInterval": "Intervallo heartbeat (s)",
     "dataInterval": "Intervallo trasmissione dati (s)",
-    "samplingRate": "Sampling rate",
-    "payloadAnalysis": "Analisi payload (può catturare dati sensibili)"
+    "samplingRate": "Sampling rate (0.01 - 1.0)",
+    "captureFilter": "Capture filter (BPF)",
+    "captureFilterPlaceholder": "es. tcp port 502 or tcp port 4840",
+    "enabledProtocols": "Protocolli abilitati",
+    "allProtocolsPlaceholder": "Tutti (vuoto)",
+    "maxRetryAttempts": "Max retry attempts",
+    "promiscuousMode": "Promiscuous mode",
+    "metadataExtraction": "Metadata extraction",
+    "payloadAnalysis": "Payload analysis (più costoso)",
+    "payloadAnalysisShort": "Analisi payload (può catturare dati sensibili)"
+  },
+  "tabs": {
+    "identity": "Identità",
+    "sniffing": "Sniffing / Analisi",
+    "telecontrol": "Telecontrollo",
+    "docker": "Docker",
+    "host": "Host (fuori container)"
+  },
+  "details": {
+    "title": "Dettagli: {name}",
+    "titleDefault": "Dettagli sonda",
+    "status": "Stato",
+    "healthScore": "Health score",
+    "lastHeartbeat": "Ultimo heartbeat",
+    "probeId": "ID sonda (UUID)",
+    "lastData": "Ultimi dati",
+    "configTitle": "Configurazione sonda",
+    "configHint": "Per leggere la configurazione serve la API key del probe (mostrata una sola volta in creazione).",
+    "apiKeyPlaceholder": "Inserisci API key probe",
+    "loadConfig": "Carica configurazione",
+    "noConfigLoaded": "Nessuna configurazione caricata."
+  },
+  "freshness": {
+    "noRecentData": "Non ricevuti dati di recente",
+    "ok": "Ricezione dati: OK",
+    "delayed": "Ricezione dati: in ritardo",
+    "stale": "Ricezione dati: ferma (stale)"
+  },
+  "apiKey": {
+    "description": "Questa API key viene mostrata una sola volta. Salvala in un posto sicuro e usala dal tuo probe.",
+    "copy": "Copia",
+    "copied": "API key copiata negli appunti",
+    "copyFailed": "Impossibile copiare automaticamente la chiave",
+    "probeConf": "probe.conf",
+    "dockerStart": "Avvio (docker run)",
+    "hostStart": "Avvio"
+  },
+  "commands": {
+    "dockerRun": "# (1) Salva probe.conf nella stessa cartella di questo comando\n# (2) Avvia la sonda (Docker)\ndocker run -d \\\n  --name {containerName} \\\n  --privileged \\\n  --network host \\\n  --cap-add NET_ADMIN \\\n  --cap-add NET_RAW \\\n  --security-opt seccomp=unconfined \\\n  -v \"$PWD/probe.conf:/app/probe.conf:ro\" \\\n  -v \"$PWD/logs:/logs\" \\\n  industrace-probe:latest\n\n# (3) Segui i log\ndocker logs -f {containerName}",
+    "hostRun": "# (1) In una cartella dove hai la directory 'probe' di Industrace\n# (2) Crea probe.conf (contenuto già mostrato nella tab Host)\n#\n#   - Copia/incolla probe.conf accanto a network_probe_client.py\n#\n# (3) Installa dipendenze e avvia\npip3 install -r requirements.probe.txt\nsudo python3 network_probe_client.py -c probe.conf"
+  },
+  "actions": {
+    "deauthorize": "De-autorizza sonda"
   },
   "messages": {
     "created": "Sonda creata",
     "updated": "Sonda aggiornata",
     "deleted": "Sonda eliminata",
     "deauthorized": "Sonda de-autorizzata",
-    "loadError": "Errore caricamento sonde"
+    "loadError": "Errore caricamento sonde",
+    "selectSite": "Seleziona un sito",
+    "statusLoadError": "Errore nel caricamento dello stato sonda",
+    "invalidApiKey": "API key non valida o errore nel caricamento configurazione"
   },
   "legalDisclaimer": "Lo sniffing di rete può catturare traffico sensibile. Assicurati di avere autorizzazione legale prima di abilitare l'analisi payload."
 }

@@ -17,8 +17,8 @@
           <p class="mb-3">{{ t('sso.setupGuideDescription') }}</p>
           <Button 
             :label="t('sso.viewSetupGuide')" 
-            icon="pi pi-external-link"
-            @click="openSetupGuide"
+            icon="pi pi-book"
+            @click="showSetupGuide = true"
             class="p-button-outlined"
           />
         </div>
@@ -218,6 +218,8 @@
         </Card>
       </TabPanel>
     </TabView>
+
+    <SSOAzureADSetupGuideDialog v-model:visible="showSetupGuide" />
   </div>
 </template>
 
@@ -238,6 +240,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
+import SSOAzureADSetupGuideDialog from '@/components/dialogs/SSOAzureADSetupGuideDialog.vue'
 import api from '@/api/api'
 
 const { t } = useI18n()
@@ -265,13 +268,7 @@ const roles = ref([])
 const loadingUsers = ref(false)
 const importing = ref(false)
 const userFilter = ref('')
-
-const openSetupGuide = () => {
-  window.open(
-    'https://github.com/industrace/industrace/blob/main/docs/ADMINISTRATION.md#sso-with-azure-ad',
-    '_blank'
-  )
-}
+const showSetupGuide = ref(false)
 
 // Provider SSO disponibili
 // Nota: Il backend supporta già Azure AD, Google Workspace, Okta e Generic OIDC

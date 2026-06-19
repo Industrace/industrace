@@ -7,10 +7,17 @@
     "errors": "Errors",
     "maintenance": "Maintenance",
     "health": "Health",
-    "transmissions": "Transmissions"
+    "transmissions": "Transmissions",
+    "overallHealth": "Overall health",
+    "activeOfTotal": "{active} active of {total}"
+  },
+  "empty": {
+    "title": "No probes found",
+    "description": "When a probe sends data, results will appear here."
   },
   "columns": {
     "name": "Name",
+    "interface": "Interface",
     "site": "Site",
     "status": "Status",
     "lastHeartbeat": "Last heartbeat",
@@ -28,23 +35,79 @@
     "editTitle": "Edit probe",
     "apiKeyTitle": "Probe API key",
     "apiKeyWarning": "Copy the API key now. It will not be shown again.",
-    "deauthorizeConfirm": "De-authorize this probe? The running client must be reconfigured with a new key."
+    "deauthorizeConfirm": "De-authorize probe \"{name}\"? The current API key will be invalidated.",
+    "deleteConfirm": "Delete probe \"{name}\"? This also removes associated history."
   },
   "fields": {
     "name": "Probe name",
     "description": "Description",
     "interface": "Network interface",
+    "interfaceIp": "Interface IP (optional)",
     "heartbeatInterval": "Heartbeat interval (s)",
     "dataInterval": "Data transmission interval (s)",
-    "samplingRate": "Sampling rate",
-    "payloadAnalysis": "Payload analysis (may capture sensitive data)"
+    "samplingRate": "Sampling rate (0.01 - 1.0)",
+    "captureFilter": "Capture filter (BPF)",
+    "captureFilterPlaceholder": "e.g. tcp port 502 or tcp port 4840",
+    "enabledProtocols": "Enabled protocols",
+    "allProtocolsPlaceholder": "All (empty)",
+    "maxRetryAttempts": "Max retry attempts",
+    "promiscuousMode": "Promiscuous mode",
+    "metadataExtraction": "Metadata extraction",
+    "payloadAnalysis": "Payload analysis (more expensive)",
+    "payloadAnalysisShort": "Payload analysis (may capture sensitive data)"
+  },
+  "tabs": {
+    "identity": "Identity",
+    "sniffing": "Sniffing / Analysis",
+    "telecontrol": "Telecontrol",
+    "docker": "Docker",
+    "host": "Host (outside container)"
+  },
+  "details": {
+    "title": "Details: {name}",
+    "titleDefault": "Probe details",
+    "status": "Status",
+    "healthScore": "Health score",
+    "lastHeartbeat": "Last heartbeat",
+    "probeId": "Probe ID (UUID)",
+    "lastData": "Last data",
+    "configTitle": "Probe configuration",
+    "configHint": "Reading configuration requires the probe API key (shown only once at creation).",
+    "apiKeyPlaceholder": "Enter probe API key",
+    "loadConfig": "Load configuration",
+    "noConfigLoaded": "No configuration loaded."
+  },
+  "freshness": {
+    "noRecentData": "No recent data received",
+    "ok": "Data reception: OK",
+    "delayed": "Data reception: delayed",
+    "stale": "Data reception: stopped (stale)"
+  },
+  "apiKey": {
+    "description": "This API key is shown only once. Save it securely and use it from your probe.",
+    "copy": "Copy",
+    "copied": "API key copied to clipboard",
+    "copyFailed": "Unable to copy the key automatically",
+    "probeConf": "probe.conf",
+    "dockerStart": "Start (docker run)",
+    "hostStart": "Start"
+  },
+  "commands": {
+    "dockerRun": "# (1) Save probe.conf in the same folder as this command\n# (2) Start the probe (Docker)\ndocker run -d \\\n  --name {containerName} \\\n  --privileged \\\n  --network host \\\n  --cap-add NET_ADMIN \\\n  --cap-add NET_RAW \\\n  --security-opt seccomp=unconfined \\\n  -v \"$PWD/probe.conf:/app/probe.conf:ro\" \\\n  -v \"$PWD/logs:/logs\" \\\n  industrace-probe:latest\n\n# (3) Follow logs\ndocker logs -f {containerName}",
+    "hostRun": "# (1) In a folder containing the Industrace 'probe' directory\n# (2) Create probe.conf (content shown in the Host tab)\n#\n#   - Copy/paste probe.conf next to network_probe_client.py\n#\n# (3) Install dependencies and start\npip3 install -r requirements.probe.txt\nsudo python3 network_probe_client.py -c probe.conf"
+  },
+  "actions": {
+    "deauthorize": "De-authorize probe"
   },
   "messages": {
     "created": "Probe created",
     "updated": "Probe updated",
     "deleted": "Probe deleted",
     "deauthorized": "Probe de-authorized",
-    "loadError": "Failed to load probes"
+    "loadError": "Failed to load probes",
+    "selectSite": "Select a site",
+    "statusLoadError": "Failed to load probe status",
+    "invalidApiKey": "Invalid API key or failed to load configuration"
   },
   "legalDisclaimer": "Network sniffing may capture sensitive traffic. Ensure you have legal authorization before enabling payload analysis."
 }

@@ -79,17 +79,17 @@
       <template #body-match_indicator="{ data }">
         <Tag
           v-if="data.best_match_type === 'mac'"
-          value="Match MAC"
+          :value="t('discoveredDevices.match.mac')"
           severity="success"
         />
         <Tag
           v-else-if="data.best_match_type === 'ip'"
-          value="Match IP"
+          :value="t('discoveredDevices.match.ip')"
           severity="warning"
         />
         <Tag
           v-else
-          value="Nuovo"
+          :value="t('discoveredDevices.match.new')"
           severity="info"
         />
       </template>
@@ -103,7 +103,7 @@
             severity="help"
             :disabled="!canManageDiscoveredDevices"
             @click="assignToMatchedAsset(data)"
-            v-tooltip.top="'Associa asset gia` censito'"
+            v-tooltip.top="t('discoveredDevices.actions.assignTooltip')"
           />
           <Button
             icon="pi pi-plus"
@@ -111,7 +111,7 @@
             severity="success"
             :disabled="!canManageDiscoveredDevices"
             @click="openOnboardDialog(data)"
-            v-tooltip.top="'Onboard rapido come nuovo asset'"
+            v-tooltip.top="t('discoveredDevices.actions.onboardTooltip')"
           />
           <Button
             icon="pi pi-pencil"
@@ -157,7 +157,7 @@
 
     <BaseDialog
       v-model:isVisible="showOnboardDialog"
-      title="Onboarding asset"
+      :title="t('discoveredDevices.onboard.title')"
       :mode="'create'"
       :showFooter="true"
       :showCancel="true"
@@ -169,15 +169,15 @@
       <template #default>
         <div class="grid grid-cols-1 gap-3">
           <div class="field">
-            <label class="block text-sm font-medium mb-2">Nome asset</label>
+            <label class="block text-sm font-medium mb-2">{{ t('discoveredDevices.onboard.assetName') }}</label>
             <InputText v-model="onboardForm.name" class="w-full" />
           </div>
           <div class="field">
-            <label class="block text-sm font-medium mb-2">Tag (opzionale)</label>
+            <label class="block text-sm font-medium mb-2">{{ t('discoveredDevices.onboard.tagOptional') }}</label>
             <InputText v-model="onboardForm.tag" class="w-full" />
           </div>
           <small class="text-color-secondary">
-            Verranno copiati automaticamente MAC/IP/protocolli dal dispositivo scoperto.
+            {{ t('discoveredDevices.onboard.hint') }}
           </small>
         </div>
       </template>
@@ -221,14 +221,14 @@ const filters = reactive({
   search: ''
 })
 
-const statusOptions = [
-  { label: 'Scoperto', value: 'discovered' },
-  { label: 'Matchato', value: 'matched' },
-  { label: 'Importato', value: 'imported' },
-  { label: 'Assegnato', value: 'assigned' },
-  { label: 'Ignorato', value: 'ignored' },
-  { label: 'Conflitto', value: 'conflict' }
-]
+const statusOptions = computed(() => [
+  { label: t('discoveredDevices.status.discovered'), value: 'discovered' },
+  { label: t('discoveredDevices.status.matched'), value: 'matched' },
+  { label: t('discoveredDevices.status.imported'), value: 'imported' },
+  { label: t('discoveredDevices.status.assigned'), value: 'assigned' },
+  { label: t('discoveredDevices.status.ignored'), value: 'ignored' },
+  { label: t('discoveredDevices.status.conflict'), value: 'conflict' }
+])
 
 function getDeviceStatusValue(device) {
   return device?.status?.value ?? device?.status ?? null
@@ -257,7 +257,7 @@ const filteredDevices = computed(() => {
 
 const filteredFormattedDevices = computed(() => {
   const labelByStatus = {}
-  for (const s of statusOptions) labelByStatus[s.value] = s.label
+  for (const s of statusOptions.value) labelByStatus[s.value] = s.label
   return filteredDevices.value.map(d => ({
     ...d,
     status_label: labelByStatus[getDeviceStatusValue(d)] || (d.status ?? ''),
@@ -266,16 +266,16 @@ const filteredFormattedDevices = computed(() => {
   }))
 })
 
-const columnOptions = [
-  { field: 'mac_address', header: 'MAC' },
-  { field: 'ip_display', header: 'IP' },
-  { field: 'hostname', header: 'Hostname' },
-  { field: 'vendor', header: 'Vendor' },
-  { field: 'match_indicator', header: 'Confronto asset' },
+const columnOptions = computed(() => [
+  { field: 'mac_address', header: t('discoveredDevices.columns.mac') },
+  { field: 'ip_display', header: t('discoveredDevices.columns.ip') },
+  { field: 'hostname', header: t('discoveredDevices.columns.hostname') },
+  { field: 'vendor', header: t('discoveredDevices.columns.vendor') },
+  { field: 'match_indicator', header: t('discoveredDevices.columns.match') },
   { field: 'status_label', header: t('discoveredDevices.columns.status') },
-  { field: 'last_seen', header: 'Ultima vista' },
-  { field: 'actions', header: t('common.strings.actions') }
-]
+  { field: 'last_seen', header: t('discoveredDevices.columns.lastSeen') },
+  { field: 'actions', header: t('discoveredDevices.columns.actions') }
+])
 
 const showEditDialog = ref(false)
 const editingDevice = ref(null)
@@ -306,7 +306,9 @@ function closeEditDialog() {
 function openOnboardDialog(device) {
   onboardingDevice.value = device
   const firstIp = Array.isArray(device.ip_addresses) && device.ip_addresses.length ? device.ip_addresses[0] : null
-  onboardForm.name = device.hostname || (firstIp ? `Discovered ${firstIp}` : `Discovered ${device.mac_address}`)
+  onboardForm.name = device.hostname || (firstIp
+    ? t('discoveredDevices.onboard.defaultName', { value: firstIp })
+    : t('discoveredDevices.onboard.defaultName', { value: device.mac_address }))
   onboardForm.tag = ''
   showOnboardDialog.value = true
 }
@@ -377,7 +379,7 @@ async function assignToMatchedAsset(device) {
     await fetchDevices()
     return true
   }, {
-    successMessage: 'Dispositivo associato ad asset esistente',
+    successMessage: t('discoveredDevices.messages.assigned'),
     errorContext: t('common.messages.updateError'),
     showToast: true
   })
@@ -394,7 +396,7 @@ async function submitOnboard() {
     await fetchDevices()
     return true
   }, {
-    successMessage: 'Asset creato da dispositivo scoperto',
+    successMessage: t('discoveredDevices.messages.assetCreated'),
     errorContext: t('common.messages.createError'),
     showToast: true
   })

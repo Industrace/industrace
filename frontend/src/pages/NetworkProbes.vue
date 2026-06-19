@@ -93,9 +93,9 @@
                 <span class="health-value">{{ overview.health_percentage.toFixed(0) }}%</span>
               </div>
               <div class="overview-content">
-                <div class="overview-label">Salute complessiva</div>
+                <div class="overview-label">{{ t('networkProbes.overview.overallHealth') }}</div>
                 <div class="overview-subtitle">
-                  {{ overview.active_probes }} attive su {{ overview.total_probes }}
+                  {{ t('networkProbes.overview.activeOfTotal', { active: overview.active_probes, total: overview.total_probes }) }}
                 </div>
               </div>
             </div>
@@ -106,11 +106,11 @@
 
     <div v-if="!loading && formattedProbes.length === 0" class="empty-probes">
       <i class="pi pi-wifi empty-icon"></i>
-      <h3>Nessuna sonda trovata</h3>
-      <p>Quando la sonda invia dati, compariranno qui i risultati.</p>
+      <h3>{{ t('networkProbes.empty.title') }}</h3>
+      <p>{{ t('networkProbes.empty.description') }}</p>
       <Button
         v-if="canManageNetworkProbes"
-        :label="'Aggiungi sonda'"
+        :label="t('networkProbes.addProbe')"
         icon="pi pi-plus"
         severity="success"
         @click="openCreateDialog"
@@ -148,7 +148,7 @@
             v-if="canManageNetworkProbes"
             icon="pi pi-ban"
             class="p-button-text p-button-sm p-button-warning"
-            title="De-autorizza sonda"
+            :title="t('networkProbes.actions.deauthorize')"
             @click="deauthorizeProbe(data)"
           />
 
@@ -166,7 +166,7 @@
     <!-- Probe Details -->
     <BaseDialog
       v-model:isVisible="showProbeDetailsDialog"
-      :title="selectedProbe?.name ? `Dettagli: ${selectedProbe.name}` : 'Dettagli sonda'"
+      :title="probeDetailsTitle"
       :mode="'view'"
       :showFooter="false"
       :showCancel="true"
@@ -176,17 +176,17 @@
         <div v-if="selectedProbe" class="probe-details">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="detail-card">
-              <div class="detail-label">Stato</div>
+              <div class="detail-label">{{ t('networkProbes.details.status') }}</div>
               <div class="detail-value">
                 <Tag
-                  :value="probeStatus?.status || selectedProbe.status"
+                  :value="statusLabel(probeStatus?.status || selectedProbe.status)"
                   :severity="getProbeStatusSeverity(probeStatus?.status || selectedProbe.status)"
                 />
               </div>
             </div>
 
             <div class="detail-card">
-              <div class="detail-label">Health score</div>
+              <div class="detail-label">{{ t('networkProbes.details.healthScore') }}</div>
               <div class="detail-value">
                 <span v-if="probeStatus?.health_score !== null && probeStatus?.health_score !== undefined">
                   {{ Math.round(probeStatus.health_score * 10) / 10 }}
@@ -196,17 +196,17 @@
             </div>
 
             <div class="detail-card">
-              <div class="detail-label">Ultimo heartbeat</div>
+              <div class="detail-label">{{ t('networkProbes.details.lastHeartbeat') }}</div>
               <div class="detail-value">{{ formatTs(selectedProbe.last_heartbeat) }}</div>
             </div>
 
             <div class="detail-card">
-              <div class="detail-label">ID sonda (UUID)</div>
+              <div class="detail-label">{{ t('networkProbes.details.probeId') }}</div>
               <div class="detail-value">{{ selectedProbe.id }}</div>
             </div>
 
             <div class="detail-card">
-              <div class="detail-label">Ultimi dati</div>
+              <div class="detail-label">{{ t('networkProbes.details.lastData') }}</div>
               <div class="detail-value">{{ formatTs(selectedProbe.last_data_received) }}</div>
               <div class="detail-sub">
                 <span :class="dataFreshnessClass">{{ dataFreshnessText }}</span>
@@ -215,9 +215,9 @@
           </div>
 
           <div class="mt-4">
-            <div class="config-section-title">Configurazione sonda</div>
+            <div class="config-section-title">{{ t('networkProbes.details.configTitle') }}</div>
             <div class="config-hint">
-              Per leggere la configurazione serve la API key del probe (mostrata una sola volta in creazione).
+              {{ t('networkProbes.details.configHint') }}
             </div>
 
             <div class="config-row">
@@ -225,11 +225,11 @@
                 v-model="probeApiKeyInput"
                 type="password"
                 class="w-full"
-                placeholder="Inserisci API key probe"
+                :placeholder="t('networkProbes.details.apiKeyPlaceholder')"
               />
               <Button
                 icon="pi pi-eye"
-                :label="loadingConfiguration ? 'Caricamento...' : 'Carica configurazione'"
+                :label="loadingConfiguration ? t('common.messages.loading') : t('networkProbes.details.loadConfig')"
                 class="p-button-secondary"
                 :disabled="!probeApiKeyInput || loadingConfiguration"
                 @click="fetchProbeConfiguration"
@@ -237,7 +237,7 @@
             </div>
 
             <pre v-if="probeConfiguration" class="config-pre">{{ configurationJson }}</pre>
-            <div v-else class="config-empty">Nessuna configurazione caricata.</div>
+            <div v-else class="config-empty">{{ t('networkProbes.details.noConfigLoaded') }}</div>
           </div>
         </div>
       </template>
@@ -257,7 +257,7 @@
     >
       <template #default>
         <TabView class="probe-edit-tabs">
-          <TabPanel header="Identita'">
+          <TabPanel :header="t('networkProbes.tabs.identity')">
             <div class="grid grid-cols-1 gap-3">
               <div class="field">
                 <label class="block text-sm font-medium mb-2">{{ t('common.fields.name') }}</label>
@@ -265,12 +265,12 @@
               </div>
 
               <div class="field">
-                <label class="block text-sm font-medium mb-2">Interfaccia</label>
+                <label class="block text-sm font-medium mb-2">{{ t('networkProbes.fields.interface') }}</label>
                 <InputText v-model="editForm.interface_name" class="w-full" />
               </div>
 
               <div class="field">
-                <label class="block text-sm font-medium mb-2">IP interfaccia (opzionale)</label>
+                <label class="block text-sm font-medium mb-2">{{ t('networkProbes.fields.interfaceIp') }}</label>
                 <InputText v-model="editForm.interface_ip" class="w-full" />
               </div>
 
@@ -281,20 +281,20 @@
             </div>
           </TabPanel>
 
-          <TabPanel header="Sniffing / Analisi">
+          <TabPanel :header="t('networkProbes.tabs.sniffing')">
             <div class="grid grid-cols-1 gap-3">
               <div class="field">
-                <label class="block text-sm font-medium mb-2">Capture filter (BPF)</label>
-                <InputText v-model="editForm.capture_filter" class="w-full" placeholder="es. tcp port 502 or tcp port 4840" />
+                <label class="block text-sm font-medium mb-2">{{ t('networkProbes.fields.captureFilter') }}</label>
+                <InputText v-model="editForm.capture_filter" class="w-full" :placeholder="t('networkProbes.fields.captureFilterPlaceholder')" />
               </div>
 
               <div class="field">
-                <label class="block text-sm font-medium mb-2">Sampling rate (0.01 - 1.0)</label>
+                <label class="block text-sm font-medium mb-2">{{ t('networkProbes.fields.samplingRate') }}</label>
                 <InputNumber v-model="editForm.sampling_rate" :min="0.01" :max="1" :step="0.01" mode="decimal" class="w-full" />
               </div>
 
               <div class="field">
-                <label class="block text-sm font-medium mb-2">Protocolli abilitati</label>
+                <label class="block text-sm font-medium mb-2">{{ t('networkProbes.fields.enabledProtocols') }}</label>
                 <MultiSelect
                   v-model="editForm.enabled_protocols"
                   :options="protocolOptions"
@@ -302,47 +302,47 @@
                   optionValue="value"
                   display="chip"
                   class="w-full"
-                  placeholder="Tutti (vuoto)"
+                  :placeholder="t('networkProbes.fields.allProtocolsPlaceholder')"
                 />
               </div>
 
               <div class="field">
                 <label class="flex align-items-center gap-2">
                   <Checkbox v-model="editForm.promiscuous_mode" :binary="true" />
-                  <span>Promiscuous mode</span>
+                  <span>{{ t('networkProbes.fields.promiscuousMode') }}</span>
                 </label>
               </div>
 
               <div class="field">
                 <label class="flex align-items-center gap-2">
                   <Checkbox v-model="editForm.metadata_extraction" :binary="true" />
-                  <span>Metadata extraction</span>
+                  <span>{{ t('networkProbes.fields.metadataExtraction') }}</span>
                 </label>
               </div>
 
               <div class="field">
                 <label class="flex align-items-center gap-2">
                   <Checkbox v-model="editForm.payload_analysis" :binary="true" />
-                  <span>Payload analysis (piu' costoso)</span>
+                  <span>{{ t('networkProbes.fields.payloadAnalysis') }}</span>
                 </label>
               </div>
             </div>
           </TabPanel>
 
-          <TabPanel header="Telecontrollo">
+          <TabPanel :header="t('networkProbes.tabs.telecontrol')">
             <div class="grid grid-cols-1 gap-3">
               <div class="field">
-                <label class="block text-sm font-medium mb-2">Heartbeat interval (s)</label>
+                <label class="block text-sm font-medium mb-2">{{ t('networkProbes.fields.heartbeatInterval') }}</label>
                 <InputNumber v-model="editForm.heartbeat_interval" :min="10" :max="300" :step="5" class="w-full" />
               </div>
 
               <div class="field">
-                <label class="block text-sm font-medium mb-2">Data transmission interval (s)</label>
+                <label class="block text-sm font-medium mb-2">{{ t('networkProbes.fields.dataInterval') }}</label>
                 <InputNumber v-model="editForm.data_transmission_interval" :min="60" :max="3600" :step="15" class="w-full" />
               </div>
 
               <div class="field">
-                <label class="block text-sm font-medium mb-2">Max retry attempts</label>
+                <label class="block text-sm font-medium mb-2">{{ t('networkProbes.fields.maxRetryAttempts') }}</label>
                 <InputNumber v-model="editForm.max_retry_attempts" :min="1" :max="10" :step="1" class="w-full" />
               </div>
             </div>
@@ -353,7 +353,7 @@
 
     <BaseDialog
       v-model:isVisible="showCreateDialog"
-      :title="'Aggiungi sonda'"
+      :title="t('networkProbes.dialogs.createTitle')"
       :mode="'create'"
       :showFooter="true"
       :showCancel="true"
@@ -375,7 +375,7 @@
     <!-- API Key dialog (mostrata SOLO al momento della creazione) -->
     <BaseDialog
       v-model:isVisible="showApiKeyDialog"
-      :title="'API Key della sonda'"
+      :title="t('networkProbes.dialogs.apiKeyTitle')"
       :mode="'view'"
       :width="'55vw'"
       :showFooter="true"
@@ -387,7 +387,7 @@
       <template #default>
         <div class="api-key-dialog">
           <p class="mb-3">
-            Questa API key viene mostrata una sola volta. Salvala in un posto sicuro e usala dal tuo probe.
+            {{ t('networkProbes.apiKey.description') }}
           </p>
           <Textarea
             v-model="createdApiKey"
@@ -397,7 +397,7 @@
           />
           <div class="flex justify-content-end mt-3 gap-2">
             <Button
-              label="Copia"
+              :label="t('networkProbes.apiKey.copy')"
               icon="pi pi-copy"
               class="p-button-sm"
               @click="copyApiKey"
@@ -406,23 +406,23 @@
 
           <div class="mt-4">
             <TabView>
-              <TabPanel header="Docker">
+              <TabPanel :header="t('networkProbes.tabs.docker')">
                 <div class="field">
-                  <label class="block text-sm font-medium mb-2">probe.conf</label>
+                  <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.probeConf') }}</label>
                   <Textarea :value="probeConfText" :readonly="true" rows="12" class="w-full" />
                 </div>
                 <div class="field mt-3">
-                  <label class="block text-sm font-medium mb-2">Avvio (docker run)</label>
+                  <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.dockerStart') }}</label>
                   <Textarea :value="dockerRunCommand" :readonly="true" rows="5" class="w-full" />
                 </div>
               </TabPanel>
-              <TabPanel header="Host (fuori container)">
+              <TabPanel :header="t('networkProbes.tabs.host')">
                 <div class="field">
-                  <label class="block text-sm font-medium mb-2">probe.conf</label>
+                  <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.probeConf') }}</label>
                   <Textarea :value="probeConfText" :readonly="true" rows="12" class="w-full" />
                 </div>
                 <div class="field mt-3">
-                  <label class="block text-sm font-medium mb-2">Avvio</label>
+                  <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.hostStart') }}</label>
                   <Textarea :value="hostRunCommands" :readonly="true" rows="8" class="w-full" />
                 </div>
               </TabPanel>
@@ -459,7 +459,7 @@ import api from '../api/api'
 import { useApi } from '../composables/useApi'
 import { usePermissions } from '../composables/usePermissions'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const toast = useToast()
 const { canDelete } = usePermissions()
 const canManageNetworkProbes = computed(() => canDelete('network_probes'))
@@ -526,35 +526,12 @@ ssl_verify = false
 
 const dockerRunCommand = computed(() => {
   if (!createdApiKey.value || !createdProbeId.value) return ''
-  return `# (1) Salva il file probe.conf nella stessa cartella di questo comando
-# (2) Avvia la sonda (Docker)
-docker run -d \\
-  --name ${probeContainerName.value} \\
-  --privileged \\
-  --network host \\
-  --cap-add NET_ADMIN \\
-  --cap-add NET_RAW \\
-  --security-opt seccomp=unconfined \\
-  -v "$PWD/probe.conf:/app/probe.conf:ro" \\
-  -v "$PWD/logs:/logs" \\
-  industrace-probe:latest
-
-# (3) Segui i log
-docker logs -f ${probeContainerName.value}`
+  return t('networkProbes.commands.dockerRun', { containerName: probeContainerName.value })
 })
 
 const hostRunCommands = computed(() => {
   if (!createdApiKey.value || !createdProbeId.value) return ''
-  return `# (1) In una cartella dove hai la directory 'probe' di Industrace
-# (2) Crea probe.conf (contenuto gia mostrato nella tab Host)
-#
-#   - Copia/incolla il contenuto di probe.conf in un file chiamato probe.conf
-#   - Assicurati che sia nella stessa cartella di network_probe_client.py
-#
-# (3) Installa dipendenze e avvia
-pip3 install -r requirements.probe.txt
-sudo python3 network_probe_client.py -c probe.conf
-`
+  return t('networkProbes.commands.hostRun')
 })
 
 const showProbeDetailsDialog = ref(false)
@@ -603,15 +580,22 @@ const protocolOptions = [
   { label: 'HTTPS', value: 'HTTPS' }
 ]
 
-const columnOptions = [
-  { field: 'name', header: t('common.fields.name') },
-  { field: 'interface_name', header: 'Interfaccia' },
-  { field: 'site_name', header: t('common.fields.site') },
-  { field: 'status', header: 'Stato' },
-  { field: 'last_heartbeat_display', header: 'Ultimo heartbeat' },
-  { field: 'last_data_received_display', header: 'Ultimi dati' },
-  { field: 'actions', header: 'Azioni', sortable: false }
-]
+const columnOptions = computed(() => [
+  { field: 'name', header: t('networkProbes.columns.name') },
+  { field: 'interface_name', header: t('networkProbes.columns.interface') },
+  { field: 'site_name', header: t('networkProbes.columns.site') },
+  { field: 'status', header: t('networkProbes.columns.status') },
+  { field: 'last_heartbeat_display', header: t('networkProbes.columns.lastHeartbeat') },
+  { field: 'last_data_received_display', header: t('networkProbes.columns.lastData') },
+  { field: 'actions', header: t('networkProbes.columns.actions'), sortable: false }
+])
+
+const probeDetailsTitle = computed(() => {
+  if (selectedProbe.value?.name) {
+    return t('networkProbes.details.title', { name: selectedProbe.value.name })
+  }
+  return t('networkProbes.details.titleDefault')
+})
 
 const { loading, execute } = useApi()
 
@@ -660,15 +644,22 @@ const formattedProbes = computed(() => {
   return probes.value.map(p => ({
     ...p,
     site_name: map[p.site_id] || '—',
-    last_heartbeat_display: p.last_heartbeat ? new Date(p.last_heartbeat).toLocaleString('it-IT') : null,
-    last_data_received_display: p.last_data_received ? new Date(p.last_data_received).toLocaleString('it-IT') : null
+    status: statusLabel(p.status),
+    last_heartbeat_display: p.last_heartbeat ? new Date(p.last_heartbeat).toLocaleString(locale.value) : null,
+    last_data_received_display: p.last_data_received ? new Date(p.last_data_received).toLocaleString(locale.value) : null
   }))
 })
+
+function statusLabel(status) {
+  const key = `networkProbes.status.${status}`
+  const translated = t(key)
+  return translated !== key ? translated : status
+}
 
 function formatTs(ts) {
   if (!ts) return '—'
   try {
-    return new Date(ts).toLocaleString('it-IT')
+    return new Date(ts).toLocaleString(locale.value)
   } catch (e) {
     return '—'
   }
@@ -705,12 +696,12 @@ const dataFreshnessClass = computed(() => {
 
 const dataFreshnessText = computed(() => {
   const ts = selectedProbe.value?.last_data_received
-  if (!ts) return 'Non ricevuti dati di recente'
+  if (!ts) return t('networkProbes.freshness.noRecentData')
   const now = Date.now()
   const diffMin = (now - new Date(ts).getTime()) / 60000
-  if (diffMin <= 2) return 'Ricezione dati: OK'
-  if (diffMin <= 5) return 'Ricezione dati: in ritardo'
-  return 'Ricezione dati: ferma (stale)'
+  if (diffMin <= 2) return t('networkProbes.freshness.ok')
+  if (diffMin <= 5) return t('networkProbes.freshness.delayed')
+  return t('networkProbes.freshness.stale')
 })
 
 function openCreateDialog() {
@@ -728,7 +719,7 @@ function closeCreateDialog() {
 
 async function createProbe() {
   if (!form.site_id) {
-    toast.add({ severity: 'warn', summary: t('common.messages.warning'), detail: 'Seleziona un sito', life: 3000 })
+    toast.add({ severity: 'warn', summary: t('common.messages.warning'), detail: t('networkProbes.messages.selectSite'), life: 3000 })
     return
   }
 
@@ -797,7 +788,7 @@ async function fetchProbeStatus(probeId) {
     toast.add({
       severity: 'error',
       summary: t('common.messages.error'),
-      detail: 'Errore nel caricamento dello stato sonda',
+      detail: t('networkProbes.messages.statusLoadError'),
       life: 5000
     })
   }
@@ -851,7 +842,7 @@ async function submitEditProbe() {
     const response = await api.updateNetworkProbe(selectedProbe.value.id, payload)
     return response
   }, {
-    successMessage: 'Sonda aggiornata',
+    successMessage: t('networkProbes.messages.updated'),
     errorContext: t('common.messages.updateError'),
     showToast: true
   })
@@ -863,14 +854,14 @@ async function submitEditProbe() {
 
 async function deauthorizeProbe(probe) {
   if (!probe?.id) return
-  const ok = window.confirm(`De-autorizzare la sonda "${probe.name}"? La API key corrente verra' invalidata.`)
+  const ok = window.confirm(t('networkProbes.dialogs.deauthorizeConfirm', { name: probe.name }))
   if (!ok) return
 
   await execute(async () => {
     const response = await api.deauthorizeNetworkProbe(probe.id)
     return response
   }, {
-    successMessage: 'Sonda de-autorizzata',
+    successMessage: t('networkProbes.messages.deauthorized'),
     errorContext: t('common.messages.updateError'),
     showToast: true
   })
@@ -887,14 +878,14 @@ async function deauthorizeProbe(probe) {
 
 async function deleteProbe(probe) {
   if (!probe?.id) return
-  const ok = window.confirm(`Eliminare la sonda "${probe.name}"? Questa azione rimuove anche lo storico associato.`)
+  const ok = window.confirm(t('networkProbes.dialogs.deleteConfirm', { name: probe.name }))
   if (!ok) return
 
   await execute(async () => {
     const response = await api.deleteNetworkProbe(probe.id)
     return response
   }, {
-    successMessage: 'Sonda eliminata',
+    successMessage: t('networkProbes.messages.deleted'),
     errorContext: t('common.messages.deleteError'),
     showToast: true
   })
@@ -923,7 +914,7 @@ async function fetchProbeConfiguration() {
     toast.add({
       severity: 'error',
       summary: t('common.messages.error'),
-      detail: 'API key non valida o errore nel caricamento configurazione',
+      detail: t('networkProbes.messages.invalidApiKey'),
       life: 7000
     })
   } finally {
@@ -944,14 +935,14 @@ async function copyApiKey() {
     toast.add({
       severity: 'success',
       summary: t('common.messages.success'),
-      detail: 'API Key copiata negli appunti',
+      detail: t('networkProbes.apiKey.copied'),
       life: 3000
     })
   } catch (e) {
     toast.add({
       severity: 'error',
       summary: t('common.messages.error'),
-      detail: 'Impossibile copiare automaticamente la chiave',
+      detail: t('networkProbes.apiKey.copyFailed'),
       life: 5000
     })
   }

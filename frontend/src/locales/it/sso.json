@@ -40,9 +40,152 @@
   "selectProvider": "Seleziona un provider",
   "setupGuide": "Guida alla Configurazione",
   "setupGuideDescription": "Segui la guida passo-passo per configurare Azure AD (Microsoft 365) per l'autenticazione SSO.",
-  "viewSetupGuide": "Visualizza Guida Completa",
+  "viewSetupGuide": "Apri guida di setup",
   "clientSecretPlaceholder": "Lascia vuoto per mantenere il segreto esistente",
   "clientSecretHelp": "Lascia vuoto per mantenere il segreto esistente. Inserisci un nuovo valore solo per cambiarlo.",
+  "guide": {
+    "title": "Guida configurazione SSO Azure AD",
+    "intro": "Configura il Single Sign-On tra Industrace e Azure AD (Microsoft 365 / Entra ID).",
+    "redirectUriLabel": "Redirect URI (callback backend)",
+    "prerequisites": {
+      "title": "Prerequisiti",
+      "items": [
+        "Accesso amministratore al portale Microsoft Azure",
+        "Accesso amministratore a Industrace",
+        "Tenant Microsoft 365 / Azure AD attivo"
+      ]
+    },
+    "step1": {
+      "title": "Passo 1: Registra l'applicazione in Azure AD",
+      "register": {
+        "title": "Registrazione app",
+        "items": [
+          "Apri Azure Portal e vai su Microsoft Entra ID",
+          "Seleziona Registrazioni app → Nuova registrazione",
+          "Nome: Industrace SSO (o un nome a scelta)",
+          "Tipi di account supportati: Solo account in questa directory (consigliato)",
+          "URI di reindirizzamento: piattaforma Web con l'URL di callback indicato sotto",
+          "Clicca Registra"
+        ]
+      },
+      "noteInfo": {
+        "title": "Salva questi valori",
+        "items": [
+          "ID applicazione (client) → Client ID in Industrace",
+          "ID directory (tenant) o nome tenant (es. contoso.onmicrosoft.com) → Dominio Tenant"
+        ]
+      }
+    },
+    "step2": {
+      "title": "Passo 2: Configura autenticazione e permessi",
+      "redirect": {
+        "title": "URI di reindirizzamento",
+        "items": [
+          "Apri Autenticazione e aggiungi l'URL di callback indicato sopra",
+          "In Concessione implicita, abilita ID token (richiesto per OIDC)",
+          "Salva la configurazione"
+        ]
+      },
+      "permissions": {
+        "title": "Autorizzazioni API",
+        "items": [
+          "Verifica i permessi delegati Microsoft Graph: openid, profile, email, User.Read",
+          "Per importare utenti, aggiungi User.Read.All (Applicazione) — richiede consenso admin",
+          "Clicca Concedi consenso amministratore per il tenant"
+        ]
+      }
+    },
+    "step3": {
+      "title": "Passo 3: Crea un client secret",
+      "items": [
+        "Vai su Certificati e segreti → Nuovo segreto client",
+        "Aggiungi una descrizione e scegli una scadenza (24 mesi consigliati)",
+        "Copia subito il Valore del segreto — viene mostrato una sola volta",
+        "Incollalo in Client Secret in Industrace"
+      ]
+    },
+    "step4": {
+      "title": "Passo 4: Configura Industrace",
+      "items": [
+        "Compila il modulo in questa pagina con i valori di Azure AD",
+        "Clicca Test Connessione, poi Salva",
+        "Abilita SSO quando sei pronto a testare l'accesso"
+      ],
+      "fields": [
+        { "label": "Tipo Provider", "description": "Azure AD (EntraID)" },
+        { "label": "Client ID", "description": "ID applicazione (client) da Azure AD" },
+        { "label": "Client Secret", "description": "Valore del segreto da Certificati e segreti" },
+        { "label": "Dominio Tenant", "description": "ID tenant, nome tenant o dominio onmicrosoft.com" },
+        { "label": "Redirect URI", "description": "Deve corrispondere esattamente al callback in Azure AD" },
+        { "label": "Auto-Provisioning", "description": "Lascia disabilitato (consigliato): possono accedere solo utenti già presenti in Industrace" },
+        { "label": "Restrizione Dominio", "description": "Opzionale: limita l'accesso a un dominio email specifico" }
+      ]
+    },
+    "step5": {
+      "title": "Passo 5: Importa utenti (opzionale)",
+      "items": [
+        "Apri la scheda Importa Utenti in questa pagina",
+        "Cerca e seleziona gli utenti da Azure AD",
+        "Scegli un ruolo e clicca Importa Selezionati",
+        "Verifica gli utenti importati in Utenti"
+      ]
+    },
+    "step6": {
+      "title": "Passo 6: Testa l'accesso SSO",
+      "items": [
+        "Esci e apri la pagina di login",
+        "Clicca Accedi con Microsoft",
+        "Completa l'autenticazione in Microsoft e verifica il ritorno su Industrace",
+        "In Profilo, verifica che auth_provider sia azure_ad e external_id sia valorizzato"
+      ]
+    },
+    "troubleshooting": {
+      "title": "Risoluzione problemi",
+      "cause": "Causa:",
+      "solution": "Soluzione:",
+      "issues": [
+        {
+          "title": "Redirect URI non valido",
+          "cause": "Il Redirect URI in Industrace non corrisponde ad Azure AD.",
+          "solution": "Usa l'URL di callback esatto (protocollo, dominio, percorso). Rimuovi spazi extra."
+        },
+        {
+          "title": "Client secret non valido",
+          "cause": "Segreto scaduto o errato.",
+          "solution": "Crea un nuovo client secret in Azure AD e aggiorna Industrace."
+        },
+        {
+          "title": "Utente non trovato al login",
+          "cause": "L'utente non esiste in Industrace e l'auto-provisioning è disabilitato.",
+          "solution": "Importa l'utente manualmente o abilita l'auto-provisioning (meno sicuro)."
+        },
+        {
+          "title": "Violazione restrizione dominio",
+          "cause": "Il dominio email non corrisponde a Restrizione Dominio.",
+          "solution": "Aggiorna Restrizione Dominio o rimuovila se non serve."
+        },
+        {
+          "title": "Pulsante SSO assente nella pagina di login",
+          "cause": "SSO disabilitato o configurazione non salvata.",
+          "solution": "Abilita SSO, salva la configurazione e controlla i log del backend."
+        },
+        {
+          "title": "Errore nel caricamento/import utenti Azure AD",
+          "cause": "Manca User.Read.All (Applicazione) o il consenso admin.",
+          "solution": "Aggiungi il permesso Application, concedi consenso admin, attendi qualche minuto e riprova."
+        }
+      ]
+    },
+    "security": {
+      "title": "Note di sicurezza",
+      "items": [
+        "Non condividere mai il client secret",
+        "Usa HTTPS in produzione per i redirect URI",
+        "Mantieni l'auto-provisioning disabilitato salvo necessità",
+        "Ruota i segreti prima della scadenza"
+      ]
+    }
+  },
   "success": {
     "title": "Accesso riuscito",
     "message": "Stai per essere reindirizzato alla dashboard...",
@@ -53,5 +196,5 @@
     "title": "Errore di accesso SSO",
     "message": "Si è verificato un errore durante il tentativo di accesso tramite SSO.",
     "backToLogin": "Torna al login"
-}
+  }
 }

@@ -14,17 +14,42 @@
     "probe": "Probe",
     "site": "Site",
     "status": "Status",
-    "match": "Match",
+    "match": "Asset match",
+    "lastSeen": "Last seen",
     "actions": "Actions"
   },
+  "status": {
+    "discovered": "Discovered",
+    "matched": "Matched",
+    "imported": "Imported",
+    "assigned": "Assigned",
+    "ignored": "Ignored",
+    "conflict": "Conflict"
+  },
+  "match": {
+    "mac": "MAC match",
+    "ip": "IP match",
+    "new": "New"
+  },
   "actions": {
-    "onboard": "Onboard as asset",
-    "assign": "Assign to asset",
+    "onboard": "Quick onboard as new asset",
+    "assign": "Assign to existing asset",
+    "assignTooltip": "Assign to existing catalogued asset",
+    "onboardTooltip": "Quick onboard as new asset",
     "ignore": "Ignore"
+  },
+  "onboard": {
+    "title": "Asset onboarding",
+    "assetName": "Asset name",
+    "tagOptional": "Tag (optional)",
+    "hint": "MAC/IP/protocols will be copied automatically from the discovered device.",
+    "defaultName": "Discovered {value}"
   },
   "messages": {
     "onboarded": "Device onboarded as asset",
     "updated": "Device updated",
+    "assigned": "Device assigned to existing asset",
+    "assetCreated": "Asset created from discovered device",
     "loadError": "Failed to load discovered devices"
   }
 }

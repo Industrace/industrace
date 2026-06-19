@@ -40,9 +40,152 @@
   "selectProvider": "Select a provider",
   "setupGuide": "Setup Guide",
   "setupGuideDescription": "Follow the step-by-step guide to configure Azure AD (Microsoft 365) for SSO authentication.",
-  "viewSetupGuide": "View Complete Guide",
+  "viewSetupGuide": "Open Setup Guide",
   "clientSecretPlaceholder": "Leave empty to keep the existing secret. Enter a new value only to change it.",
   "clientSecretHelp": "Leave empty to keep the existing secret. Enter a new value only to change it.",
+  "guide": {
+    "title": "Azure AD SSO Setup Guide",
+    "intro": "Configure Single Sign-On between Industrace and Azure AD (Microsoft 365 / Entra ID).",
+    "redirectUriLabel": "Redirect URI (backend callback)",
+    "prerequisites": {
+      "title": "Prerequisites",
+      "items": [
+        "Administrator access to Microsoft Azure Portal",
+        "Administrator access to Industrace",
+        "Active Microsoft 365 / Azure AD tenant"
+      ]
+    },
+    "step1": {
+      "title": "Step 1: Register the application in Azure AD",
+      "register": {
+        "title": "App registration",
+        "items": [
+          "Open Azure Portal and go to Microsoft Entra ID",
+          "Select App registrations → New registration",
+          "Name: Industrace SSO (or a name of your choice)",
+          "Supported account types: Accounts in this organizational directory only (recommended)",
+          "Redirect URI: Web platform with the callback URL shown below",
+          "Click Register"
+        ]
+      },
+      "noteInfo": {
+        "title": "Save these values",
+        "items": [
+          "Application (client) ID → Client ID in Industrace",
+          "Directory (tenant) ID or tenant name (e.g. contoso.onmicrosoft.com) → Tenant Domain"
+        ]
+      }
+    },
+    "step2": {
+      "title": "Step 2: Configure authentication and permissions",
+      "redirect": {
+        "title": "Redirect URIs",
+        "items": [
+          "Open Authentication and add the callback URL shown above",
+          "Under Implicit grant, enable ID tokens (required for OIDC)",
+          "Save the configuration"
+        ]
+      },
+      "permissions": {
+        "title": "API permissions",
+        "items": [
+          "Verify Microsoft Graph delegated permissions: openid, profile, email, User.Read",
+          "To import users, add User.Read.All (Application) — requires admin consent",
+          "Click Grant admin consent for the tenant"
+        ]
+      }
+    },
+    "step3": {
+      "title": "Step 3: Create a client secret",
+      "items": [
+        "Go to Certificates & secrets → New client secret",
+        "Add a description and choose an expiry (24 months recommended)",
+        "Copy the secret Value immediately — it is shown only once",
+        "Paste it into Client Secret in Industrace"
+      ]
+    },
+    "step4": {
+      "title": "Step 4: Configure Industrace",
+      "items": [
+        "Fill in the form on this page with the Azure AD values",
+        "Click Test Connection, then Save",
+        "Enable SSO when you are ready to test login"
+      ],
+      "fields": [
+        { "label": "Provider Type", "description": "Azure AD (EntraID)" },
+        { "label": "Client ID", "description": "Application (client) ID from Azure AD" },
+        { "label": "Client Secret", "description": "Secret value from Certificates & secrets" },
+        { "label": "Tenant Domain", "description": "Tenant ID, tenant name, or onmicrosoft.com domain" },
+        { "label": "Redirect URI", "description": "Must match exactly the callback URL in Azure AD" },
+        { "label": "Auto-Provisioning", "description": "Keep disabled (recommended): only existing Industrace users can sign in" },
+        { "label": "Domain Restriction", "description": "Optional: limit sign-in to a specific email domain" }
+      ]
+    },
+    "step5": {
+      "title": "Step 5: Import users (optional)",
+      "items": [
+        "Open the Import Users tab on this page",
+        "Search and select users from Azure AD",
+        "Choose a role and click Import Selected",
+        "Verify imported users under Users"
+      ]
+    },
+    "step6": {
+      "title": "Step 6: Test SSO login",
+      "items": [
+        "Log out and open the login page",
+        "Click Sign in with Microsoft",
+        "Complete authentication in Microsoft and confirm redirect back to Industrace",
+        "In Profile, verify auth_provider is azure_ad and external_id is set"
+      ]
+    },
+    "troubleshooting": {
+      "title": "Troubleshooting",
+      "cause": "Cause:",
+      "solution": "Solution:",
+      "issues": [
+        {
+          "title": "Invalid redirect URI",
+          "cause": "Redirect URI in Industrace does not match Azure AD.",
+          "solution": "Use the exact callback URL (protocol, domain, path). Remove extra spaces."
+        },
+        {
+          "title": "Invalid client secret",
+          "cause": "Secret expired or incorrect.",
+          "solution": "Create a new client secret in Azure AD and update Industrace."
+        },
+        {
+          "title": "User not found during login",
+          "cause": "User does not exist in Industrace and auto-provisioning is disabled.",
+          "solution": "Import the user manually or enable auto-provisioning (less secure)."
+        },
+        {
+          "title": "Domain restriction violation",
+          "cause": "User email domain does not match Domain Restriction.",
+          "solution": "Update Domain Restriction or remove it if not needed."
+        },
+        {
+          "title": "SSO button missing on login page",
+          "cause": "SSO is disabled or configuration was not saved.",
+          "solution": "Enable SSO, save configuration, and check backend logs."
+        },
+        {
+          "title": "Error listing/importing Azure AD users",
+          "cause": "Missing User.Read.All (Application) or admin consent.",
+          "solution": "Add the Application permission, grant admin consent, wait a few minutes, retry."
+        }
+      ]
+    },
+    "security": {
+      "title": "Security notes",
+      "items": [
+        "Never share the client secret",
+        "Use HTTPS in production for redirect URIs",
+        "Keep auto-provisioning disabled unless strictly required",
+        "Rotate secrets before they expire"
+      ]
+    }
+  },
   "success": {
     "title": "Login successful",
     "message": "You will be redirected to the dashboard...",

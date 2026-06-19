@@ -14,17 +14,42 @@
     "probe": "Sonda",
     "site": "Sito",
     "status": "Stato",
-    "match": "Match",
+    "match": "Confronto asset",
+    "lastSeen": "Ultima vista",
     "actions": "Azioni"
   },
+  "status": {
+    "discovered": "Scoperto",
+    "matched": "Matchato",
+    "imported": "Importato",
+    "assigned": "Assegnato",
+    "ignored": "Ignorato",
+    "conflict": "Conflitto"
+  },
+  "match": {
+    "mac": "Match MAC",
+    "ip": "Match IP",
+    "new": "Nuovo"
+  },
   "actions": {
-    "onboard": "Onboard come asset",
-    "assign": "Assegna ad asset",
+    "onboard": "Onboard rapido come nuovo asset",
+    "assign": "Assegna ad asset esistente",
+    "assignTooltip": "Associa asset già censito",
+    "onboardTooltip": "Onboard rapido come nuovo asset",
     "ignore": "Ignora"
+  },
+  "onboard": {
+    "title": "Onboarding asset",
+    "assetName": "Nome asset",
+    "tagOptional": "Tag (opzionale)",
+    "hint": "Verranno copiati automaticamente MAC/IP/protocolli dal dispositivo scoperto.",
+    "defaultName": "Scoperto {value}"
   },
   "messages": {
     "onboarded": "Dispositivo importato come asset",
     "updated": "Dispositivo aggiornato",
+    "assigned": "Dispositivo associato ad asset esistente",
+    "assetCreated": "Asset creato da dispositivo scoperto",
     "loadError": "Errore caricamento dispositivi"
   }
 }
