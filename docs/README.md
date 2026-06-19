@@ -96,4 +96,4 @@ Default demo login: `admin@example.com` / `Admin@123456!` — change on first lo
 
 ## Legacy paths
 
-Older filenames (`UPGRADE.md`, `installation.md`, `SSO_AZURE_AD_SETUP.md`, etc.) are **stub redirects** to the guides above.
+Older filenames (`UPGRADE.md`, `SSO_AZURE_AD_SETUP.md`, etc.) were removed or consolidated into the guides above.
