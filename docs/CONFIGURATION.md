@@ -1,0 +1,3 @@
+# Moved
+
+See [CONFIGURATION.md](CONFIGURATION.md).

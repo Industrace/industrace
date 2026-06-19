@@ -267,7 +267,10 @@ const importing = ref(false)
 const userFilter = ref('')
 
 const openSetupGuide = () => {
-  window.open('/docs/SSO_AZURE_AD_SETUP.md', '_blank')
+  window.open(
+    'https://github.com/industrace/industrace/blob/main/docs/ADMINISTRATION.md#sso-with-azure-ad',
+    '_blank'
+  )
 }
 
 // Provider SSO disponibili

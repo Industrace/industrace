@@ -28,10 +28,13 @@ import SetupWizard from './pages/SetupWizard.vue'
 import Profile from './pages/Profile.vue'
 import NetworkMap from './pages/NetworkMap.vue'
 import AssetReviews from './pages/AssetReviews.vue'
+import NetworkProbes from './pages/NetworkProbes.vue'
+import DiscoveredDevices from './pages/DiscoveredDevices.vue'
 import SSOSuccess from './pages/SSOSuccess.vue'
 import SSOError from './pages/SSOError.vue'
 import api from './api/api'
 import { useAuthStore } from './store/auth'
+import { useTenantFeatures } from './composables/useTenantFeatures'
 
 const routes = [
   { path: '/login', name: 'Login', component: Login },
@@ -43,10 +46,10 @@ const routes = [
   { path: '/assets-new/:id', name: 'AssetDetailNew', component: AssetDetailNew, meta: { requiresAuth: true } },
   { path: '/asset-reviews', name: 'AssetReviews', component: AssetReviews, meta: { requiresAuth: true } },
   { path: '/notifications', name: 'Notifications', component: () => import('./pages/Notifications.vue'), meta: { requiresAuth: true } },
-  { path: '/security-zones', name: 'SecurityZones', component: () => import('./pages/SecurityZones.vue'), meta: { requiresAuth: true } },
-  { path: '/security-zones/:id', name: 'SecurityZoneDetail', component: () => import('./pages/SecurityZoneDetail.vue'), meta: { requiresAuth: true } },
-  { path: '/conduits', name: 'Conduits', component: () => import('./pages/Conduits.vue'), meta: { requiresAuth: true } },
-  { path: '/compliance', name: 'Compliance', component: () => import('./pages/Compliance.vue'), meta: { requiresAuth: true } },
+  { path: '/security-zones', name: 'SecurityZones', component: () => import('./pages/SecurityZones.vue'), meta: { requiresAuth: true, requiresIec62443: true } },
+  { path: '/security-zones/:id', name: 'SecurityZoneDetail', component: () => import('./pages/SecurityZoneDetail.vue'), meta: { requiresAuth: true, requiresIec62443: true } },
+  { path: '/conduits', name: 'Conduits', component: () => import('./pages/Conduits.vue'), meta: { requiresAuth: true, requiresIec62443: true } },
+  { path: '/compliance', name: 'Compliance', component: () => import('./pages/Compliance.vue'), meta: { requiresAuth: true, requiresIec62443: true } },
   { path: '/sso-config', name: 'SSOConfig', component: () => import('./pages/SSOConfig.vue'), meta: { requiresAuth: true } },
   { path: '/sites', name: 'Sites', component: Sites, meta: { requiresAuth: true } },
   { path: '/sites/:id', name: 'SiteDetail', component: SiteDetail, meta: { requiresAuth: true } },
@@ -74,6 +77,8 @@ const routes = [
   { path: '/vulnerabilities/:id', name: 'VulnerabilityDetail', component: () => import('./pages/VulnerabilityDetail.vue'), meta: { requiresAuth: true } },
   { path: '/profile', name: 'Profile', component: Profile, meta: { requiresAuth: true } },
   { path: '/network-map', name: 'NetworkMap', component: NetworkMap, meta: { requiresAuth: true } },
+  { path: '/network-probes', name: 'NetworkProbes', component: NetworkProbes, meta: { requiresAuth: true } },
+  { path: '/discovered-devices', name: 'DiscoveredDevices', component: DiscoveredDevices, meta: { requiresAuth: true } },
   { path: '/logout', name: 'Logout', beforeEnter: (to, from, next) => {
     const store = useAuthStore()
     store.logout()
@@ -94,8 +99,16 @@ router.beforeEach(async (to, from, next) => {
   }
   
   if (to.meta.requiresAuth) {
+    const auth = useAuthStore()
     try {
-      await api.getCurrentUser()
+      await auth.fetchUser(true)
+      if (to.meta.requiresIec62443) {
+        const { isIec62443Enabled } = useTenantFeatures()
+        if (!isIec62443Enabled.value) {
+          next('/')
+          return
+        }
+      }
       next()
     } catch (error) {
       // Clear any stale auth state

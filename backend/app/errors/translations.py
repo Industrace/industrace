@@ -16,6 +16,8 @@ messages = {
         "FILE_TOO_LARGE": "File too large. Maximum size is 50MB.",
         "VALIDATION_ERROR": "Invalid input data.",
         "INTERNAL_ERROR": "Internal server error.",
+        "ACCOUNT_LOCKED": "Account locked due to too many failed login attempts. Try again later.",
+        "FEATURE_DISABLED": "This feature is not enabled for your organization.",
     },
     "it": {
         "INVALID_CREDENTIALS": "Email o password errati.",
@@ -32,5 +34,7 @@ messages = {
         "FILE_TOO_LARGE": "File troppo grande. Dimensione massima 50MB.",
         "VALIDATION_ERROR": "Dati di input non validi.",
         "INTERNAL_ERROR": "Errore interno del server.",
+        "ACCOUNT_LOCKED": "Account bloccato per troppi tentativi di accesso. Riprova più tardi.",
+        "FEATURE_DISABLED": "Questa funzionalità non è abilitata per la tua organizzazione.",
     },
 }

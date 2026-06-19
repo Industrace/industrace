@@ -39,12 +39,14 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { usePermissions } from '@/composables/usePermissions'
+import { useTenantFeatures } from '@/composables/useTenantFeatures'
 import { useAuthStore } from '@/store/auth'
 
 const { t, locale } = useI18n()
 const router = useRouter()
 const collapsed = ref(false)
 const { canRead, userPermissions, accessibleSections, refreshUserPermissions } = usePermissions()
+const { isIec62443Enabled } = useTenantFeatures()
 const authStore = useAuthStore()
 
 const menuSections = computed(() => {
@@ -67,6 +69,20 @@ const menuSections = computed(() => {
   if (canRead('manufacturers')) inventoryItems.push({ label: t('menu.navigation.manufacturers'), icon: 'pi-cog', to: '/manufacturers' })
   if (canRead('contacts')) inventoryItems.push({ label: t('menu.navigation.contacts'), icon: 'pi-id-card', to: '/contacts' })
   if (canRead('assets')) inventoryItems.push({ label: t('menu.navigation.assets'), icon: 'pi-server', to: '/assets' })
+
+  // Network Probes
+  if (canRead('network_probes')) {
+    inventoryItems.push({
+      label: t('menu.navigation.networkProbes'),
+      icon: 'pi pi-sitemap',
+      to: '/network-probes'
+    })
+    inventoryItems.push({
+      label: t('menu.navigation.discoveredDevices'),
+      icon: 'pi pi-search',
+      to: '/discovered-devices'
+    })
+  }
   
   if (inventoryItems.length > 0) {
     sections.push({
@@ -75,11 +91,13 @@ const menuSections = computed(() => {
     })
   }
 
-  // Sezione ISA/IEC 62443
+  // Sezione ISA/IEC 62443 (opzionale per tenant)
   const isa62443Items = []
-  if (canRead('security_zones')) isa62443Items.push({ label: t('menu.navigation.securityZones'), icon: 'pi-shield', to: '/security-zones' })
-  if (canRead('compliance')) isa62443Items.push({ label: t('menu.navigation.conduits'), icon: 'pi-link', to: '/conduits' })
-  if (canRead('compliance')) isa62443Items.push({ label: t('menu.navigation.compliance'), icon: 'pi-check-circle', to: '/compliance' })
+  if (isIec62443Enabled.value) {
+    if (canRead('security_zones')) isa62443Items.push({ label: t('menu.navigation.securityZones'), icon: 'pi-shield', to: '/security-zones' })
+    if (canRead('compliance')) isa62443Items.push({ label: t('menu.navigation.conduits'), icon: 'pi-link', to: '/conduits' })
+    if (canRead('compliance')) isa62443Items.push({ label: t('menu.navigation.compliance'), icon: 'pi-check-circle', to: '/compliance' })
+  }
   
   if (isa62443Items.length > 0) {
     sections.push({

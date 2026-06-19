@@ -83,6 +83,7 @@
           click-action="/asset-reviews?status=overdue"
         />
         <DashboardCard
+          v-if="isIec62443Enabled"
           :value="(complianceSummary.non_compliant_zones || 0) + (complianceSummary.partial_compliant_zones || 0)"
           :label="t('dashboard.attention.complianceGaps')"
           :subtitle="t('dashboard.attention.complianceGapsSubtitle')"
@@ -99,6 +100,7 @@
           click-action="/assets"
         />
         <DashboardCard
+          v-if="isIec62443Enabled"
           :value="evidenceMissing || 0"
           :label="t('dashboard.attention.evidenceMissing')"
           :subtitle="t('dashboard.attention.evidenceMissingSubtitle')"
@@ -139,7 +141,7 @@
     </div>
 
     <!-- 4. POSTURE - "Sono difendibile?" -->
-    <div class="dashboard-section">
+    <div v-if="isIec62443Enabled" class="dashboard-section">
       <SectionHeader
         :title="t('dashboard.posture.title')"
         :description="t('dashboard.posture.description')"
@@ -220,6 +222,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
+import { useTenantFeatures } from '../composables/useTenantFeatures'
 import Button from 'primevue/button'
 import DashboardCard from '../components/dashboard/DashboardCard.vue'
 import SectionHeader from '../components/dashboard/SectionHeader.vue'
@@ -229,6 +232,7 @@ import api from '../api/api'
 const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
+const { isIec62443Enabled } = useTenantFeatures()
 
 // Reactive data
 const recalculatingRiskScores = ref(false)
@@ -310,6 +314,13 @@ const recalculateRiskScores = async () => {
 
 const loadDashboardData = async () => {
   try {
+    const compliancePromise = isIec62443Enabled.value
+      ? api.getComplianceSummary().catch(() => ({ data: complianceSummary.value }))
+      : Promise.resolve({ data: complianceSummary.value })
+    const evidencePromise = isIec62443Enabled.value
+      ? api.getEvidenceMissing().catch(() => ({ data: { missing_evidence_count: 0 } }))
+      : Promise.resolve({ data: { missing_evidence_count: 0 } })
+
     // Load all data in parallel
     const [
       exposureRes,
@@ -322,9 +333,9 @@ const loadDashboardData = async () => {
       api.getExposureSummary().catch(() => ({ data: exposureData.value })),
       api.getReviewsSummary().catch(() => ({ data: { overdue_count: 0, due_count: 0 } })),
       api.getDependenciesSummary().catch(() => ({ data: { missing_dependencies_count: 0, critical_missing_count: 0 } })),
-      api.getComplianceSummary().catch(() => ({ data: complianceSummary.value })),
+      compliancePromise,
       api.getRecentChanges(10).catch(() => ({ data: [] })),
-      api.getEvidenceMissing().catch(() => ({ data: { missing_evidence_count: 0 } }))
+      evidencePromise
     ])
     
     exposureData.value = exposureRes.data

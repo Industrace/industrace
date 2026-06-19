@@ -2,6 +2,9 @@
 
 **Industrace** is an open-source industrial asset management system. This document will guide you through installation and initial setup in **less than 5 minutes**.
 
+> **From Industrace 1.x?** v1 is frozen; install v2 as a new stack and migrate data manually — [MIGRATION.md](MIGRATION.md).  
+> **Full install options** (cloud, dev, custom certs): [INSTALLATION.md](INSTALLATION.md).
+
 ## Prerequisites
 
 - Docker and Docker Compose installed

@@ -6,7 +6,7 @@ Valutazione di un Security Requirement per una Zone o Conduit.
 Sostituisce SecurityRequirementCompliance con un modello più strutturato.
 """
 import uuid
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -27,9 +27,12 @@ class SRAssessment(Base):
     sr_id = Column(UUID(as_uuid=True), ForeignKey("security_requirements.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Object Reference (one of these must be set)
-    object_type = Column(String(20), nullable=False)  # 'zone', 'conduit'
+    object_type = Column(String(20), nullable=False)  # 'zone', 'conduit', 'asset'
     object_id = Column(UUID(as_uuid=True), nullable=False, index=True)  # zone_id or conduit_id
     
+    # RE level 1–4 when assessing per Requirement Enhancement; NULL = legacy SR-level rollup
+    enhancement_level = Column(Integer, nullable=True)
+
     # Assessment Status
     status = Column(String(30), nullable=False, default="insufficient_info")  # 'compliant', 'non_compliant', 'partial', 'not_applicable', 'insufficient_info'
     

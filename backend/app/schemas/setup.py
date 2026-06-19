@@ -21,6 +21,7 @@ class SetupRequest(BaseModel):
     admin_email: EmailStr
     admin_password: str
     language: str = "en"
+    iec62443_enabled: bool = True
     
     # Validators
     _validate_tenant_slug = validator('tenant_slug', allow_reuse=True)(validate_tenant_slug)

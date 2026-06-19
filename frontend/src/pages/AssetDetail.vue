@@ -138,7 +138,7 @@
         </template>
         <AssetDetailVulnerabilitiesTab :assetId="asset.id" :canWrite="canWrite('vulnerabilities')" @updated="fetchAsset" />
       </TabPanel>
-      <TabPanel>
+      <TabPanel v-if="isIec62443Enabled">
         <template #header>
           <span :title="t('assets.tabs.iec62443Tooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-shield"></i> {{ t('assets.tabs.iec62443') }}
@@ -184,6 +184,7 @@ import AssetCustomFields from '../components/features/assets/components/AssetCus
 import PrintDialog from '../components/print/PrintDialog.vue'
 import AssetForm from '../components/forms/AssetForm.vue'
 import { usePermissions } from '../composables/usePermissions'
+import { useTenantFeatures } from '../composables/useTenantFeatures'
 import { useDateFormatter } from '../composables/useDateFormatter'
 import api from '../api/api'
 import TabView from 'primevue/tabview'
@@ -216,6 +217,7 @@ const toast = useToast()
 const confirm = useConfirm()
 const { t } = useI18n()
 const { canWrite, canDelete } = usePermissions()
+const { isIec62443Enabled } = useTenantFeatures()
 
 const { formatDate } = useDateFormatter()
 // Rimuovo tutte le funzioni, ref e computed relativi al floorplan
@@ -324,7 +326,9 @@ async function initializeAsset() {
     await fetchLocations()
     await fetchAreas()
     await fetchSites()
-    await fetchSecurityZones()
+    if (isIec62443Enabled.value) {
+      await fetchSecurityZones()
+    }
   } finally {
     loading.value = false
   }

@@ -9,6 +9,13 @@
             "password": "Password",
             "fromEmail": "Email mittente",
             "useTls": "Usa TLS"
+        },
+        "syslog": {
+            "host": "Server syslog",
+            "port": "Porta",
+            "protocol": "Protocollo",
+            "facility": "Facility (0-23)",
+            "enabled": "Abilita inoltro"
         }
     },
     "strings": {
@@ -87,6 +94,23 @@
         "vulnerabilityFeeds": {
             "title": "Feed Vulnerabilità",
             "description": "Configura i feed di vulnerabilità (remoti e locali) per il matching automatico"
+        },
+        "externalLog": {
+            "title": "Log Esterno (Syslog)",
+            "description": "Inoltra gli eventi dell'audit log a un server syslog esterno",
+            "testConnection": "Test connessione",
+            "saveSettings": "Salva impostazioni",
+            "info": "Tutta l'attività registrata nell'audit log viene inoltre inviata al server syslog configurato."
+        },
+        "features": {
+            "title": "Moduli opzionali",
+            "description": "Abilita o disabilita i moduli del prodotto per questo tenant",
+            "help": "I moduli disabilitati spariscono dal menu e l'interfaccia si semplifica. I dati restano nel database.",
+            "iec62443": "Conformità ISA/IEC 62443",
+            "iec62443Hint": "Zone di sicurezza, condotti, valutazioni SR, evidenze e widget correlati in dashboard.",
+            "save": "Salva moduli",
+            "enabled": "Abilitato",
+            "disabled": "Disabilitato"
         }
     },
     "messages": {
@@ -96,6 +120,12 @@
         "templatesAlreadyExist": "Template già esistenti per questo tenant",
         "smtpSaveError": "Errore nel salvataggio della configurazione SMTP",
         "smtpTestError": "Errore nel test della connessione SMTP",
-        "templatesInitError": "Errore nell'inizializzazione dei template"
+        "syslogSaved": "Configurazione syslog salvata",
+        "syslogTestSuccess": "Messaggio di test inviato al server syslog",
+        "syslogSaveError": "Errore nel salvataggio della configurazione syslog",
+        "syslogTestError": "Errore nell'invio del messaggio di test al server syslog",
+        "templatesInitError": "Errore nell'inizializzazione dei template",
+        "featuresSaved": "Impostazioni moduli salvate. Ricarica la pagina se il menu non si aggiorna.",
+        "featuresSaveError": "Errore nel salvataggio delle impostazioni moduli"
     }
 }

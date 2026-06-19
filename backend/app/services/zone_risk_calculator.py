@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
 from app.models import SecurityZone, Asset, Conduit
+from app.models.asset_zone_membership import AssetZoneMembership
 from app.services.isa62443_compliance_engine import ISA62443ComplianceEngine
 import logging
 
@@ -33,15 +34,30 @@ class ZoneRiskCalculator:
         sl_a = zone.security_level_achieved or ISA62443ComplianceEngine.calculate_zone_security_level_achieved(db, zone)
         sl_gap = (sl_t - sl_a) if (sl_t and sl_a) else None
         
-        # Get assets in zone
+        # Assets via memberships (preferred) + legacy security_zone_id
         assets = (
             db.query(Asset)
+            .join(
+                AssetZoneMembership,
+                Asset.id == AssetZoneMembership.asset_id,
+            )
             .filter(
-                Asset.security_zone_id == zone.id,
-                Asset.deleted_at.is_(None)
+                AssetZoneMembership.security_zone_id == zone.id,
+                AssetZoneMembership.tenant_id == zone.tenant_id,
+                AssetZoneMembership.deleted_at.is_(None),
+                Asset.deleted_at.is_(None),
             )
             .all()
         )
+        if not assets:
+            assets = (
+                db.query(Asset)
+                .filter(
+                    Asset.security_zone_id == zone.id,
+                    Asset.deleted_at.is_(None),
+                )
+                .all()
+            )
         
         # Calculate average asset risk
         asset_risks = [asset.risk_score for asset in assets if asset.risk_score]
@@ -183,15 +199,29 @@ class ZoneRiskCalculator:
                     'severity': 'medium'
                 })
         
-        # Check for assets in zone connected to assets in lower SL zones
         assets_in_zone = (
             db.query(Asset)
+            .join(
+                AssetZoneMembership,
+                Asset.id == AssetZoneMembership.asset_id,
+            )
             .filter(
-                Asset.security_zone_id == zone.id,
-                Asset.deleted_at.is_(None)
+                AssetZoneMembership.security_zone_id == zone.id,
+                AssetZoneMembership.tenant_id == zone.tenant_id,
+                AssetZoneMembership.deleted_at.is_(None),
+                Asset.deleted_at.is_(None),
             )
             .all()
         )
+        if not assets_in_zone:
+            assets_in_zone = (
+                db.query(Asset)
+                .filter(
+                    Asset.security_zone_id == zone.id,
+                    Asset.deleted_at.is_(None),
+                )
+                .all()
+            )
         
         for asset in assets_in_zone:
             # Get connections (simplified - would need to check actual connections)

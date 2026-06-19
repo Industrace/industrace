@@ -4,7 +4,7 @@
 
 This roadmap outlines the development path for Industrace, the Configuration Management Database for Industrial Control Systems. The focus is on stability, documentation, and community growth.
 
-## Delivered in v2.0 (February 2026)
+## Delivered in v2.0 (June 2026)
 
 The following major features were delivered in version 2.0:
 
@@ -13,8 +13,8 @@ The following major features were delivered in version 2.0:
 - **Asset Dependencies and Review**: Dependency graph, risk propagation, asset review and maintenance scheduling
 - **Notification System**: Templates, queue, logs, user preferences, email integration
 - **Single Sign-On (SSO)**: Azure AD / Microsoft Entra ID integration
-- **Extended RBAC**: New permission sections for all new modules; see [RBAC_PERMISSIONS.md](RBAC_PERMISSIONS.md)
-- **Password Policy**: Stricter requirements (12+ chars, complexity); see [UPGRADE_PASSWORD_POLICY.md](UPGRADE_PASSWORD_POLICY.md)
+- **Extended RBAC**: New permission sections for all new modules; see [ADMINISTRATION.md](ADMINISTRATION.md#role-based-access-control-rbac)
+- **Password Policy**: Stricter requirements (12+ chars, complexity); see [ADMINISTRATION.md](ADMINISTRATION.md#password-policy)
 - **Asset Detail Redesign**: New layout with tabs for Security, Dependencies, Vulnerabilities, IEC 62443, Review
 
 See [Release Notes](release-notes.md) and [CHANGELOG](../CHANGELOG.md) for full details.
@@ -91,4 +91,4 @@ This roadmap prioritizes stability and community growth over complex new feature
 **Website**: https://besafe.it/industrace  
 **Contact**: industrace@besafe.it
 
-*Last Updated: February 2026* 
+*Last Updated: June 2026* 

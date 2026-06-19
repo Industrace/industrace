@@ -366,13 +366,9 @@ async def sso_callback(
         
         logger.info(f"SSO login successful for user {user.id} ({user.email})")
         
-        # Redirect to frontend with secure cookie AND token in query (for localStorage)
-        # The cookie is the primary method (secure, httponly), but we also pass it as query
-        # parameter so the frontend can save it to localStorage for the API interceptor
         frontend_url = settings.SSO_REDIRECT_URI.replace("/auth/sso/callback", "")
-        redirect_url = f"{frontend_url}/auth/sso/success?token={sso_token}"
+        redirect_url = f"{frontend_url}/auth/sso/success"
         
-        # Create response with secure cookie (same as regular login)
         response = RedirectResponse(url=redirect_url)
         response.set_cookie(
             key="access_token_cookie",

@@ -33,7 +33,18 @@
       <Column field="conduit_type" :header="t('isa62443.conduits.conduitType')" sortable />
       <Column :header="t('isa62443.securityZones.securityLevel')">
         <template #body="{ data }">
-          SL-{{ data.security_level_target || '-' }}
+          <div class="flex flex-column gap-1">
+            <span>SL-T: {{ data.security_level_target || '-' }}</span>
+            <span v-if="data.security_level_achieved">
+              SL-A: {{ data.security_level_achieved }}
+              <Tag
+                v-if="data.sl_achieved_source === 'preliminary'"
+                :value="t('isa62443.conduits.slAchievedPreliminary')"
+                severity="warning"
+                class="ml-1"
+              />
+            </span>
+          </div>
         </template>
       </Column>
       <Column :header="t('common.strings.actions')">
@@ -83,6 +94,7 @@ import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
+import Tag from 'primevue/tag'
 import ConduitForm from '../components/features/isa62443/ConduitForm.vue'
 import api from '@/api/api'
 

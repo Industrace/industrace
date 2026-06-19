@@ -1,6 +1,7 @@
 # backend/services/oui_lookup.py
 
 import re
+from functools import lru_cache
 import requests
 
 OUI_URL = "https://standards-oui.ieee.org/oui.txt"
@@ -30,6 +31,30 @@ def parse_oui(raw_text):
 def load_oui_map():
     raw = download_oui()
     return parse_oui(raw)
+
+
+@lru_cache(maxsize=1)
+def get_cached_oui_map():
+    """
+    Carica la OUI map in cache process-wide.
+    Se il download fallisce ritorna mappa vuota, evitando crash in ingest.
+    """
+    try:
+        return load_oui_map()
+    except Exception:
+        return {}
+
+
+def lookup_vendor_by_mac(mac_address: str, default: str = "Unknown Vendor") -> str:
+    if not mac_address:
+        return default
+
+    normalized = re.sub(r"[^0-9A-Fa-f]", "", mac_address).upper()
+    if len(normalized) < 6:
+        return default
+
+    oui_prefix = normalized[:6]
+    return get_cached_oui_map().get(oui_prefix, default)
 
 
 # Usage example:

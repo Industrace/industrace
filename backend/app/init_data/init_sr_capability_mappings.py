@@ -47,6 +47,9 @@ def init_sr_capability_mappings(db: Session):
         ('SR 2.8', [('command_authorization', 'primary')]),
         ('SR 2.9', [('privilege_separation', 'primary')]),
         ('SR 2.10', [('role_based_access_control', 'primary')]),
+        ('SR 2.11', [('session_locking_timeout', 'primary')]),
+        ('SR 2.12', [('role_based_access_control', 'primary')]),
+        ('SR 2.13', [('least_privilege_enforcement', 'primary')]),
         
         # FR 3 - System Integrity
         ('SR 3.1', [('configuration_integrity_monitoring', 'primary')]),

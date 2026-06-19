@@ -5,6 +5,7 @@ import uuid
 from typing import Optional
 from .role import RoleRead
 from .tenant import Tenant
+from .tenant_features import TenantFeaturesRead
 
 
 class UserCreate(BaseModel):
@@ -37,6 +38,7 @@ class UserRead(BaseModel):
     created_at: datetime
     last_login: Optional[datetime] = None
     password_change_required: Optional[bool] = False
+    features: Optional[TenantFeaturesRead] = None
 
     class Config:
         from_attributes = True

@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models import User, Asset, AssetStatus
 from app.services.audit_decorator import audit_log_action
 from app.services.auth import get_current_user
+from app.services.feature_guard import require_iec62443_enabled
 from app.services.audit_log import create_audit_log
 
 def clean_float_values(data):
@@ -319,11 +320,12 @@ def get_recent_changes(
 def get_compliance_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _iec62443=Depends(require_iec62443_enabled),
 ):
     """Get summary statistics for ISA/IEC 62443 compliance"""
     from app.models import SecurityZone
-    from app.models.sr_assessment import SRAssessment
-    from sqlalchemy import func, and_, case
+    from app.services.isa62443_compliance_engine import ISA62443ComplianceEngine
+    from sqlalchemy import and_
     
     # Total zones (excluding deleted)
     total_zones = (
@@ -373,41 +375,24 @@ def get_compliance_summary(
     total_gap = 0.0
     max_gap = 0
     
-    # For each zone, check its SRAssessment records
     for zone in zones:
-        # Get all SRAssessment records for this zone
-        assessments = (
-            db.query(SRAssessment)
-            .filter(
-                and_(
-                    SRAssessment.tenant_id == current_user.tenant_id,
-                    SRAssessment.object_type == "zone",
-                    SRAssessment.object_id == zone.id
-                )
+        compliance_status = zone.compliance_status
+        if not compliance_status or compliance_status == "not_assessed":
+            compliance_status = ISA62443ComplianceEngine.calculate_zone_compliance_status(
+                db, zone
             )
-            .all()
-        )
-        
-        if not assessments:
-            # No assessments = not assessed
+
+        if compliance_status == "not_assessed":
             continue
-        
+
         assessed_zones.add(zone.id)
-        
-        # Check if zone has any non_compliant records
-        has_non_compliant = any(r.status == "non_compliant" for r in assessments)
-        has_partial = any(r.status == "partial" for r in assessments)
-        all_compliant = all(r.status == "compliant" for r in assessments)
-        
-        if has_non_compliant:
+        if compliance_status == "non_compliant":
             non_compliant_zones.add(zone.id)
-        elif has_partial and not has_non_compliant:
+        elif compliance_status == "partial":
             partial_zones.add(zone.id)
-        elif all_compliant:
+        elif compliance_status == "compliant":
             compliant_zones.add(zone.id)
-        
-        # Calculate SL gap (SL-T - SL-A)
-        # Use security_level_target and security_level_achieved from SecurityZone
+
         if zone.security_level_target is not None and zone.security_level_achieved is not None:
             gap = zone.security_level_target - zone.security_level_achieved
             if gap > 0:
@@ -439,6 +424,7 @@ def get_compliance_summary(
 def get_evidence_missing(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _iec62443=Depends(require_iec62443_enabled),
 ):
     """Get count of missing evidence (placeholder for future implementation)"""
     # Placeholder: returns 0 for now

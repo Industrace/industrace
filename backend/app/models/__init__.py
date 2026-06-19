@@ -15,6 +15,7 @@ from .audit_log import AuditLog
 from .asset_status import AssetStatus
 from .contact import Contact
 from .tenant_smtp_config import TenantSMTPConfig
+from .tenant_syslog_config import TenantSyslogConfig
 from .print_template import PrintTemplate
 from .print_history import PrintHistory
 from .api_key import ApiKey
@@ -35,6 +36,7 @@ from .conduit_asset import ConduitAsset
 
 # ISA/IEC 62443 models
 from .security_requirement import SecurityRequirement
+from .requirement_enhancement import RequirementEnhancement
 from .security_zone import SecurityZone
 from .conduit import Conduit
 from .security_requirement_compliance import SecurityRequirementCompliance
@@ -49,6 +51,10 @@ from .vulnerability import Vulnerability, AssetVulnerability, VulnerabilityFeedS
 
 # Enterprise Authentication
 from .tenant_sso_config import TenantSSOConfig
+
+# Network Probes (devono essere importati prima di Asset se referenziano Asset via relationship string)
+from .network_probe import NetworkProbe, ProbeHeartbeat, ProbeDataTransmission
+from .discovered_device import DiscoveredDevice, DeviceDiscoveryStatus
 
 # Questi modelli dipendono dagli altri (devono venire dopo)
 from .supplier import Supplier, SupplierDocument

@@ -10,6 +10,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Future features and improvements
 
+## [2.1.0] - 2026-06-17
+
+### Added
+
+#### Network Probes
+- **Network probe system**: models, API, service, RBAC permission `network_probes`
+- **Discovered devices**: listing with asset matching, onboard as asset, status management
+- **Probe client** (`probe/network_probe_client.py`): Scapy sniffing, heartbeat, data transmission, remote config sync
+- **Hardening**: API key via `X-API-Key` header, rate limiting, MAC dedup, stale probe detection, telemetry retention
+- **UI**: NetworkProbes and DiscoveredDevices pages with i18n (en/it)
+- **Background job**: hourly probe maintenance (stale status + retention purge)
+
+#### Syslog external forwarding
+- Tenant syslog configuration (`external_log` RBAC), audit log forwarding via BSD syslog
+
+#### IEC 62443 enhancements
+- Requirement Enhancement (RE 1–4) texts for all 52 SR; RE-level assessment and audit export CSV/JSON
+
+### Changed
+- **IEC 62443 UI**: removed legacy `assessCompliance` API calls; zone assessments use `POST /compliance/zone/{id}/sr/{sr_id}/assessment`
+- **Dashboard compliance summary**: aligned with `ISA62443ComplianceEngine` SL-A logic
+- **SSO**: login success uses httponly cookie only (no JWT in query string); frontend bootstraps session via `/refresh`
+- **`/refresh` endpoint**: returns `access_token` in JSON body for API interceptor bootstrap
+- **Production config**: `ENCRYPTION_KEY` required when `ENVIRONMENT=production`
+
+### Fixed
+- Probe client stops after persistent 401 (de-authorize)
+- Discovered device matching performance (hash map instead of nested loops)
+- SQLite test compatibility for JSONB probe/discovered device columns
+
+### Tests
+- Re-enabled backend pytest in CI and `make test` (40 tests: IEC 62443, network probe, SSO encryption, log sanitizer)
+
 ## [2.0.0] - 2026-02-12
 
 ### Added
@@ -90,8 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Documentation
 - `docs/ISA62443_DESIGN.md`, `docs/ISA_IEC_62443_IMPLEMENTATION_RECAP.md`
-- `docs/IMPLEMENTATION_STATUS.md`, `docs/BACKEND_DATABASE_ANALYSIS.md`
-- `docs/UPGRADE_v1_TO_v2.md`, extended `docs/UPGRADE.md`, `docs/UPGRADE_PASSWORD_POLICY.md`
+- Consolidated docs: `docs/MIGRATION.md`, `docs/ADMINISTRATION.md`, `docs/API.md`, `docs/IEC62443.md`
 - `UPGRADE_NOTES_v1.1.0.md` (upgrade and password policy notes)
 - `scripts/check-secrets.sh` for secret verification
 
@@ -126,7 +158,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical
 - Backend: New routers and services for compliance, vulnerabilities, zones, conduits, notifications, SSO, evidence, dashboards, asset capabilities/reviews/dependencies
 - Frontend: New pages and tabs for Security Zones, Conduits, Compliance, Vulnerabilities, Notifications, SSO; redesigned Asset Detail
-- Database: Full set of Alembic migrations for 2.0; see `docs/UPGRADE_v1_TO_v2.md` for upgrade from v1.x
+- Database: Full set of Alembic migrations for 2.0; see `docs/MIGRATION.md` for moving from v1.x
 
 ## [1.1.0] - 2025-12-04
 

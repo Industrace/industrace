@@ -9,8 +9,8 @@
       <AssetDetailVulnerabilitiesTab :assetId="assetId" :canWrite="canWrite" @updated="$emit('updated')" />
     </div>
 
-    <!-- Conformità IEC 62443 (collassabile) -->
-    <Accordion class="mt-4">
+    <!-- Conformità IEC 62443 (collassabile, solo se modulo abilitato) -->
+    <Accordion v-if="isIec62443Enabled" class="mt-4">
       <AccordionTab :header="t('assets.compliance.iec62443')">
         <div class="compliance-placeholder p-4 text-center text-600">
           <i class="pi pi-shield" style="font-size: 2rem; color: var(--text-color-secondary);"></i>
@@ -24,6 +24,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useTenantFeatures } from '@/composables/useTenantFeatures'
 import Accordion from 'primevue/accordion'
 import AccordionTab from 'primevue/accordiontab'
 import AssetDetailVulnerabilitiesTab from '../tabs/AssetDetailVulnerabilitiesTab.vue'
@@ -37,6 +38,7 @@ const props = defineProps({
 const emit = defineEmits(['updated'])
 
 const { t } = useI18n()
+const { isIec62443Enabled } = useTenantFeatures()
 
 const riskTabRef = ref(null)
 </script>

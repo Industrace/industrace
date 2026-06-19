@@ -1,8 +1,27 @@
-# Configuration Guide
+# Configuration
 
-This guide explains how to configure Industrace for different environments and use cases.
+This guide explains how to configure Industrace 2.x for different environments and use cases. For installation, see [INSTALLATION.md](INSTALLATION.md).
 
-## Environment Configuration
+## Optional modules (per tenant)
+
+Some capabilities can be enabled or disabled per tenant via **Setup → Optional modules** (or during the setup wizard).
+
+### ISA/IEC 62443 (`iec62443`)
+
+When **disabled**, the UI hides compliance menus (zones, conduits, compliance dashboard, IEC 62443 asset tab) and related API routes return `403` with `FEATURE_DISABLED`. Core CMDB, assets, and risk scoring continue to work (zone-based risk factors are skipped when disabled).
+
+| Where to configure | Notes |
+|--------------------|-------|
+| Setup wizard | Checkbox **ISA/IEC 62443** (default: off for new installs) |
+| Setup → Optional modules | Toggle after initial setup (admin) |
+
+Stored in `tenant.settings.features.iec62443` (boolean). Existing tenants without the key default to **enabled** for backward compatibility.
+
+See [IEC62443.md](IEC62443.md) for scope and limits when the module is enabled.
+
+---
+
+## Environment configuration
 
 ### Deployment Types
 

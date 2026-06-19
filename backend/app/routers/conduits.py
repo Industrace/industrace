@@ -15,8 +15,13 @@ from app.services.audit_decorator import audit_log_action
 from app.services.isa62443_compliance_engine import ISA62443ComplianceEngine
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
+from app.services.feature_guard import require_iec62443_enabled
 
-router = APIRouter(prefix="/conduits", tags=["Conduits"])
+router = APIRouter(
+    prefix="/conduits",
+    tags=["Conduits"],
+    dependencies=[Depends(require_iec62443_enabled)],
+)
 
 
 class ConduitBase(BaseModel):
@@ -63,6 +68,7 @@ class ConduitResponse(ConduitBase):
     id: uuid.UUID
     tenant_id: uuid.UUID
     security_level_achieved: Optional[int] = None
+    sl_achieved_source: Optional[str] = None  # assessment | preliminary | none
     compliance_status: str
     last_assessment_date: Optional[datetime] = None
     created_at: datetime
@@ -72,6 +78,17 @@ class ConduitResponse(ConduitBase):
     
     class Config:
         from_attributes = True
+
+
+def _conduit_response(db: Session, conduit: Conduit) -> ConduitResponse:
+    meta = ISA62443ComplianceEngine.get_conduit_sl_metadata(db, conduit)
+    response = ConduitResponse.from_orm(conduit)
+    response.sl_achieved_source = meta["sl_achieved_source"]
+    if conduit.from_zone:
+        response.from_zone_name = conduit.from_zone.name
+    if conduit.to_zone:
+        response.to_zone_name = conduit.to_zone.name
+    return response
 
 
 @router.get("", response_model=List[ConduitResponse])
@@ -99,17 +116,7 @@ def list_conduits(
     
     conduits = query.order_by(Conduit.name).all()
     
-    # Add zone names
-    result = []
-    for conduit in conduits:
-        response = ConduitResponse.from_orm(conduit)
-        if conduit.from_zone:
-            response.from_zone_name = conduit.from_zone.name
-        if conduit.to_zone:
-            response.to_zone_name = conduit.to_zone.name
-        result.append(response)
-    
-    return result
+    return [_conduit_response(db, c) for c in conduits]
 
 
 @router.get("/{conduit_id}", response_model=ConduitResponse)
@@ -132,13 +139,7 @@ def get_conduit(
     if not conduit:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
-    response = ConduitResponse.from_orm(conduit)
-    if conduit.from_zone:
-        response.from_zone_name = conduit.from_zone.name
-    if conduit.to_zone:
-        response.to_zone_name = conduit.to_zone.name
-    
-    return response
+    return _conduit_response(db, conduit)
 
 
 @router.post("", response_model=ConduitResponse, status_code=201)
@@ -191,11 +192,7 @@ def create_conduit(
     db.commit()
     db.refresh(conduit)
     
-    response = ConduitResponse.from_orm(conduit)
-    response.from_zone_name = from_zone.name
-    response.to_zone_name = to_zone.name
-    
-    return response
+    return _conduit_response(db, conduit)
 
 
 @router.put("/{conduit_id}", response_model=ConduitResponse)
@@ -228,13 +225,7 @@ def update_conduit(
     db.commit()
     db.refresh(conduit)
     
-    response = ConduitResponse.from_orm(conduit)
-    if conduit.from_zone:
-        response.from_zone_name = conduit.from_zone.name
-    if conduit.to_zone:
-        response.to_zone_name = conduit.to_zone.name
-    
-    return response
+    return _conduit_response(db, conduit)
 
 
 @router.delete("/{conduit_id}", status_code=204)
@@ -284,18 +275,6 @@ def calculate_conduit_security_level(
     if not conduit:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
-    sl_a = ISA62443ComplianceEngine.calculate_conduit_security_level_achieved(db, conduit)
-    conduit.security_level_achieved = sl_a
-    conduit.last_assessment_date = datetime.utcnow()
-    
-    db.commit()
-    db.refresh(conduit)
-    
-    response = ConduitResponse.from_orm(conduit)
-    if conduit.from_zone:
-        response.from_zone_name = conduit.from_zone.name
-    if conduit.to_zone:
-        response.to_zone_name = conduit.to_zone.name
-    
-    return response
+    updated = ISA62443ComplianceEngine.update_conduit_iec62443_levels(db, str(conduit_id))
+    return _conduit_response(db, updated)
 

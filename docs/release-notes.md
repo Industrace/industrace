@@ -9,13 +9,62 @@
 
 ---
 
+## Version 2.1.0
+
+**Release Date**: June 17, 2026
+
+### Overview
+
+Industrace v2.1.0 adds **Network Probes** (distributed network discovery), **external syslog forwarding**, **IEC 62443 RE-level assessments** with audit export, and **optional IEC 62443 per tenant** (Setup). It fixes IEC 62443 legacy API usage in the UI, aligns the compliance dashboard with the SL-A engine, and hardens SSO (no JWT in URL query string).
+
+### Key Features
+
+#### Network Probes
+- Create and manage probes from the UI; API key shown once at creation
+- Probe client (`probe/`) for passive sniffing, heartbeat, and device discovery — docs: [probe/NETWORK_PROBE.md](../probe/NETWORK_PROBE.md)
+- Discovered devices page with asset matching and onboard
+- RBAC permission `network_probes`; rate limiting and telemetry retention
+
+#### Syslog
+- Per-tenant syslog configuration in Setup (`external_log` permission)
+- Automatic audit log forwarding (non-blocking)
+
+#### IEC 62443
+- RE 1–4 normative texts for all 52 SR
+- Zone audit export (CSV/JSON)
+- Optional module toggle per tenant (Setup → Optional modules)
+
+### Upgrade notes (2.0 → 2.1)
+
+1. Run migrations: `make migrate` or `docker compose exec backend alembic upgrade head`
+2. Update roles: `make update-roles` (adds `network_probes`, `external_log`)
+3. Optional env vars: `PROBE_HEARTBEAT_STALE_SECONDS`, `PROBE_RETENTION_DAYS` (see `.env.example`)
+4. Production: ensure `ENCRYPTION_KEY` is set if using SSO
+
+See [MIGRATION.md](MIGRATION.md) for backup and rollback within the 2.x line.
+
+---
+
+## Version policy (v1 vs v2)
+
+| Line | Status | Guidance |
+|------|--------|----------|
+| **1.x** (`v1.0.0`) | Frozen | Legacy only; no new features |
+| **2.x** | Current | **New installation** recommended when coming from v1 — not a simple in-place upgrade |
+
+Full policy and manual data recovery: **[MIGRATION.md](MIGRATION.md)**.
+
+---
+
 ## Version 2.0.0
 
 **Release Date**: February 12, 2026
 
 ### Overview
 
-Industrace v2.0.0 is a major release introducing ISA/IEC 62443 compliance, Security Zones, Vulnerability Intelligence, Asset Dependencies and Review, a full Notification system, Single Sign-On (Azure AD), and extended RBAC with a stronger password policy. The Asset Detail page has been redesigned with a new layout and additional tabs. This release requires database migrations and configuration updates when upgrading from v1.x; see the upgrade guide before installing.
+Industrace v2.0.0 is a major release introducing ISA/IEC 62443 compliance, Security Zones, Vulnerability Intelligence, Asset Dependencies and Review, a full Notification system, Single Sign-On (Azure AD), and extended RBAC with a stronger password policy. The Asset Detail page has been redesigned with a new layout and additional tabs.
+
+**From v1.x:** treat v2 as a **new installation** and recover exportable data manually — see [MIGRATION.md](MIGRATION.md), not in-place Alembic-only upgrade as the primary path.
 
 ### Key Features
 
@@ -42,11 +91,11 @@ Industrace v2.0.0 is a major release introducing ISA/IEC 62443 compliance, Secur
 #### Single Sign-On (SSO) / Enterprise Auth
 - **Azure AD SSO**: Tenant SSO configuration, encrypted client secrets, Login integration
 - **Pages**: SSOConfig, SSOSuccess, SSOError
-- **Documentation**: See `docs/SSO_AZURE_AD_SETUP.md`
+- **Documentation**: [ADMINISTRATION.md](ADMINISTRATION.md#sso-with-azure-ad)
 
 #### Security and Permissions
 - **Extended RBAC**: New permissions for vulnerabilities, asset_reviews, asset_dependencies, compliance, security_zones, evidence, notifications, sso, api_keys
-- **Password policy**: Stronger requirements (12+ characters, upper, lower, digit, special character); see `docs/UPGRADE_PASSWORD_POLICY.md`
+- **Password policy**: Stronger requirements (12+ characters, upper, lower, digit, special character); see [ADMINISTRATION.md](ADMINISTRATION.md#password-policy)
 - **Hardening**: Security logging, account lockout, SSO secret encryption
 
 #### UI and Asset Detail
@@ -56,26 +105,20 @@ Industrace v2.0.0 is a major release introducing ISA/IEC 62443 compliance, Secur
 
 ### Migration from v1.x
 
-- **Required**: Backup before upgrade; run all Alembic migrations; update environment variables (see `.env.example` and `docs/UPGRADE_v1_TO_v2.md`)
+- **Recommended**: Fresh v2 install + manual import of exportable v1 data — [MIGRATION.md](MIGRATION.md)
 - **Password policy**: Existing users keep current password until next change; new passwords must meet the new policy
-- **Roles**: Permissions are extended automatically for new modules; verify role assignments after upgrade
+- **Roles**: Run `make update-roles` on v2; verify role assignments
 
-See **docs/UPGRADE_v1_TO_v2.md** and **docs/UPGRADE.md** for the full procedure.
+Technical in-place v1→v2 migration (high risk) is documented only as a legacy note inside [MIGRATION.md](MIGRATION.md); prefer parallel/greenfield install.
 
 ### Breaking Changes and Removed Items
 
-- Default passwords and password rules have changed; see `UPGRADE_NOTES_v1.1.0.md` and `docs/UPGRADE_PASSWORD_POLICY.md`
-- Removed: `SECURITY_REVIEW.md`, some frontend design docs, legacy backend tests (`test_performance.py`, `test_auth.py`, `test_comprehensive.py`), `scripts/deploy.sh`, `AssetsAdvancedFilters.vue` (merged into `AssetsFilters.vue`)
+- Default passwords and password rules have changed; see [ADMINISTRATION.md](ADMINISTRATION.md#password-policy)
+- Removed: `SECURITY_REVIEW.md`, some frontend design docs, legacy backend tests, `scripts/deploy.sh`, `AssetsAdvancedFilters.vue` (merged into `AssetsFilters.vue`)
 
 ### Documentation (2.0.0)
 
-- `docs/ISA62443_DESIGN.md`, `docs/ISA_IEC_62443_IMPLEMENTATION_RECAP.md`
-- `docs/IMPLEMENTATION_STATUS.md`, `docs/BACKEND_DATABASE_ANALYSIS.md`
-- `docs/UPGRADE_v1_TO_v2.md`, `docs/UPGRADE.md`, `docs/UPGRADE_PASSWORD_POLICY.md`
-- `docs/SSO_AZURE_AD_SETUP.md`, `docs/ENTERPRISE_AUTH_DESIGN.md`
-- `docs/RBAC_PERMISSIONS.md`, `docs/VULNERABILITIES_DESIGN.md`, `docs/VULNERABILITIES_STATUS.md`
-- `docs/EVIDENCE_SYSTEM.md`, `docs/TEST_EVIDENCE_API.md`
-- `UPGRADE_NOTES_v1.1.0.md`
+Consolidated user guides (2026): [README.md](README.md) — [INSTALLATION.md](INSTALLATION.md), [MIGRATION.md](MIGRATION.md), [ADMINISTRATION.md](ADMINISTRATION.md), [API.md](API.md), [IEC62443.md](IEC62443.md).
 
 ### Support and Documentation
 

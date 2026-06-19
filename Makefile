@@ -99,28 +99,32 @@ prod:
 		./scripts/generate-ssl-certs.sh; \
 	fi
 	@echo "📝 Setting up production environment..."
-	@if [ -z "$$DB_PASSWORD" ]; then \
-		echo "🔐 Generating secure database password..."; \
-		DB_PASSWORD=$$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32); \
-		echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod; \
+	@if [ -f ".env.prod" ] && [ -z "$$DB_PASSWORD" ]; then \
+		echo "📄 Using existing .env.prod (export DB_PASSWORD=... to regenerate)"; \
 	else \
-		echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod; \
-	fi
-	@echo "CORS_ORIGINS=https://localhost,https://127.0.0.1,https://industrace.local" >> .env.prod
-	@echo "SSO_REDIRECT_URI=https://localhost/auth/sso/callback" >> .env.prod
-	@echo "SECURE_COOKIES=true" >> .env.prod
-	@echo "SAME_SITE_COOKIES=strict" >> .env.prod
-	@echo "SECRET_KEY=prod-$$(openssl rand -hex 32)" >> .env.prod
-	@if [ -z "$$ENCRYPTION_KEY" ]; then \
-		echo "🔐 Generating encryption key for SSO..."; \
-		if ! python3 -c "from cryptography.fernet import Fernet" 2>/dev/null; then \
-			echo "⚠️  Warning: cryptography module not found. Installing..."; \
-			pip3 install cryptography > /dev/null 2>&1 || (echo "❌ Failed to install cryptography. Please install manually: pip3 install cryptography"; exit 1); \
+		if [ -z "$$DB_PASSWORD" ]; then \
+			echo "🔐 Generating secure database password..."; \
+			DB_PASSWORD=$$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32); \
+			echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod; \
+		else \
+			echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod; \
 		fi; \
-		ENCRYPTION_KEY=$$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"); \
-		echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod; \
-	else \
-		echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod; \
+		echo "CORS_ORIGINS=https://localhost,https://127.0.0.1,https://industrace.local" >> .env.prod; \
+		echo "SSO_REDIRECT_URI=https://localhost/auth/sso/callback" >> .env.prod; \
+		echo "SECURE_COOKIES=true" >> .env.prod; \
+		echo "SAME_SITE_COOKIES=strict" >> .env.prod; \
+		echo "SECRET_KEY=prod-$$(openssl rand -hex 32)" >> .env.prod; \
+		if [ -z "$$ENCRYPTION_KEY" ]; then \
+			echo "🔐 Generating encryption key for SSO..."; \
+			if ! python3 -c "from cryptography.fernet import Fernet" 2>/dev/null; then \
+				echo "⚠️  Warning: cryptography module not found. Installing..."; \
+				pip3 install cryptography > /dev/null 2>&1 || (echo "❌ Failed to install cryptography. Please install manually: pip3 install cryptography"; exit 1); \
+			fi; \
+			ENCRYPTION_KEY=$$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"); \
+			echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod; \
+		else \
+			echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod; \
+		fi; \
 	fi
 	docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d
 	@echo "⏳ Waiting for services to start..."
@@ -148,28 +152,32 @@ prod-cloud:
 	@echo ""
 	@echo "☁️  Starting cloud production environment with Traefik..."
 	@echo "📝 Setting up cloud production environment..."
-	@if [ -z "$$DB_PASSWORD" ]; then \
-		echo "🔐 Generating secure database password..."; \
-		DB_PASSWORD=$$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32); \
-		echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod-cloud; \
+	@if [ -f ".env.prod-cloud" ] && [ -z "$$DB_PASSWORD" ]; then \
+		echo "📄 Using existing .env.prod-cloud (export DB_PASSWORD=... to regenerate)"; \
 	else \
-		echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod-cloud; \
-	fi
-	@echo "CORS_ORIGINS=https://industrace.local,https://www.industrace.local" >> .env.prod-cloud
-	@echo "SSO_REDIRECT_URI=https://industrace.local/auth/sso/callback" >> .env.prod-cloud
-	@echo "SECURE_COOKIES=true" >> .env.prod-cloud
-	@echo "SAME_SITE_COOKIES=strict" >> .env.prod-cloud
-	@echo "SECRET_KEY=prod-$$(openssl rand -hex 32)" >> .env.prod-cloud
-	@if [ -z "$$ENCRYPTION_KEY" ]; then \
-		echo "🔐 Generating encryption key for SSO..."; \
-		if ! python3 -c "from cryptography.fernet import Fernet" 2>/dev/null; then \
-			echo "⚠️  Warning: cryptography module not found. Installing..."; \
-			pip3 install cryptography > /dev/null 2>&1 || (echo "❌ Failed to install cryptography. Please install manually: pip3 install cryptography"; exit 1); \
+		if [ -z "$$DB_PASSWORD" ]; then \
+			echo "🔐 Generating secure database password..."; \
+			DB_PASSWORD=$$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32); \
+			echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod-cloud; \
+		else \
+			echo "DB_PASSWORD=$$DB_PASSWORD" > .env.prod-cloud; \
 		fi; \
-		ENCRYPTION_KEY=$$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"); \
-		echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod-cloud; \
-	else \
-		echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod-cloud; \
+		echo "CORS_ORIGINS=https://industrace.local,https://www.industrace.local" >> .env.prod-cloud; \
+		echo "SSO_REDIRECT_URI=https://industrace.local/auth/sso/callback" >> .env.prod-cloud; \
+		echo "SECURE_COOKIES=true" >> .env.prod-cloud; \
+		echo "SAME_SITE_COOKIES=strict" >> .env.prod-cloud; \
+		echo "SECRET_KEY=prod-$$(openssl rand -hex 32)" >> .env.prod-cloud; \
+		if [ -z "$$ENCRYPTION_KEY" ]; then \
+			echo "🔐 Generating encryption key for SSO..."; \
+			if ! python3 -c "from cryptography.fernet import Fernet" 2>/dev/null; then \
+				echo "⚠️  Warning: cryptography module not found. Installing..."; \
+				pip3 install cryptography > /dev/null 2>&1 || (echo "❌ Failed to install cryptography. Please install manually: pip3 install cryptography"; exit 1); \
+			fi; \
+			ENCRYPTION_KEY=$$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"); \
+			echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod-cloud; \
+		else \
+			echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod-cloud; \
+		fi; \
 	fi
 	docker-compose -f docker-compose.yml --env-file .env.prod-cloud up -d
 	@echo "✅ Cloud production environment started!"
@@ -177,10 +185,15 @@ prod-cloud:
 	@echo "🦌 Traefik dashboard: http://localhost:8080"
 
 
-# Run tests (disabled - tests removed)
-# test:
-# 	@echo "🧪 Running tests..."
-# 	docker-compose -f docker-compose.prod.yml exec backend pytest
+# Run backend tests (uses docker-compose.dev with SQLite in-memory via pytest)
+test:
+	@echo "🧪 Running backend tests..."
+	docker compose -f docker-compose.dev.yml run --rm --no-deps backend pytest tests/ -q
+
+# Run tests in production container (legacy)
+test-prod:
+	@echo "🧪 Running tests in prod backend..."
+	docker-compose -f docker-compose.prod.yml exec backend pytest tests/ -q
 
 # Show logs
 logs:
@@ -240,7 +253,7 @@ migrate:
 		echo "❌ Backend container is not running. Please start with: make prod"; \
 		exit 1; \
 	fi
-	docker-compose -f docker-compose.prod.yml exec backend alembic upgrade head
+	docker-compose -f docker-compose.prod.yml exec backend alembic upgrade heads
 
 # Create new migration
 migration:

@@ -21,6 +21,7 @@ from app.schemas import (
     PositionUpdate,
 )
 from app.services.auth import get_current_user
+from app.services.feature_guard import require_iec62443_enabled
 from app.services.audit_log import create_audit_log
 from app.crud import assets as crud_assets
 from app.errors.exceptions import ErrorCodeException
@@ -393,7 +394,7 @@ def get_risk_overview(
     low_risk_count = 0
 
     for asset in assets:
-        breakdown = risk_engine.calculate(asset)
+        breakdown = risk_engine.calculate(asset, db=db)
         risk_score = breakdown["final_score"]
         if risk_score is not None:
             total_score += risk_score
@@ -459,7 +460,7 @@ def recalculate_all_risk_scores(
     updated_count = 0
 
     for asset in assets:
-        breakdown = risk_engine.calculate(asset)
+        breakdown = risk_engine.calculate(asset, db=db)
         new_score = breakdown["final_score"]
         old_score = asset.risk_score
         if new_score is not None and old_score != new_score:
@@ -1283,7 +1284,7 @@ def update_asset(
         try:
             from app.services.risk_scoring import CompositeRiskScoringEngine
             risk_engine = CompositeRiskScoringEngine()
-            breakdown = risk_engine.calculate(result)
+            breakdown = risk_engine.calculate(result, db=db)
             new_risk_score = breakdown["final_score"]
             
             if new_risk_score is not None:
@@ -1457,6 +1458,7 @@ def get_asset_zone_memberships(
     asset_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _iec62443=Depends(require_iec62443_enabled),
 ):
     """Get all zone memberships for an asset"""
     from app.crud import asset_zone_memberships as crud_memberships
@@ -1833,7 +1835,7 @@ def calculate_asset_risk(
             old_risk_level = "low"
 
     risk_engine = CompositeRiskScoringEngine()
-    breakdown = risk_engine.calculate(asset)
+    breakdown = risk_engine.calculate(asset, db=db)
     risk_score = breakdown["final_score"]
     # Determine level and severity
     if risk_score is None:

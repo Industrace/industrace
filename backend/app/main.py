@@ -166,6 +166,7 @@ from app.routers import contacts
 from app.routers import audit_logs
 from app.routers import roles
 from app.routers import smtp_config
+from app.routers import syslog_config
 from app.routers import search
 from app.routers import print as print_router
 from app.routers import api_keys
@@ -181,6 +182,9 @@ from app.routers import vulnerabilities
 from app.routers import sso
 from app.routers import asset_capabilities
 from app.routers import evidence
+from app.routers import network_probes
+from app.routers import discovered_devices
+from app.routers import tenant_features
 from app.crud import sso as crud_sso
 from app.setup_system import setup_system
 from app.database import SessionLocal
@@ -232,6 +236,8 @@ app.include_router(vulnerabilities.router, tags=["vulnerabilities"])
 app.include_router(asset_capabilities.router, tags=["asset-capabilities"])
 app.include_router(evidence.router, tags=["evidence"])
 app.include_router(sso.router, tags=["sso"])
+app.include_router(network_probes.router, tags=["network-probes"])
+app.include_router(discovered_devices.router, tags=["discovered-devices"])
 app.include_router(asset_photos.router, tags=["asset_photo"])
 app.include_router(asset_documents.router, tags=["asset_document"])
 app.include_router(asset_types.router, tags=["asset_type"])
@@ -248,6 +254,8 @@ app.include_router(contacts.router, tags=["contacts"])
 app.include_router(audit_logs.router)
 app.include_router(roles.router, tags=["roles"])
 app.include_router(smtp_config.router, tags=["smtp-config"])
+app.include_router(syslog_config.router, tags=["syslog-config"])
+app.include_router(tenant_features.router, tags=["tenant-features"])
 app.include_router(search.router, tags=["search"])
 app.include_router(print_router.router, tags=["print"])
 app.include_router(api_keys.router, tags=["api-keys"])
@@ -343,6 +351,14 @@ async def startup_event():
                     logger.info(f"ISA/IEC 62443 Security Requirements initialized ({created} created)")
                 else:
                     logger.debug(f"ISA/IEC 62443 Security Requirements already exist ({req_count} found)")
+                    missing_sr = (
+                        db.query(SecurityRequirement)
+                        .filter(SecurityRequirement.requirement_id == "SR 2.13")
+                        .first()
+                    )
+                    if not missing_sr:
+                        logger.info("Syncing ISA/IEC 62443 Security Requirements catalog...")
+                        init_security_requirements(db)
             except Exception as e:
                 logger.error(f"Security Requirements initialization failed: {e}", exc_info=True)
             
@@ -371,8 +387,30 @@ async def startup_event():
                     logger.info(f"ISA/IEC 62443 SR-Capability Mappings initialized ({created} created)")
                 else:
                     logger.debug(f"ISA/IEC 62443 SR-Capability Mappings already exist ({mapping_count} found)")
+                    from app.models.security_requirement import SecurityRequirement
+                    from app.init_data.init_sr_capability_mappings import init_sr_capability_mappings
+                    if (
+                        db.query(SecurityRequirement)
+                        .filter(SecurityRequirement.requirement_id == "SR 2.13")
+                        .first()
+                    ):
+                        init_sr_capability_mappings(db)
             except Exception as e:
                 logger.error(f"SR-Capability Mappings initialization failed: {e}", exc_info=True)
+
+            try:
+                from app.models import RequirementEnhancement, SecurityRequirement
+                from app.init_data.init_requirement_enhancements import init_requirement_enhancements
+                sr_count = db.query(SecurityRequirement).filter(
+                    SecurityRequirement.requirement_category == "SR"
+                ).count()
+                re_count = db.query(RequirementEnhancement).count()
+                if sr_count > 0:
+                    created_re = init_requirement_enhancements(db)
+                    if created_re:
+                        logger.info(f"Requirement Enhancements: {created_re} new rows")
+            except Exception as e:
+                logger.error(f"Requirement Enhancements initialization failed: {e}", exc_info=True)
             
             # Check if demo data exists and seed if no assets found (first initialization)
             # This ensures demo data is created even in production during first setup
@@ -731,7 +769,13 @@ async def refresh_token(
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
-    response = JSONResponse(content={"msg": "Token renewed"})
+    response = JSONResponse(
+        content={
+            "msg": "Token renewed",
+            "access_token": new_token,
+            "token_type": "bearer",
+        }
+    )
     response.set_cookie(
         key="access_token_cookie",
         value=new_token,
@@ -807,13 +851,6 @@ async def logout(
     return {"msg": "Logout successful"}
 
 
-class ErrorCodeException(HTTPException):
-    def __init__(self, status_code: int, error_code: str):
-        self.error_code = error_code
-        # Use error_code as detail for compatibility
-        super().__init__(status_code=status_code, detail=error_code)
-
-
 @app.exception_handler(ErrorCodeException)
 async def error_code_exception_handler(request: Request, exc: ErrorCodeException):
     # Use the translations if available
@@ -830,8 +867,10 @@ async def error_code_exception_handler(request: Request, exc: ErrorCodeException
         # If header parsing fails, use default language
         pass
     
-    # Get the translated message
-    translated_message = messages.get(language, {}).get(exc.error_code, exc.error_code)
+    # Get the translated message (custom detail overrides catalog)
+    translated_message = exc.message_detail or messages.get(language, {}).get(
+        exc.error_code, exc.error_code
+    )
     
     # Add CORS headers to allow frontend to read the response
     cors_headers = get_cors_headers(request)

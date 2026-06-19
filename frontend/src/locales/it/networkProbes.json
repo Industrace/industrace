@@ -1,0 +1,50 @@
+{
+  "title": "Sonde di rete",
+  "addProbe": "Aggiungi sonda",
+  "overview": {
+    "totalProbes": "Sonde totali",
+    "active": "Attive",
+    "errors": "In errore",
+    "maintenance": "In manutenzione",
+    "health": "Salute",
+    "transmissions": "Trasmissioni"
+  },
+  "columns": {
+    "name": "Nome",
+    "site": "Sito",
+    "status": "Stato",
+    "lastHeartbeat": "Ultimo heartbeat",
+    "lastData": "Ultimi dati",
+    "actions": "Azioni"
+  },
+  "status": {
+    "active": "Attiva",
+    "inactive": "Inattiva",
+    "error": "Errore",
+    "maintenance": "Manutenzione"
+  },
+  "dialogs": {
+    "createTitle": "Crea sonda di rete",
+    "editTitle": "Modifica sonda",
+    "apiKeyTitle": "API key sonda",
+    "apiKeyWarning": "Copia la API key ora. Non verrà mostrata di nuovo.",
+    "deauthorizeConfirm": "De-autorizzare questa sonda? Il client in esecuzione dovrà essere riconfigurato con una nuova key."
+  },
+  "fields": {
+    "name": "Nome sonda",
+    "description": "Descrizione",
+    "interface": "Interfaccia di rete",
+    "heartbeatInterval": "Intervallo heartbeat (s)",
+    "dataInterval": "Intervallo trasmissione dati (s)",
+    "samplingRate": "Sampling rate",
+    "payloadAnalysis": "Analisi payload (può catturare dati sensibili)"
+  },
+  "messages": {
+    "created": "Sonda creata",
+    "updated": "Sonda aggiornata",
+    "deleted": "Sonda eliminata",
+    "deauthorized": "Sonda de-autorizzata",
+    "loadError": "Errore caricamento sonde"
+  },
+  "legalDisclaimer": "Lo sniffing di rete può catturare traffico sensibile. Assicurati di avere autorizzazione legale prima di abilitare l'analisi payload."
+}

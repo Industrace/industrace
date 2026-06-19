@@ -90,7 +90,7 @@ class CompositeRiskScoringEngine:
         },
     }
 
-    def calculate(self, asset, language="en") -> Dict[str, Any]:
+    def calculate(self, asset, language="en", db: Optional[Session] = None) -> Dict[str, Any]:
         translations = self.TRANSLATIONS.get(language, self.TRANSLATIONS["en"])
         crit_trans = self.CRIT_TRANSLATIONS.get(language, self.CRIT_TRANSLATIONS["en"])
         missing = []
@@ -241,43 +241,50 @@ class CompositeRiskScoringEngine:
                 # Silently fail if vulnerabilities not available
                 pass
         
-        # ISA/IEC 62443 Compliance Penalties
+        # ISA/IEC 62443 Compliance Penalties (skipped when module disabled for tenant)
         isa62443_adjustment = 0.0
         isa62443_break = []
         sl_gap = None
-        
-        # Check Security Level gap (SL-T vs SL-A)
-        sl_t = getattr(asset, "security_level_target", None)
-        sl_a = getattr(asset, "security_level_achieved", None)
-        if sl_t is not None and sl_a is not None:
-            sl_gap = sl_t - sl_a
-            if sl_gap > 0:
-                # Penalty: +1.5 per ogni livello di gap
-                penalty = sl_gap * 1.5
-                isa62443_adjustment += penalty
-                isa62443_break.append(
-                    translations.get("isa62443_sl_gap",
-                        f"Security Level gap: SL-T{sl_t} vs SL-A{sl_a} (+{penalty:.1f})"
-                    ).format(sl_t=sl_t, sl_a=sl_a, penalty=f"{penalty:.1f}")
-                )
-        
-        # Check compliance status
         compliance_status = getattr(asset, "isa62443_compliance_status", None)
-        if compliance_status:
-            if compliance_status == "non_compliant":
-                isa62443_adjustment += 2.0
-                isa62443_break.append(
-                    translations.get("isa62443_non_compliant",
-                        "ISA/IEC 62443 non-compliant (+2.0)"
+
+        iec62443_enabled = True
+        if db is not None and getattr(asset, "tenant_id", None):
+            from app.services.tenant_features import is_iec62443_enabled_for_tenant_id
+
+            iec62443_enabled = is_iec62443_enabled_for_tenant_id(db, asset.tenant_id)
+
+        if iec62443_enabled:
+            # Check Security Level gap (SL-T vs SL-A)
+            sl_t = getattr(asset, "security_level_target", None)
+            sl_a = getattr(asset, "security_level_achieved", None)
+            if sl_t is not None and sl_a is not None:
+                sl_gap = sl_t - sl_a
+                if sl_gap > 0:
+                    # Penalty: +1.5 per ogni livello di gap
+                    penalty = sl_gap * 1.5
+                    isa62443_adjustment += penalty
+                    isa62443_break.append(
+                        translations.get("isa62443_sl_gap",
+                            f"Security Level gap: SL-T{sl_t} vs SL-A{sl_a} (+{penalty:.1f})"
+                        ).format(sl_t=sl_t, sl_a=sl_a, penalty=f"{penalty:.1f}")
                     )
-                )
-            elif compliance_status == "partial":
-                isa62443_adjustment += 1.0
-                isa62443_break.append(
-                    translations.get("isa62443_partial",
-                        "ISA/IEC 62443 partially compliant (+1.0)"
+
+            # Check compliance status
+            if compliance_status:
+                if compliance_status == "non_compliant":
+                    isa62443_adjustment += 2.0
+                    isa62443_break.append(
+                        translations.get("isa62443_non_compliant",
+                            "ISA/IEC 62443 non-compliant (+2.0)"
+                        )
                     )
-                )
+                elif compliance_status == "partial":
+                    isa62443_adjustment += 1.0
+                    isa62443_break.append(
+                        translations.get("isa62443_partial",
+                            "ISA/IEC 62443 partially compliant (+1.0)"
+                        )
+                    )
         
         # Apply ISA 62443 adjustment to vulnerability score
         if isa62443_adjustment > 0:

@@ -28,12 +28,12 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
-      # Tests removed - no longer running tests
-      # - name: Run tests
-      #   env:
-      #     DATABASE_URL: postgresql://test:test@localhost:5432/testdb
-      #     SECRET_KEY: test-secret-key
-      #     PYTHONPATH: ${{ github.workspace }}/backend
-      #   run: |
-      #     cd backend
-      #     pytest --cov=app tests/ -v 
+      - name: Run tests
+        env:
+          DATABASE_URL: sqlite:///:memory:
+          SECRET_KEY: test-secret-key
+          PYTHONPATH: ${{ github.workspace }}/backend
+          ENVIRONMENT: development
+        run: |
+          cd backend
+          pytest tests/ -q 

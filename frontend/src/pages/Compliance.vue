@@ -5,6 +5,10 @@
       <p class="text-muted">{{ t('isa62443.compliance.description') }}</p>
     </div>
 
+    <Message severity="info" class="mb-4" :closable="true">
+      {{ t('isa62443.compliance.scopeBanner') }}
+    </Message>
+
     <!-- Overview Cards -->
     <div class="grid mb-4">
       <div class="col-12 md:col-3">
@@ -201,6 +205,7 @@ import Card from 'primevue/card'
 import Badge from 'primevue/badge'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
+import Message from 'primevue/message'
 import api from '@/api/api'
 
 const { t } = useI18n()

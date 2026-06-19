@@ -20,6 +20,7 @@ EXISTING_SECTIONS = [
     "users",
     "roles",
     "audit_logs",
+    "external_log",
     "utility",
     "asset_documents",
     "asset_photos",
@@ -126,6 +127,26 @@ NEW_SECTIONS = {
             3: "Eliminare evidence",
             4: "Gestione completa evidence"
         }
+    },
+    "external_log": {
+        "description": "Configurazione inoltro audit log verso syslog esterno",
+        "levels": {
+            0: "Nessun accesso",
+            1: "Visualizzare configurazione syslog",
+            2: "Configurare server syslog, testare connessione",
+            3: "Gestione completa external log",
+            4: "Amministrazione completa"
+        }
+    },
+    "network_probes": {
+        "description": "Gestione sonde di rete e dispositivi scoperti",
+        "levels": {
+            0: "Nessun accesso",
+            1: "Visualizzare sonde e dispositivi scoperti",
+            2: "Modificare configurazione sonde",
+            3: "Creare/eliminare/de-autorizzare sonde",
+            4: "Amministrazione completa sonde"
+        }
     }
 }
 
@@ -147,6 +168,7 @@ ADMIN_DEFAULT_PERMISSIONS = {
     "users": 3,
     "roles": 3,
     "audit_logs": 3,
+    "external_log": 3,
     "utility": 3,
     "asset_documents": 3,
     "asset_photos": 3,
@@ -163,6 +185,7 @@ ADMIN_DEFAULT_PERMISSIONS = {
     "sso": 3,
     "api_keys": 3,
     "evidence": 3,
+    "network_probes": 3,
 }
 
 # Permessi di default per ruolo editor
@@ -180,6 +203,7 @@ EDITOR_DEFAULT_PERMISSIONS = {
     "users": 1,
     "roles": 1,
     "audit_logs": 1,
+    "external_log": 1,
     "utility": 2,
     "asset_documents": 2,
     "asset_photos": 2,
@@ -195,6 +219,7 @@ EDITOR_DEFAULT_PERMISSIONS = {
     "sso": 0,  # Non può configurare SSO
     "api_keys": 0,  # Non può gestire API keys
     "evidence": 2,  # Può gestire evidence
+    "network_probes": 1,
 }
 
 # Permessi di default per ruolo viewer (solo lettura)
@@ -212,6 +237,7 @@ VIEWER_DEFAULT_PERMISSIONS = {
     "users": 0,
     "roles": 1,
     "audit_logs": 1,
+    "external_log": 0,
     "utility": 1,
     "asset_documents": 1,
     "asset_photos": 1,
@@ -227,4 +253,5 @@ VIEWER_DEFAULT_PERMISSIONS = {
     "sso": 0,
     "api_keys": 0,
     "evidence": 1,
+    "network_probes": 1,
 }

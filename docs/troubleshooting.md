@@ -148,18 +148,27 @@ make restart
 #### Password authentication failed for user "industrace_user"
 **Symptoms**: `FATAL: password authentication failed for user "industrace_user"` (SQLAlchemy/psycopg2)
 
-**Cause**: PostgreSQL sets the user password only when the data directory is created (first run). If you later change `DB_PASSWORD` in `.env`, the backend uses the new value but the database still has the old one.
+**Cause**: PostgreSQL sets the user password only when the data directory is created (first run). If you later change `DB_PASSWORD` in `.env` or `.env.prod`, the backend uses the new value but the database still has the old one. This often happened when `make prod` regenerated `.env.prod` on every run (fixed: existing `.env.prod` is now reused).
 
 **Solution (choose one)**:
 
-1. **Use the same password as at first run**  
+1. **Align PostgreSQL with `.env.prod` (keeps data)**  
+   If using `make prod`, set `DB_PASSWORD` in `.env.prod` to match what the DB expects, or update the DB user password inside the container:
+   ```bash
+   set -a && . ./.env.prod && set +a
+   docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db \
+     psql -U industrace_user -d industrace -c "ALTER USER industrace_user WITH PASSWORD '${DB_PASSWORD}';"
+   docker compose -f docker-compose.prod.yml --env-file .env.prod restart backend
+   ```
+
+2. **Use the same password as at first run**  
    In the project root, create or edit `.env` and set `DB_PASSWORD` to the value that was used when the DB was first started (e.g. if you never set it, the default was `changeme`):
    ```bash
    DB_PASSWORD=changeme
    ```
    Then restart: `docker-compose restart backend` (or `make restart`).
 
-2. **Reinitialize the database with the current password** (all DB data will be lost):
+3. **Reinitialize the database with the current password** (all DB data will be lost):
    ```bash
    # Stop services
    docker-compose down
@@ -542,6 +551,10 @@ docker-compose exec backend python -c "from app.database import get_db; from app
 # Check role permissions
 docker-compose exec backend python -c "from app.database import get_db; from app.crud.roles import get_role_by_name; print(get_role_by_name(next(get_db()), 'admin'))"
 ```
+
+## Network Probes
+
+See **[probe/NETWORK_PROBE.md](../probe/NETWORK_PROBE.md)** for deploy, configuration, and probe-specific troubleshooting (inactive status, de-authorize, discovered devices).
 
 ## Conclusion
 

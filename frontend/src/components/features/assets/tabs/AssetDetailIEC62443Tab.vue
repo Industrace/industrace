@@ -146,7 +146,7 @@
         </template>
       </Card>
 
-      <!-- Security Requirements Compliance -->
+      <!-- Security Requirements Compliance (asset-level SR) -->
       <Card class="mb-4">
         <template #title>
           <div class="flex align-items-center">
@@ -155,6 +155,7 @@
           </div>
         </template>
         <template #content>
+          <p class="text-sm text-600 mb-3">{{ t('isa62443.compliance.assetSrHelp') }}</p>
           <div v-if="complianceLoading" class="text-center p-4">
             <ProgressSpinner />
           </div>
@@ -168,34 +169,35 @@
             :rows="10"
             class="p-datatable-sm"
           >
-            <Column field="requirement_title" :header="t('isa62443.compliance.requirementId')" sortable>
+            <Column field="requirement_id" :header="t('isa62443.compliance.requirementId')" sortable>
               <template #body="{ data }">
                 <div>
-                  <div class="font-semibold">{{ data.requirement_title || data.requirement_id }}</div>
-                  <small class="text-600" v-if="data.requirement_id">{{ data.requirement_id }}</small>
+                  <div class="font-semibold">{{ data.title || data.requirement_id }}</div>
+                  <small class="text-600">{{ data.requirement_id }}</small>
                 </div>
               </template>
             </Column>
-            <Column field="compliance_status" :header="t('isa62443.compliance.status')" sortable>
+            <Column field="status" :header="t('isa62443.compliance.status')" sortable>
               <template #body="{ data }">
                 <Tag 
-                  :value="getComplianceStatusLabel(data.compliance_status)" 
-                  :severity="getComplianceSeverity(data.compliance_status)"
+                  :value="getComplianceStatusLabel(data.status || 'not_assessed')" 
+                  :severity="getComplianceSeverity(data.status || 'not_assessed')"
                 />
               </template>
             </Column>
-            <Column field="compliance_percentage" :header="t('isa62443.compliance.compliancePercentage')" sortable>
+            <Column field="assessed_at" :header="t('isa62443.compliance.lastAssessment')" sortable>
               <template #body="{ data }">
-                <div v-if="data.compliance_percentage !== null && data.compliance_percentage !== undefined">
-                  <ProgressBar :value="data.compliance_percentage" />
-                  <span class="ml-2">{{ data.compliance_percentage }}%</span>
-                </div>
-                <span v-else class="text-600">-</span>
+                {{ formatDate(data.assessed_at) }}
               </template>
             </Column>
-            <Column field="assessment_date" :header="t('isa62443.compliance.lastAssessment')" sortable>
+            <Column v-if="typeof canWrite === 'function' ? canWrite() : canWrite" :header="t('common.strings.actions')">
               <template #body="{ data }">
-                {{ formatDate(data.assessment_date) }}
+                <Button
+                  icon="pi pi-pencil"
+                  class="p-button-text p-button-sm"
+                  :title="t('isa62443.compliance.assessSr')"
+                  @click="openAssessmentDialog(data)"
+                />
               </template>
             </Column>
           </DataTable>
@@ -361,6 +363,37 @@
         </template>
       </Card>
     </div>
+
+    <!-- Asset SR Assessment Dialog -->
+    <Dialog
+      v-model:visible="showAssessmentDialog"
+      :header="t('isa62443.compliance.assessSr')"
+      modal
+      :style="{ width: '500px' }"
+      @hide="resetAssessmentForm"
+    >
+      <div v-if="selectedSr" class="p-fluid">
+        <p class="font-semibold mb-2">{{ selectedSr.requirement_id }} — {{ selectedSr.title }}</p>
+        <div class="field">
+          <label>{{ t('isa62443.compliance.status') }} *</label>
+          <Dropdown
+            v-model="assessmentForm.status"
+            :options="assessmentStatusOptions"
+            optionLabel="label"
+            optionValue="value"
+            class="w-full"
+          />
+        </div>
+        <div class="field" v-if="assessmentForm.status && assessmentForm.status !== 'compliant'">
+          <label>{{ t('isa62443.compliance.assessmentNotes') }} *</label>
+          <Textarea v-model="assessmentForm.justification" :rows="4" class="w-full" />
+        </div>
+      </div>
+      <template #footer>
+        <Button :label="t('common.actions.cancel')" class="p-button-text" @click="showAssessmentDialog = false" />
+        <Button :label="t('common.actions.save')" icon="pi pi-check" :loading="savingAssessment" @click="saveAssessment" />
+      </template>
+    </Dialog>
 
     <!-- Add/Edit Membership Dialog -->
     <Dialog 
@@ -654,6 +687,19 @@ const membershipInterfaceScope = ref('')
 const membershipSlTarget = ref(null)
 const editingMembership = ref(null)
 
+const showAssessmentDialog = ref(false)
+const selectedSr = ref(null)
+const savingAssessment = ref(false)
+const assessmentForm = ref({ status: 'insufficient_info', justification: '' })
+
+const assessmentStatusOptions = computed(() => [
+  { label: t('isa62443.compliance.compliant'), value: 'compliant' },
+  { label: t('isa62443.compliance.nonCompliant'), value: 'non_compliant' },
+  { label: t('isa62443.compliance.partial'), value: 'partial' },
+  { label: t('isa62443.compliance.notApplicable'), value: 'not_applicable' },
+  { label: t('isa62443.compliance.insufficientInfo'), value: 'insufficient_info' }
+])
+
 const gap = computed(() => {
   if (!props.asset.security_level_target || !props.asset.security_level_achieved) {
     return null
@@ -730,10 +776,78 @@ async function fetchMemberships() {
 }
 
 async function fetchCompliance() {
-  // La compliance è gestita a livello di zone, non direttamente per asset
-  // Rimuoviamo la chiamata all'endpoint inesistente per evitare errori 404
-  complianceRecords.value = []
-  complianceLoading.value = false
+  if (!props.assetId) {
+    complianceRecords.value = []
+    return
+  }
+  complianceLoading.value = true
+  try {
+    const res = await api.getAssetSecurityRequirements(props.assetId)
+    complianceRecords.value = res.data || []
+  } catch (error) {
+    console.error('Error fetching asset security requirements:', error)
+    complianceRecords.value = []
+  } finally {
+    complianceLoading.value = false
+  }
+}
+
+function openAssessmentDialog(sr) {
+  selectedSr.value = sr
+  assessmentForm.value = {
+    status: sr.status || 'insufficient_info',
+    justification: sr.justification || ''
+  }
+  showAssessmentDialog.value = true
+}
+
+function resetAssessmentForm() {
+  selectedSr.value = null
+  assessmentForm.value = { status: 'insufficient_info', justification: '' }
+}
+
+async function saveAssessment() {
+  if (!selectedSr.value) return
+  const { status, justification } = assessmentForm.value
+  if (status !== 'compliant' && !justification?.trim()) {
+    toast.add({
+      severity: 'warn',
+      summary: t('common.messages.warning'),
+      detail: t('isa62443.compliance.justificationRequired'),
+      life: 3000
+    })
+    return
+  }
+  savingAssessment.value = true
+  try {
+    const res = await api.createOrUpdateAssetSRAssessment(props.assetId, selectedSr.value.sr_id, {
+      status,
+      justification: justification || null,
+      evidence: []
+    })
+    toast.add({
+      severity: 'success',
+      summary: t('common.messages.success'),
+      detail: t('isa62443.compliance.assessmentSaved'),
+      life: 3000
+    })
+    showAssessmentDialog.value = false
+    await fetchCompliance()
+    if (res.data?.asset_updated) {
+      emit('updated', {
+        security_level_achieved: res.data.asset_updated.security_level_achieved,
+        isa62443_compliance_status: res.data.asset_updated.isa62443_compliance_status
+      })
+    } else {
+      const recalc = await api.recalculateAssetIec62443(props.assetId)
+      if (recalc.data) emit('updated', recalc.data)
+    }
+  } catch (error) {
+    console.error('Error saving assessment:', error)
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: t('isa62443.compliance.errorSaving') })
+  } finally {
+    savingAssessment.value = false
+  }
 }
 
 async function loadAvailableZones() {
@@ -761,7 +875,8 @@ function getComplianceStatusLabel(status) {
     'non_compliant': t('isa62443.compliance.nonCompliant'),
     'partial': t('isa62443.compliance.partial'),
     'not_assessed': t('isa62443.compliance.notAssessed'),
-    'not_applicable': t('isa62443.compliance.notApplicable')
+    'not_applicable': t('isa62443.compliance.notApplicable'),
+    'insufficient_info': t('isa62443.compliance.insufficientInfo')
   }
   return statusMap[status] || status
 }
@@ -773,7 +888,8 @@ function getComplianceSeverity(status) {
     'non_compliant': 'danger',
     'partial': 'warning',
     'not_assessed': 'info',
-    'not_applicable': 'secondary'
+    'not_applicable': 'secondary',
+    'insufficient_info': 'warning'
   }
   return severityMap[status] || 'info'
 }

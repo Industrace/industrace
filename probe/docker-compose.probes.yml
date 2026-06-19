@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # Sonda principale per rete di produzione
+  network-probe-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.probe
+    container_name: network-probe-prod
+    restart: unless-stopped
+    privileged: true  # Necessario per accesso alle interfacce di rete
+    network_mode: host  # Usa la rete dell'host per sniffing
+    volumes:
+      - ./probe.conf:/app/probe.conf:ro
+      - ./logs:/logs
+      - /var/log:/var/log:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Europe/Rome
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - seccomp:unconfined
+    labels:
+      - "industrace.probe.type=production"
+      - "industrace.probe.site=main-facility"
+    
+  # Sonda per rete di backup
+  network-probe-backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.probe
+    container_name: network-probe-backup
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - ./probe-backup.conf:/app/probe.conf:ro
+      - ./logs:/logs
+      - /var/log:/var/log:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Europe/Rome
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - seccomp:unconfined
+    labels:
+      - "industrace.probe.type=backup"
+      - "industrace.probe.site=backup-facility"
+    
+  # Sonda per rete wireless
+  network-probe-wireless:
+    build:
+      context: .
+      dockerfile: Dockerfile.probe
+    container_name: network-probe-wireless
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - ./probe-wireless.conf:/app/probe.conf:ro
+      - ./logs:/logs
+      - /var/log:/var/log:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Europe/Rome
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - seccomp:unconfined
+    labels:
+      - "industrace.probe.type=wireless"
+      - "industrace.probe.site=wireless-network"
+    
+  # Sonda per rete industriale (PLC/SCADA)
+  network-probe-industrial:
+    build:
+      context: .
+      dockerfile: Dockerfile.probe
+    container_name: network-probe-industrial
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - ./probe-industrial.conf:/app/probe.conf:ro
+      - ./logs:/logs
+      - /var/log:/var/log:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Europe/Rome
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - seccomp:unconfined
+    labels:
+      - "industrace.probe.type=industrial"
+      - "industrace.probe.site=plc-network"
+
+  # Monitor opzionale rimosso: richiedeva ./monitor/ e nginx.conf non presenti nel repo.
+  # Per monitoraggio usare log container (`docker logs network-probe-prod`) o integrazione esterna.
+
+volumes:
+  logs:
+    driver: local
+
+networks:
+  default:
+    driver: bridge

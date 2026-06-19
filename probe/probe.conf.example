@@ -1,0 +1,31 @@
+[main]
+# Identificazione della sonda
+probe_id = probe_001
+api_key = your_api_key_here
+server_url = https://your-industrace-server.com
+
+[network]
+# Configurazione interfaccia di rete
+interface_name = eth0
+promiscuous_mode = true
+capture_filter = 
+max_packet_size = 1518
+buffer_size = 65536
+
+[analysis]
+# Configurazione analisi protocolli
+enabled_protocols = Modbus,IEC 104,OPC-UA,EtherNet/IP,BACnet,DNP3,KNX,MQTT
+sampling_rate = 1.0
+metadata_extraction = true
+payload_analysis = false
+
+[telecontrol]
+# Configurazione telecontrollo
+heartbeat_interval = 30
+data_transmission_interval = 300
+max_retry_attempts = 3
+
+[security]
+# Transport security: HTTPS + ssl_verify. encryption_enabled is legacy (ignored).
+encryption_enabled = false
+ssl_verify = true

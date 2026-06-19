@@ -120,6 +120,34 @@
         </div>
       </div>
 
+      <!-- External Log (Syslog) Tile -->
+      <div v-if="canRead('external_log')" class="setup-tile" @click="openSyslogDialog">
+        <div class="tile-icon">
+          <i class="pi pi-cloud-upload"></i>
+        </div>
+        <div class="tile-content">
+          <h3>{{ $t('setup.strings.externalLog.title') }}</h3>
+          <p>{{ $t('setup.strings.externalLog.description') }}</p>
+        </div>
+        <div class="tile-status" :class="{ 'configured': syslogConfigured }">
+          <i :class="syslogConfigured ? 'pi pi-check-circle' : 'pi pi-cog'"></i>
+        </div>
+      </div>
+
+      <!-- Tenant Features (IEC 62443) -->
+      <div v-if="canWrite('roles')" class="setup-tile" @click="openFeaturesDialog">
+        <div class="tile-icon">
+          <i class="pi pi-sliders-h"></i>
+        </div>
+        <div class="tile-content">
+          <h3>{{ $t('setup.strings.features.title') }}</h3>
+          <p>{{ $t('setup.strings.features.description') }}</p>
+        </div>
+        <div class="tile-status" :class="{ 'configured': tenantFeatures.iec62443 }">
+          <i :class="tenantFeatures.iec62443 ? 'pi pi-check-circle' : 'pi pi-minus-circle'"></i>
+        </div>
+      </div>
+
     </div>
 
     <!-- SMTP Configuration Dialog -->
@@ -216,6 +244,98 @@
       </div>
     </Dialog>
 
+    <!-- External Log (Syslog) Dialog -->
+    <Dialog
+      v-model:visible="syslogDialogVisible"
+      :header="$t('setup.strings.externalLog.title')"
+      modal
+      class="setup-dialog"
+      :style="{ width: '560px' }"
+    >
+      <div class="syslog-form">
+        <div class="form-info mb-3">
+          <i class="pi pi-info-circle" style="color: var(--primary-color);"></i>
+          <span>{{ $t('setup.strings.externalLog.info') }}</span>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label for="syslog_host">{{ $t('setup.fields.syslog.host') }}</label>
+            <InputText id="syslog_host" v-model="syslogConfig.host" placeholder="syslog.example.com" />
+          </div>
+          <div class="form-field">
+            <label for="syslog_port">{{ $t('setup.fields.syslog.port') }}</label>
+            <InputNumber id="syslog_port" v-model="syslogConfig.port" :min="1" :max="65535" placeholder="514" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label for="syslog_protocol">{{ $t('setup.fields.syslog.protocol') }}</label>
+            <Dropdown
+              id="syslog_protocol"
+              v-model="syslogConfig.protocol"
+              :options="['udp', 'tcp']"
+              placeholder="UDP"
+              class="w-full"
+            />
+          </div>
+          <div class="form-field">
+            <label for="syslog_facility">{{ $t('setup.fields.syslog.facility') }}</label>
+            <InputNumber id="syslog_facility" v-model="syslogConfig.facility" :min="0" :max="23" :showButtons="true" class="w-full" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field checkbox-field">
+            <label class="checkbox-label">
+              <Checkbox v-model="syslogConfig.enabled" :binary="true" inputId="syslog_enabled" />
+              {{ $t('setup.fields.syslog.enabled') }}
+            </label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <Button
+            :label="$t('setup.strings.externalLog.testConnection')"
+            icon="pi pi-refresh"
+            @click="testSyslogConnection"
+            :loading="testingSyslog"
+          />
+          <Button
+            :label="$t('setup.strings.externalLog.saveSettings')"
+            icon="pi pi-save"
+            @click="saveSyslogConfig"
+            :loading="savingSyslog"
+          />
+        </div>
+      </div>
+    </Dialog>
+
+    <!-- Tenant Features Dialog -->
+    <Dialog
+      v-model:visible="featuresDialogVisible"
+      :header="$t('setup.strings.features.title')"
+      modal
+      class="setup-dialog"
+      :style="{ width: '560px' }"
+    >
+      <div class="syslog-form features-form">
+        <p class="form-info">{{ $t('setup.strings.features.help') }}</p>
+        <div class="option-item">
+          <label class="checkbox-label">
+            <InputSwitch v-model="tenantFeatures.iec62443" inputId="feature_iec62443" />
+            <span class="ml-2">{{ $t('setup.strings.features.iec62443') }}</span>
+          </label>
+          <small class="text-muted block mt-2">{{ $t('setup.strings.features.iec62443Hint') }}</small>
+        </div>
+        <div class="form-actions">
+          <Button
+            :label="$t('setup.strings.features.save')"
+            icon="pi pi-save"
+            @click="saveTenantFeatures"
+            :loading="savingFeatures"
+          />
+        </div>
+      </div>
+    </Dialog>
+
     <!-- Printed Kit Dialog - Nuovo -->
     <Dialog 
       v-model:visible="printedKitDialogVisible" 
@@ -288,6 +408,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { usePermissions } from '@/composables/usePermissions'
+import { useAuthStore } from '@/store/auth'
 import api from '@/api/api'
 
 // PrimeVue Components
@@ -297,11 +418,14 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Password from 'primevue/password'
 import Checkbox from 'primevue/checkbox'
+import InputSwitch from 'primevue/inputswitch'
+import Dropdown from 'primevue/dropdown'
 
 const { t, locale } = useI18n()
 const toast = useToast()
 const router = useRouter()
 const { canRead, canWrite } = usePermissions()
+const authStore = useAuthStore()
 
 // Computed properties for arrays
 const printedKitItems = computed(() => {
@@ -334,6 +458,22 @@ const smtpConfig = ref({
   use_tls: true,
   provider: 'smtp'
 })
+
+const syslogDialogVisible = ref(false)
+const syslogConfigured = ref(false)
+const testingSyslog = ref(false)
+const savingSyslog = ref(false)
+const syslogConfig = ref({
+  host: '',
+  port: 514,
+  protocol: 'udp',
+  facility: 16,
+  enabled: false
+})
+
+const featuresDialogVisible = ref(false)
+const savingFeatures = ref(false)
+const tenantFeatures = ref({ iec62443: true })
 
 const kitOptions = ref({
   includeAssets: true,
@@ -542,10 +682,139 @@ const openPrintedKitDialog = () => {
   printedKitDialogVisible.value = true
 }
 
+const loadSyslogConfig = async () => {
+  try {
+    const response = await api.getSyslogConfig()
+    if (response.data) {
+      syslogConfig.value = {
+        host: response.data.host || '',
+        port: response.data.port ?? 514,
+        protocol: response.data.protocol || 'udp',
+        facility: response.data.facility ?? 16,
+        enabled: response.data.enabled ?? false
+      }
+    }
+  } catch (_) {
+    syslogConfig.value = { host: '', port: 514, protocol: 'udp', facility: 16, enabled: false }
+  }
+}
+
+const refreshSyslogStatus = async () => {
+  try {
+    const res = await api.getSyslogConfigExists()
+    syslogConfigured.value = res.data?.exists && res.data?.enabled
+  } catch (_) {
+    syslogConfigured.value = false
+  }
+}
+
+const openSyslogDialog = async () => {
+  await loadSyslogConfig()
+  syslogDialogVisible.value = true
+}
+
+const saveSyslogConfig = async () => {
+  try {
+    savingSyslog.value = true
+    const payload = {
+      host: syslogConfig.value.host || null,
+      port: syslogConfig.value.port ?? 514,
+      protocol: syslogConfig.value.protocol || 'udp',
+      facility: syslogConfig.value.facility ?? 16,
+      enabled: !!syslogConfig.value.enabled
+    }
+    await api.setSyslogConfig(payload)
+    syslogConfigured.value = true
+    toast.add({
+      severity: 'success',
+      summary: t('common.messages.success'),
+      detail: t('setup.messages.syslogSaved'),
+      life: 3000
+    })
+    syslogDialogVisible.value = false
+    await refreshSyslogStatus()
+  } catch (error) {
+    const msg = error.response?.data?.detail || t('setup.messages.syslogSaveError')
+    toast.add({
+      severity: 'error',
+      summary: t('common.messages.error'),
+      detail: msg,
+      life: 5000
+    })
+  } finally {
+    savingSyslog.value = false
+  }
+}
+
+const testSyslogConnection = async () => {
+  try {
+    testingSyslog.value = true
+    const payload = {
+      host: syslogConfig.value.host || null,
+      port: syslogConfig.value.port ?? 514,
+      protocol: syslogConfig.value.protocol || 'udp',
+      facility: syslogConfig.value.facility ?? 16
+    }
+    await api.testSyslogConfig(payload)
+    toast.add({
+      severity: 'success',
+      summary: t('common.messages.success'),
+      detail: t('setup.messages.syslogTestSuccess'),
+      life: 3000
+    })
+  } catch (error) {
+    const msg = error.response?.data?.detail || t('setup.messages.syslogTestError')
+    toast.add({
+      severity: 'error',
+      summary: t('common.messages.error'),
+      detail: msg,
+      life: 5000
+    })
+  } finally {
+    testingSyslog.value = false
+  }
+}
+
+const loadTenantFeatures = async () => {
+  try {
+    const res = await api.getTenantFeatures()
+    tenantFeatures.value = { iec62443: res.data?.iec62443 !== false }
+  } catch {
+    tenantFeatures.value = { iec62443: authStore.user?.features?.iec62443 !== false }
+  }
+}
+
+const openFeaturesDialog = async () => {
+  await loadTenantFeatures()
+  featuresDialogVisible.value = true
+}
+
+const saveTenantFeatures = async () => {
+  savingFeatures.value = true
+  try {
+    await api.updateTenantFeatures({ iec62443: !!tenantFeatures.value.iec62443 })
+    await authStore.fetchUser(true)
+    toast.add({
+      severity: 'success',
+      summary: t('common.messages.success'),
+      detail: t('setup.messages.featuresSaved'),
+      life: 3000
+    })
+    featuresDialogVisible.value = false
+  } catch (error) {
+    const msg = error.response?.data?.detail || t('setup.messages.featuresSaveError')
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: msg, life: 4000 })
+  } finally {
+    savingFeatures.value = false
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   loadSmtpConfig()
   checkTemplatesStatus()
+  refreshSyslogStatus()
+  loadTenantFeatures()
 })
 </script>
 
@@ -770,6 +1039,20 @@ onMounted(() => {
 
 .kit-actions {
   text-align: center;
+}
+
+.syslog-form .form-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--surface-50);
+  border-radius: 8px;
+}
+
+.syslog-form .form-info span {
+  font-size: 0.9rem;
+  color: var(--text-color-secondary);
 }
 
 @media (max-width: 768px) {

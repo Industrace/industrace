@@ -6,6 +6,14 @@
         <template #content>
           <div class="dashboard-header">
             <h2 class="zone-name">{{ zone.name }}</h2>
+            <div class="flex align-items-center gap-2 mb-2">
+              <Tag
+                v-if="zoneOverview.compliance_status"
+                :value="getComplianceStatusLabel(zoneOverview.compliance_status)"
+                :severity="getComplianceStatusSeverity(zoneOverview.compliance_status)"
+              />
+              <small class="text-600">{{ t('isa62443.compliance.zoneComplianceStatusHelp') }}</small>
+            </div>
             <div class="sl-summary">
               <div class="sl-item">
                 <span class="sl-label">{{ t('isa62443.compliance.slTarget') }}:</span>
@@ -13,20 +21,36 @@
               </div>
               <div class="sl-item">
                 <span class="sl-label">{{ t('isa62443.compliance.slAchieved') }}:</span>
-                <span class="sl-value">SL-{{ zone.security_level_achieved || '-' }}</span>
+                <span class="sl-value">SL-{{ displaySlAchieved }}</span>
+              </div>
+              <div class="sl-item" v-if="zone.security_level_capability != null || zoneOverview.security_level_capability != null">
+                <span class="sl-label">{{ t('isa62443.compliance.securityLevelCapability') }}:</span>
+                <span class="sl-value">SL-{{ zone.security_level_capability ?? zoneOverview.security_level_capability ?? '-' }}</span>
               </div>
               <div class="sl-item">
                 <span class="sl-label">{{ t('isa62443.compliance.gap') }}:</span>
                 <span class="sl-value" :class="getGapClass()">
-                  {{ getGap() }}
-                  <i v-if="getGapValue() < 0" class="pi pi-exclamation-triangle ml-1"></i>
+                  {{ getGapDisplay() }}
+                  <i v-if="getGapValue() > 0" class="pi pi-exclamation-triangle ml-1"></i>
                 </span>
               </div>
             </div>
           </div>
+
+          <div v-if="zoneOverview.assessment_progress" class="assessment-progress mt-3">
+            <div class="flex justify-content-between mb-1">
+              <span class="text-sm font-semibold">{{ t('isa62443.compliance.assessmentProgress') }}</span>
+              <span class="text-sm text-600">
+                {{ zoneOverview.assessment_progress.assessed_count }} / {{ zoneOverview.assessment_progress.in_scope_count }}
+                ({{ zoneOverview.assessment_progress.percent }}%)
+              </span>
+            </div>
+            <ProgressBar :value="zoneOverview.assessment_progress.percent" />
+            <small class="text-600">{{ t('isa62443.compliance.assessmentProgressHelp') }}</small>
+          </div>
           
           <div class="sr-status-summary mt-4">
-            <h3 class="section-title">{{ t('isa62443.compliance.srStatus') }}</h3>
+            <h3 class="section-title">{{ t('isa62443.compliance.srAssessmentCounts') }}</h3>
             <div class="status-grid">
               <div class="status-item compliant">
                 <i class="pi pi-check-circle"></i>
@@ -48,15 +72,34 @@
                 <span class="status-count">{{ summary.not_applicable || 0 }}</span>
                 <span class="status-label">{{ t('isa62443.compliance.notApplicable') }}</span>
               </div>
+              <div class="status-item insufficient-info">
+                <i class="pi pi-question-circle"></i>
+                <span class="status-count">{{ summary.insufficient_info || 0 }}</span>
+                <span class="status-label">{{ t('isa62443.compliance.insufficientInfo') }}</span>
+              </div>
             </div>
           </div>
           
-          <div class="dashboard-actions mt-4">
+          <div class="dashboard-actions mt-4 flex flex-wrap gap-2">
             <Button 
               :label="t('isa62443.compliance.reviewSecurityRequirements')"
               icon="pi pi-shield"
               @click="showFoundationRequirements"
               class="p-button-primary"
+            />
+            <Button
+              :label="t('isa62443.compliance.exportAuditCsv')"
+              icon="pi pi-download"
+              class="p-button-outlined"
+              :loading="exportingAudit"
+              @click="downloadAuditExport('csv')"
+            />
+            <Button
+              :label="t('isa62443.compliance.exportAuditJson')"
+              icon="pi pi-file"
+              class="p-button-outlined p-button-secondary"
+              :loading="exportingAudit"
+              @click="downloadAuditExport('json')"
             />
           </div>
         </template>
@@ -96,8 +139,11 @@
             <div class="fr-card-content">
               <div class="fr-header">
                 <h3 class="fr-id">{{ fr.requirement_id }} - {{ getFRTitle(fr.requirement_id) }}</h3>
-                <div class="fr-percentage" :class="getFRPercentageClass(fr)">
-                  {{ fr.compliance_percentage || 0 }}%
+                <div class="fr-percentage-col">
+                  <div class="fr-percentage" :class="getFRPercentageClass(fr)">
+                    {{ fr.compliance_percentage || 0 }}%
+                  </div>
+                  <small class="fr-percentage-hint">{{ t('isa62443.compliance.frAssessmentScore') }}</small>
                 </div>
               </div>
               <div v-if="getFRDescription(fr.requirement_id)" class="fr-description">
@@ -119,6 +165,10 @@
                 <span class="fr-stat">
                   <i class="pi pi-times-circle text-red-500"></i>
                   {{ fr.non_compliant_count || 0 }}
+                </span>
+                <span v-if="fr.not_assessed_count" class="fr-stat">
+                  <i class="pi pi-clock text-gray-500"></i>
+                  {{ fr.not_assessed_count }}
                 </span>
               </div>
             </div>
@@ -214,7 +264,7 @@
                   </div>
                 </div>
 
-                <Divider />
+                <Divider v-if="assessmentData.requirement_enhancements?.length" />
 
                 <!-- A. Capability richieste -->
                 <div class="sr-required-capabilities mb-4">
@@ -342,14 +392,61 @@
 
                 <Divider />
 
-                <!-- C. Decisione finale -->
+                <!-- C. Valutazione per RE o rollup SR (legacy) -->
                 <div class="sr-final-assessment mb-4">
                   <h4 class="sr-section-title mb-3">
                     <i class="pi pi-clipboard mr-2"></i>
                     {{ t('isa62443.compliance.finalAssessment') }}
                   </h4>
-                  
-                  <div class="assessment-status-selection mt-3">
+
+                  <div
+                    v-if="assessmentData.requirement_enhancements?.length"
+                    class="sr-re-assessment-section mb-4"
+                  >
+                    <p class="text-sm text-600 mb-3">{{ t('isa62443.compliance.requirementEnhancementsHelp') }}</p>
+                    <div
+                      v-for="re in assessmentData.requirement_enhancements"
+                      :key="re.enhancement_level"
+                      class="re-assessment-card mb-3"
+                      :class="{ 're-out-of-scope': !isReInScope(re.enhancement_level) }"
+                    >
+                      <div class="re-assessment-header mb-2">
+                        <Tag :value="`RE-${re.enhancement_level}`" severity="info" class="mr-2" />
+                        <Tag
+                          v-if="re.assessment_status"
+                          :value="getComplianceStatusLabel(re.assessment_status)"
+                          :severity="getComplianceStatusSeverity(re.assessment_status)"
+                          class="mr-2"
+                        />
+                        <span v-if="!isReInScope(re.enhancement_level)" class="text-sm text-500">
+                          {{ t('isa62443.compliance.reOutOfScope') }}
+                        </span>
+                      </div>
+                      <p class="text-sm mb-2">{{ re.description }}</p>
+                      <div v-if="isReInScope(re.enhancement_level)" class="re-status-options flex flex-wrap gap-3">
+                        <div
+                          v-for="opt in reStatusOptions"
+                          :key="`${re.enhancement_level}-${opt.value}`"
+                          class="flex align-items-center"
+                        >
+                          <RadioButton
+                            :inputId="`re-${re.enhancement_level}-${opt.value}`"
+                            :name="`re-status-${re.enhancement_level}`"
+                            :value="opt.value"
+                            v-model="reAssessmentStatuses[re.enhancement_level]"
+                          />
+                          <label :for="`re-${re.enhancement_level}-${opt.value}`" class="ml-2 text-sm">
+                            {{ opt.label }}
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    v-else
+                    class="assessment-status-selection mt-3"
+                  >
                     <label class="assessment-status-label mb-3">{{ t('isa62443.compliance.assessmentStatus') }}</label>
                     <div class="assessment-status-options">
                       <div class="assessment-status-option">
@@ -402,7 +499,7 @@
                       </div>
                     </div>
                   </div>
-                  
+
                   <!-- Giustificazione (obbligatoria se != compliant) -->
                   <div class="assessment-justification-section mt-4">
                     <label class="assessment-justification-label mb-2">
@@ -436,7 +533,7 @@
                       :label="t('isa62443.compliance.saveAssessment')"
                       icon="pi pi-save"
                       @click="saveAssessment"
-                      :disabled="!assessmentStatus || (assessmentStatus !== 'compliant' && !assessmentJustification)"
+                      :disabled="!canSaveAssessment"
                       class="p-button-primary"
                     />
                   </div>
@@ -550,6 +647,7 @@ import { useToast } from 'primevue/usetoast'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
+import ProgressBar from 'primevue/progressbar'
 import RadioButton from 'primevue/radiobutton'
 import Textarea from 'primevue/textarea'
 import Tag from 'primevue/tag'
@@ -573,6 +671,7 @@ const toast = useToast()
 // State
 const currentLevel = ref('dashboard')
 const loadingFR = ref(false)
+const exportingAudit = ref(false)
 const loadingSR = ref(false)
 const loadingAssessmentData = ref(false)
 const foundationRequirements = ref([])
@@ -586,47 +685,95 @@ const summary = ref({
   compliant: 0,
   partial: 0,
   non_compliant: 0,
-  not_applicable: 0
+  not_applicable: 0,
+  insufficient_info: 0
+})
+
+const zoneOverview = ref({
+  compliance_status: null,
+  assessment_progress: null,
+  sl_gap: null,
+  security_level_achieved: null,
+  security_level_capability: null
+})
+
+const displaySlAchieved = computed(() => {
+  const v = zoneOverview.value.security_level_achieved ?? props.zone.security_level_achieved
+  return v != null ? v : '-'
 })
 
 // New capability-based assessment state
 const assessmentData = ref(null)
-const assessmentStatus = ref(null) // 'compliant', 'partial', 'non_compliant', 'not_applicable', 'insufficient_info'
+const assessmentStatus = ref(null) // legacy SR-level rollup
+const reAssessmentStatuses = ref({}) // { [enhancement_level]: status }
 const assessmentJustification = ref('')
 const selectedEvidence = ref([]) // Array of {asset_id, capability_id, comment}
 
-// Computed
-const getGap = () => {
-  const target = props.zone.security_level_target
-  const achieved = props.zone.security_level_achieved
-  
-  // Check if values are null/undefined (not if they are 0)
-  if (target === null || target === undefined || achieved === null || achieved === undefined) {
-    return '-'
-  }
-  const gap = achieved - target
-  return gap >= 0 ? `+${gap}` : `${gap}`
+const reStatusOptions = computed(() => [
+  { value: 'compliant', label: t('isa62443.compliance.compliant') },
+  { value: 'partial', label: t('isa62443.compliance.partial') },
+  { value: 'non_compliant', label: t('isa62443.compliance.nonCompliant') },
+  { value: 'not_applicable', label: t('isa62443.compliance.notApplicable') },
+  { value: 'insufficient_info', label: t('isa62443.compliance.insufficientInfo') },
+])
+
+function isReInScope(enhancementLevel) {
+  const slt = props.zone.security_level_target
+  if (!slt) return true
+  return enhancementLevel <= slt
 }
 
-const getGapValue = () => {
-  const target = props.zone.security_level_target
-  const achieved = props.zone.security_level_achieved
-  
-  // Check if values are null/undefined (not if they are 0)
-  if (target === null || target === undefined || achieved === null || achieved === undefined) {
-    return 0
+const usesPerReAssessment = computed(
+  () => (assessmentData.value?.requirement_enhancements?.length ?? 0) > 0
+)
+
+const canSaveAssessment = computed(() => {
+  if (usesPerReAssessment.value) {
+    const enhancements = assessmentData.value?.requirement_enhancements || []
+    const inScope = enhancements.filter((re) => isReInScope(re.enhancement_level))
+    const assessed = inScope.filter((re) => reAssessmentStatuses.value[re.enhancement_level])
+    if (assessed.length === 0) return false
+    const needsJustification = assessed.some((re) => {
+      const st = reAssessmentStatuses.value[re.enhancement_level]
+      return st && st !== 'compliant' && st !== 'not_applicable'
+    })
+    if (needsJustification && !assessmentJustification.value.trim()) return false
+    return true
   }
-  return achieved - target
+  return (
+    assessmentStatus.value &&
+    (assessmentStatus.value === 'compliant' || assessmentJustification.value.trim())
+  )
+})
+
+// Computed
+const getGapValue = () => {
+  if (zoneOverview.value.sl_gap != null) {
+    return zoneOverview.value.sl_gap
+  }
+  const target = props.zone.security_level_target
+  const achieved = displaySlAchieved.value
+  if (target == null || achieved === '-') return 0
+  return target - achieved
+}
+
+const getGapDisplay = () => {
+  const gap = getGapValue()
+  if (gap === 0 && (props.zone.security_level_target == null || displaySlAchieved.value === '-')) {
+    return '-'
+  }
+  return gap === 0 ? '0' : String(gap)
 }
 
 const getGapClass = () => {
   const gap = getGapValue()
-  if (gap < 0) return 'text-orange-500'
+  if (gap > 0) return 'text-orange-500'
   if (gap === 0) return 'text-green-500'
   return 'text-blue-500'
 }
 
 const getFRCardClass = (fr) => {
+  if ((fr.not_assessed_count || 0) > 0) return 'fr-card-partial'
   const percentage = fr.compliance_percentage || 0
   if (percentage >= 80) return 'fr-card-compliant'
   if (percentage >= 50) return 'fr-card-partial'
@@ -710,7 +857,8 @@ function getComplianceStatusLabel(status) {
     'partial': t('isa62443.compliance.partial'),
     'non_compliant': t('isa62443.compliance.nonCompliant'),
     'not_applicable': t('isa62443.compliance.notApplicable'),
-    'not_assessed': null
+    'insufficient_info': t('isa62443.compliance.insufficientInfo'),
+    'not_assessed': t('isa62443.compliance.notAssessed')
   }
   return labels[status] || null
 }
@@ -721,7 +869,8 @@ function getComplianceStatusSeverity(status) {
     'partial': 'warning',
     'non_compliant': 'danger',
     'not_applicable': 'secondary',
-    'not_assessed': null
+    'insufficient_info': 'warning',
+    'not_assessed': 'info'
   }
   return severities[status] || null
 }
@@ -737,16 +886,24 @@ async function loadSummary() {
       compliant: data.compliant || 0,
       partial: data.partial || 0,
       non_compliant: data.non_compliant || 0,
-      not_applicable: data.not_applicable || 0
+      not_applicable: data.not_applicable || 0,
+      insufficient_info: data.insufficient_info || 0
+    }
+    zoneOverview.value = {
+      compliance_status: data.compliance_status || props.zone.compliance_status,
+      assessment_progress: data.assessment_progress || null,
+      sl_gap: data.sl_gap,
+      security_level_achieved: data.security_level_achieved,
+      security_level_capability: data.security_level_capability
     }
   } catch (error) {
     console.error('Error loading compliance summary:', error)
-    // Set defaults on error
     summary.value = {
       compliant: 0,
       partial: 0,
       non_compliant: 0,
-      not_applicable: 0
+      not_applicable: 0,
+      insufficient_info: 0
     }
   }
 }
@@ -860,6 +1017,7 @@ async function selectSecurityRequirement(sr) {
   loadingAssessmentData.value = true
   assessmentData.value = null
   assessmentStatus.value = null
+  reAssessmentStatuses.value = {}
   assessmentJustification.value = ''
   selectedEvidence.value = []
   
@@ -868,12 +1026,21 @@ async function selectSecurityRequirement(sr) {
     const res = await api.getSRAssessmentAssist(props.zone.id, sr.id)
     assessmentData.value = res.data
     
-    // Set current assessment status if exists
-    if (assessmentData.value.current_assessment) {
+    if (assessmentData.value.re_assessments?.length) {
+      const statuses = {}
+      for (const row of assessmentData.value.re_assessments) {
+        statuses[row.enhancement_level] = row.status
+      }
+      reAssessmentStatuses.value = statuses
+      assessmentJustification.value =
+        assessmentData.value.re_assessments.find((r) => r.justification)?.justification || ''
+    } else if (assessmentData.value.current_assessment) {
       assessmentStatus.value = assessmentData.value.current_assessment.status
-      assessmentJustification.value = assessmentData.value.current_assessment.justification || ''
-      
-      // Build selected evidence from current assessment
+      assessmentJustification.value =
+        assessmentData.value.current_assessment.justification || ''
+    }
+
+    if (assessmentData.value.current_assessment?.evidence) {
       selectedEvidence.value = assessmentData.value.current_assessment.evidence.map(ev => ({
         asset_id: ev.asset_id,
         capability_id: ev.capability_id,
@@ -913,8 +1080,48 @@ function handleEvidenceUpdated() {
   }
 }
 
+async function downloadAuditExport(format) {
+  exportingAudit.value = true
+  try {
+    const res = await api.exportZoneAudit(props.zone.id, format)
+    if (format === 'csv') {
+      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `iec62443-audit-${props.zone.name || 'zone'}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    } else {
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `iec62443-audit-${props.zone.name || 'zone'}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+    }
+    toast.add({
+      severity: 'success',
+      summary: t('common.messages.success'),
+      detail: t('isa62443.compliance.auditExportDone'),
+      life: 3000
+    })
+  } catch (error) {
+    console.error('Audit export failed:', error)
+    toast.add({
+      severity: 'error',
+      summary: t('common.messages.error'),
+      detail: t('isa62443.compliance.auditExportError'),
+      life: 4000
+    })
+  } finally {
+    exportingAudit.value = false
+  }
+}
+
 async function saveAssessment() {
-  if (!assessmentStatus.value) {
+  if (!canSaveAssessment.value) {
     toast.add({
       severity: 'warn',
       summary: t('common.messages.warning'),
@@ -923,17 +1130,7 @@ async function saveAssessment() {
     })
     return
   }
-  
-  if (assessmentStatus.value !== 'compliant' && !assessmentJustification.value.trim()) {
-    toast.add({
-      severity: 'warn',
-      summary: t('common.messages.warning'),
-      detail: t('isa62443.compliance.justificationRequired'),
-      life: 3000
-    })
-    return
-  }
-  
+
   try {
     // Build evidence list from available evidence
     const evidence = []
@@ -964,10 +1161,26 @@ async function saveAssessment() {
       }
     }
     
-    const assessmentPayload = {
-      status: assessmentStatus.value,
-      justification: assessmentJustification.value,
-      evidence: evidence
+    let assessmentPayload
+    if (usesPerReAssessment.value) {
+      const re_assessments = []
+      for (const re of assessmentData.value.requirement_enhancements) {
+        if (!isReInScope(re.enhancement_level)) continue
+        const status = reAssessmentStatuses.value[re.enhancement_level]
+        if (!status) continue
+        re_assessments.push({
+          enhancement_level: re.enhancement_level,
+          status,
+          justification: assessmentJustification.value
+        })
+      }
+      assessmentPayload = { re_assessments, evidence }
+    } else {
+      assessmentPayload = {
+        status: assessmentStatus.value,
+        justification: assessmentJustification.value,
+        evidence
+      }
     }
     
     const res = await api.createOrUpdateSRAssessment(props.zone.id, selectedSR.value.id, assessmentPayload)
@@ -1061,21 +1274,11 @@ function getCharacteristicValueClass(value) {
 
 async function updateComplianceStatus(sr, status) {
   try {
-    const complianceData = {
-      requirement_id: sr.id,
-      zone_id: props.zone.id,
-      compliance_status: status,
-      assessment_notes: sr.assessment_notes || null
-    }
-    
-    // Check if compliance record exists
-    const existing = sr.compliance_id
-    if (existing) {
-      await api.updateCompliance(existing, { compliance_status: status })
-    } else {
-      await api.assessCompliance(complianceData)
-    }
-    
+    await api.createOrUpdateSRAssessment(props.zone.id, sr.id, {
+      status,
+      justification: sr.assessment_notes || null
+    })
+
     sr.compliance_status = status
     
     toast.add({
@@ -1112,20 +1315,15 @@ async function saveAssessmentNotes() {
   if (!selectedSR.value) return
   
   try {
-    const complianceData = {
-      requirement_id: selectedSR.value.id,
-      zone_id: props.zone.id,
-      compliance_status: selectedSR.value.compliance_status || 'not_assessed',
-      assessment_notes: selectedSR.value.assessment_notes || null
+    const status = selectedSR.value.compliance_status
+    if (!status || status === 'not_assessed') {
+      return
     }
-    
-    const existing = selectedSR.value.compliance_id
-    if (existing) {
-      await api.updateCompliance(existing, { assessment_notes: selectedSR.value.assessment_notes })
-    } else {
-      await api.assessCompliance(complianceData)
-    }
-    
+    await api.createOrUpdateSRAssessment(props.zone.id, selectedSR.value.id, {
+      status,
+      justification: selectedSR.value.assessment_notes || null
+    })
+
     toast.add({
       severity: 'success',
       summary: t('common.messages.success'),
@@ -1140,20 +1338,15 @@ async function saveEvidenceNotes() {
   if (!selectedSR.value) return
   
   try {
-    const complianceData = {
-      requirement_id: selectedSR.value.id,
-      zone_id: props.zone.id,
-      compliance_status: selectedSR.value.compliance_status || 'not_assessed',
-      evidence_notes: selectedSR.value.evidence_notes || null
+    const status = selectedSR.value.compliance_status
+    if (!status || status === 'not_assessed') {
+      return
     }
-    
-    const existing = selectedSR.value.compliance_id
-    if (existing) {
-      await api.updateCompliance(existing, { evidence_notes: selectedSR.value.evidence_notes })
-    } else {
-      await api.assessCompliance(complianceData)
-    }
-    
+    await api.createOrUpdateSRAssessment(props.zone.id, selectedSR.value.id, {
+      status,
+      justification: selectedSR.value.evidence_notes || null
+    })
+
     toast.add({
       severity: 'success',
       summary: t('common.messages.success'),
@@ -1829,6 +2022,46 @@ onMounted(() => {
 .sr-description p {
   margin: 0;
   text-align: justify;
+}
+
+.re-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.re-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--surface-50);
+  border-radius: 6px;
+}
+
+.re-assessment-card {
+  padding: 0.75rem 1rem;
+  background: var(--surface-50);
+  border: 1px solid var(--surface-200);
+  border-radius: 8px;
+}
+
+.re-assessment-card.re-out-of-scope {
+  opacity: 0.65;
+}
+
+.fr-percentage-col {
+  text-align: right;
+}
+
+.fr-percentage-hint {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-color-secondary);
+}
+
+.assessment-progress {
+  max-width: 480px;
 }
 
 .sr-assessment-notes-section {

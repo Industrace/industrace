@@ -7,11 +7,12 @@ from datetime import datetime
 
 class SRAssessmentBase(BaseModel):
     sr_id: UUID
-    object_type: str  # 'zone', 'conduit'
+    object_type: str  # 'zone', 'conduit', 'asset'
     object_id: UUID
     status: str  # 'compliant', 'non_compliant', 'partial', 'not_applicable', 'insufficient_info'
     justification: Optional[str] = None
     assessor_id: Optional[UUID] = None
+    enhancement_level: Optional[int] = None  # RE 1-4; omit for legacy SR-level rollup
 
 
 class SRAssessmentCreate(SRAssessmentBase):

@@ -26,5 +26,11 @@ class Tenant(Base):
     sso_config = relationship(
         "TenantSSOConfig", uselist=False, back_populates="tenant"
     )
+    syslog_config = relationship(
+        "TenantSyslogConfig", uselist=False, back_populates="tenant"
+    )
     api_keys = relationship("ApiKey", back_populates="tenant")
     areas = relationship("Area", back_populates="tenant")
+
+    network_probes = relationship("NetworkProbe", back_populates="tenant")
+    discovered_devices = relationship("DiscoveredDevice", back_populates="tenant")

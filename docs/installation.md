@@ -1,344 +1,187 @@
-# Installation Guide
+# Installation and deployment
 
-This guide provides step-by-step instructions for installing Industrace on your system.
+Complete guide to installing Industrace 2.x. For a 5-minute path, see [QUICK_START.md](QUICK_START.md).
 
-## System Requirements
+If you are on **Industrace 1.x**, read [MIGRATION.md](MIGRATION.md) first — v2 is a new installation, not an in-place upgrade.
 
-### Minimum Requirements
-- **RAM**: 4GB
-- **Storage**: 20GB available space
-- **CPU**: 2 cores
-- **OS**: Linux, macOS, or Windows with Docker support
+---
 
-### Recommended Requirements
-- **RAM**: 8GB or more
-- **Storage**: 50GB SSD
-- **CPU**: 4+ cores
-- **Network**: Stable internet connection
+## System requirements
 
-### Software Prerequisites
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- Git
+| | Minimum | Recommended |
+|---|---------|-------------|
+| RAM | 4 GB | 8 GB+ |
+| Storage | 20 GB | 50 GB SSD |
+| CPU | 2 cores | 4+ cores |
 
-## Installation Methods
+**Software:** Docker Engine 20.10+, Docker Compose 2.0+, Git.
 
-### Method 1: Docker Compose with Make (Recommended)
+---
 
-#### Step 1: Clone the Repository
+## Quick install (Docker + Make)
+
 ```bash
 git clone https://github.com/industrace/industrace.git
 cd industrace
 ```
 
-#### Step 2: Choose Your Deployment Type
+### Production local (first-time, self-signed HTTPS)
 
-##### **Production Local** (Recommended for first time)
 ```bash
-# Start production with Nginx + self-signed certificates + auto-init DB
 make prod
 ```
-- **Application**: https://localhost
-- **Backend API**: https://localhost/api/docs
-- **Features**: SSL certificates, optimized builds, automatic demo data
 
-##### **Production Cloud** (HTTPS with Traefik)
+- Application: https://localhost  
+- API docs: https://localhost/api/docs  
+- Uses `docker-compose.prod.yml` with Nginx
+
+Use `--env-file .env.prod` if you have a custom env file:
+
 ```bash
-# Start production with Traefik + Let's Encrypt
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+```
+
+**Note:** Production images do not mount source code as volumes — after `git pull`, run `build backend frontend` before `up -d`.
+
+### Production cloud (Traefik + Let's Encrypt)
+
+```bash
 make prod-cloud
 ```
-- **Application**: https://industrace.local
-- **Traefik Dashboard**: http://localhost:8080
-- **Features**: SSL certificates, optimized builds, production security
 
-##### **Custom Certificates** (HTTPS with Nginx)
-```bash
-# Setup custom certificates
-make custom-certs-setup
+- Application: https://industrace.local (configure DNS)  
+- Traefik dashboard: http://localhost:8080
 
-# Start with custom certificates
-make custom-certs-start
-```
-- **Application**: https://yourdomain.com
-- **Features**: Custom SSL certificates, production security
-
-#### Step 4: Verify Installation
-```bash
-# Check system status
-make status
-
-# View logs if needed
-make logs
-```
-
-#### Step 5: Access the Application
-
-##### **Production Local**
-- **Application**: https://localhost
-- **Backend API**: https://localhost/api/docs
-
-##### **Production Cloud**
-- **Application**: https://industrace.local
-- **Traefik Dashboard**: http://localhost:8080
-
-##### **Custom Certificates**
-- **Application**: https://yourdomain.com
-
-### Method 2: Development Setup (Advanced)
-
-#### Prerequisites
-- Python 3.9+
-- Node.js 18+
-- PostgreSQL 15+
-
-#### Backend Setup
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-
-# Configure database
-export DATABASE_URL="postgresql://user:password@localhost/industrace"
-
-# Run migrations
-alembic upgrade head
-
-# Start backend
-uvicorn app.main:app --reload
-```
-
-#### Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## Initial Configuration
-
-### Default Credentials
-After installation, you can log in with:
-- **Email**: admin@example.com
-- **Password**: Admin@123456!
-
-**⚠️ Important Security Notice:**
-- Default accounts (admin, editor, viewer) are created with weak passwords for initial setup
-- **You will be required to change your password on first login**
-- The new password must meet the following requirements:
-  - Minimum 12 characters
-  - At least one uppercase letter
-  - At least one lowercase letter
-  - At least one number
-  - At least one special character (!@#$%^&*(),.?":{}|<>[]\/_+=-~`)
-
-### Account Security Features
-- **Account Lockout**: After 5 failed login attempts, your account will be temporarily locked for 30 minutes
-- **Password Change Required**: Default accounts must change their password on first login
-- **Rate Limiting**: Login attempts are rate-limited to prevent brute-force attacks
-
-### Demo Data
-The system automatically populates with comprehensive demo data when using `make prod` or `make prod-cloud`:
-- 3 Sites (Production Plant, R&D Center, Distribution Warehouse)
-- 12 Areas (Assembly Lines, Labs, Control Rooms, etc.)
-- 19 Locations (Control Panels, Quality Stations, etc.)
-- 8 Assets (PLCs, HMIs, Robots, Sensors, etc.)
-- 10 Interfaces (Network interfaces with IP addresses)
-- 5 Connections (Network topology)
-- 4 Suppliers (Siemens, Rockwell, Schneider, ABB)
-- 6 Contacts (Sales, Support, Management)
-
-## Available Make Commands
-
-### Basic Commands
-```bash
-make prod      # Start production environment (Nginx + self-signed certificates + auto-init DB)
-make prod-cloud # Start production environment (Traefik + Let's Encrypt)
-make stop      # Stop all services
-make status    # Show service status
-make logs      # View logs
-```
-
-### Development Commands
-```bash
-make demo      # Add demo data to existing system
-make clean     # Clean system completely
-make test      # Run tests
-make shell     # Open backend shell
-make migrate   # Run database migrations
-make reset-db  # Reset database
-```
-
-### Build Commands
-```bash
-make build     # Build containers
-make rebuild   # Rebuild containers
-make restart   # Restart services
-```
-
-### Utility Commands
-```bash
-make help      # Show all available commands
-make info      # Show system information
-```
-
-## Manual Docker Commands (Alternative)
-
-If you prefer to use Docker commands directly:
-
-### Development Environment (Advanced)
-```bash
-# Start development environment
-docker-compose -f docker-compose.dev.yml up -d
-
-# Stop development environment
-docker-compose -f docker-compose.dev.yml down
-
-# View logs
-docker-compose -f docker-compose.dev.yml logs -f
-
-# Restart services
-docker-compose -f docker-compose.dev.yml restart
-```
-
-### Production Local Environment
-```bash
-# Start production system (Nginx + self-signed certificates)
-docker-compose -f docker-compose.prod.yml up -d
-
-# Stop production system
-docker-compose -f docker-compose.prod.yml down
-
-# View production logs
-docker-compose -f docker-compose.prod.yml logs -f
-
-# Restart production system
-docker-compose -f docker-compose.prod.yml restart
-```
-
-### Production Cloud Environment
-```bash
-# Start production system (Traefik + Let's Encrypt)
-docker-compose up -d
-
-# Stop production system
-docker-compose down
-
-# View production logs
-docker-compose logs -f
-
-# Restart production system
-docker-compose restart
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### System won't start
-```bash
-# Check logs
-make logs
-
-# Clean and restart
-make clean
-make prod
-```
-
-#### Demo data not loading
-```bash
-# Force demo data seeding
-make demo
-
-# Or clean and reinitialize
-make clean
-make prod
-```
-
-#### Port conflicts
-```bash
-# Check what's using the ports
-sudo lsof -i :80
-sudo lsof -i :443
-sudo lsof -i :5432
-
-# Stop conflicting services
-sudo systemctl stop nginx  # if using port 80
-```
-
-#### Permission issues
-```bash
-# Set correct permissions
-sudo chown -R $USER:$USER .
-
-# Or run with sudo (not recommended for production)
-sudo make init
-```
-
-### Database Issues
-
-#### Reset database
-```bash
-# Complete reset
-make clean
-make init
-
-# Or just reset database
-make reset-db
-```
-
-#### Backup and restore
-```bash
-# Backup
-make backup
-
-# Restore
-make restore
-```
-
-## Configuration Files
-
-### Environment Variables
-The main configuration file is `.env` (copied from `production.env.example`):
+### Development
 
 ```bash
-# Database Configuration
-DB_PASSWORD=your_secure_password_here
-
-# JWT Configuration
-SECRET_KEY=your-super-secure-secret-key-change-this-in-production
-
-# Domain Configuration
-DOMAIN=yourdomain.com
-
-# Admin Configuration
-ADMIN_EMAIL=admin@yourdomain.com
+docker compose -f docker-compose.dev.yml up -d
 ```
 
-### Docker Compose Files
-- `docker-compose.dev.yml` - Development environment
-- `docker-compose.prod.yml` - Production environment
-- `docker-compose.yml` - Default environment
+- Backend: http://localhost:8000 (hot reload via volume mount)  
+- Frontend: http://localhost:5173  
+- Database: localhost:5432
 
-## Next Steps
+### Useful Make targets
 
-After successful installation:
-
-1. **Access the application**: http://localhost:5173
-2. **Login with default credentials**: admin@example.com / Admin@123456!
-3. **Change your password**: You will be required to change your password on first login. The new password must be at least 12 characters long and include uppercase, lowercase, numbers, and special characters.
-4. **Explore demo data**: Navigate through sites, areas, assets, and connections
-5. **Configure your environment**: Update settings in the admin panel
-6. **Add your own data**: Start adding your industrial assets
-
-## Support
-
-- **Documentation**: [docs/](docs/)
-- **Quick Start**: [QUICK_START.md](QUICK_START.md)
-- **Troubleshooting**: [troubleshooting.md](troubleshooting.md)
-- **Website**: https://besafe.it/industrace
-- **Email**: industrace@besafe.it
+```bash
+make stop      # stop services
+make status    # service status
+make logs      # follow logs
+make migrate   # alembic upgrade head
+make rebuild   # rebuild containers
+make backup    # backup before upgrades
+```
 
 ---
 
-**Author**: Maurizio Bertaboni
+## Custom SSL certificates
+
+For internal PKI, self-signed, or corporate CA certificates (no Let's Encrypt):
+
+```bash
+make custom-certs-setup
+make custom-certs-start
+```
+
+1. Copy `custom-certs.env.example` → `custom-certs.env`
+2. Set `DOMAIN`, `CERT_PATH`, `KEY_PATH`, `CA_PATH`
+3. Run `./setup-custom-certs.sh` to validate certificates
+4. Start with `docker-compose -f docker-compose.custom-certs.yml --env-file custom-certs.env up -d`
+
+**Supported:** PEM/X.509, RSA 2048+ or ECDSA keys. Private key permissions: `600`.
+
+**Troubleshooting certificates:**
+
+```bash
+openssl x509 -in certificate.crt -text -noout
+openssl s_client -connect your-domain:443 -servername your-domain
+```
+
+See also [CONFIGURATION.md](CONFIGURATION.md) for environment variables.
+
+---
+
+## Initial setup
+
+### Setup wizard
+
+On first access, complete `/setup-wizard` if the system is not initialized.
+
+### Default credentials (demo / auto-init)
+
+- Email: `admin@example.com`  
+- Password: `Admin@123456!`
+
+You must change the password on first login (see [ADMINISTRATION.md](ADMINISTRATION.md#password-policy)).
+
+### Demo data
+
+`make prod` and `make prod-cloud` can seed sample sites, assets, and connections for evaluation.
+
+---
+
+## Manual Docker Compose
+
+```bash
+# Production
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+
+# Development
+docker compose -f docker-compose.dev.yml up -d
+```
+
+---
+
+## Native development (without Docker app containers)
+
+**Backend:**
+
+```bash
+cd backend
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+export DATABASE_URL="postgresql+psycopg://user:pass@localhost/industrace"
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+**Frontend:**
+
+```bash
+cd frontend
+npm install && npm run dev
+```
+
+PostgreSQL 15+ required locally or via `docker compose -f docker-compose.dev.yml up -d db`.
+
+---
+
+## Production notes
+
+- Set strong `SECRET_KEY`, `DB_PASSWORD`, and `ENCRYPTION_KEY` (required for SSO in production) — see [CONFIGURATION.md](CONFIGURATION.md)
+- Rebuild images after code updates in prod
+- Run `alembic upgrade head` and `python scripts/update_roles.py` after version upgrades — [MIGRATION.md](MIGRATION.md)
+- Backup before upgrades: `make backup`
+
+---
+
+## Troubleshooting installation
+
+| Issue | Action |
+|-------|--------|
+| Port 80/443 in use | `sudo lsof -i :80` — stop conflicting nginx/apache |
+| DB auth failed | Align `DB_PASSWORD` in `.env.prod` with Postgres volume; see [troubleshooting.md](troubleshooting.md) |
+| Blank UI after upgrade | Rebuild frontend image |
+| `ENCRYPTION_KEY` error in prod | Set in `.env.prod` — generate with Fernet (see CONFIGURATION) |
+
+Full guide: [troubleshooting.md](troubleshooting.md)
+
+---
+
+## Next steps
+
+1. [CONFIGURATION.md](CONFIGURATION.md) — environment and optional modules  
+2. [ADMINISTRATION.md](ADMINISTRATION.md) — users, RBAC, SSO  
+3. [MIGRATION.md](MIGRATION.md) — upgrades and backup  
+4. [Network Probe](../probe/README.md) — optional distributed discovery (separate docs)

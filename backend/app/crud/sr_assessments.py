@@ -30,18 +30,40 @@ def get_sr_assessment_by_sr_and_object(
     sr_id: uuid.UUID,
     object_type: str,
     object_id: uuid.UUID,
-    tenant_id: uuid.UUID
+    tenant_id: uuid.UUID,
+    enhancement_level: Optional[int] = None,
 ) -> Optional[SRAssessment]:
-    """Get SRAssessment by SR, object type, and object ID"""
+    """Get SRAssessment by SR, object, and optional RE level (None = legacy SR-level)."""
+    query = db.query(SRAssessment).filter(
+        SRAssessment.sr_id == sr_id,
+        SRAssessment.object_type == object_type,
+        SRAssessment.object_id == object_id,
+        SRAssessment.tenant_id == tenant_id,
+    )
+    if enhancement_level is None:
+        query = query.filter(SRAssessment.enhancement_level.is_(None))
+    else:
+        query = query.filter(SRAssessment.enhancement_level == enhancement_level)
+    return query.first()
+
+
+def list_sr_assessments_for_sr_and_object(
+    db: Session,
+    sr_id: uuid.UUID,
+    object_type: str,
+    object_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+) -> List[SRAssessment]:
     return (
         db.query(SRAssessment)
         .filter(
             SRAssessment.sr_id == sr_id,
             SRAssessment.object_type == object_type,
             SRAssessment.object_id == object_id,
-            SRAssessment.tenant_id == tenant_id
+            SRAssessment.tenant_id == tenant_id,
         )
-        .first()
+        .order_by(SRAssessment.enhancement_level.asc().nullsfirst())
+        .all()
     )
 
 

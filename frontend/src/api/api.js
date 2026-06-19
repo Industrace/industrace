@@ -504,6 +504,30 @@ export default {
   createOrUpdateSRAssessment(zoneId, srId, assessmentData) {
     return api.post(`/compliance/zone/${zoneId}/sr/${srId}/assessment`, assessmentData)
   },
+  exportZoneAudit(zoneId, format = 'json') {
+    return api.get(`/compliance/zone/${zoneId}/audit-export`, {
+      params: { format },
+      responseType: format === 'csv' ? 'blob' : 'json',
+    })
+  },
+  getAssetSecurityRequirements(assetId) {
+    return api.get(`/compliance/asset/${assetId}/security-requirements`)
+  },
+  createOrUpdateAssetSRAssessment(assetId, srId, assessmentData) {
+    return api.post(`/compliance/asset/${assetId}/sr/${srId}/assessment`, assessmentData)
+  },
+  recalculateAssetIec62443(assetId) {
+    return api.post(`/compliance/asset/${assetId}/recalculate`)
+  },
+  getConduitSecurityRequirements(conduitId) {
+    return api.get(`/compliance/conduit/${conduitId}/security-requirements`)
+  },
+  getSrRequirementEnhancements(srId) {
+    return api.get(`/compliance/sr/${srId}/requirement-enhancements`)
+  },
+  createOrUpdateConduitSRAssessment(conduitId, srId, assessmentData) {
+    return api.post(`/compliance/conduit/${conduitId}/sr/${srId}/assessment`, assessmentData)
+  },
   getSRInvolvedAssets(zoneId, srId) {
     return api.get(`/compliance/zone/${zoneId}/sr/${srId}/assets`)
   },
@@ -536,23 +560,11 @@ export default {
     return api.delete(`/conduits/${id}`)
   },
   recalculateConduitSLA(conduitId) {
-    return api.post(`/conduits/${conduitId}/recalculate-sla`)
+    return api.post(`/conduits/${conduitId}/calculate-sl`)
   },
   // ISA/IEC 62443 - Compliance
   getSecurityRequirements(params = {}) {
     return api.get('/compliance/requirements', { params })
-  },
-  getComplianceByZone(zoneId) {
-    return api.get(`/compliance/zone/${zoneId}`)
-  },
-  getComplianceByAsset(assetId) {
-    return api.get(`/compliance/assets/${assetId}`)
-  },
-  assessCompliance(complianceData) {
-    return api.post('/compliance/assess', complianceData)
-  },
-  updateComplianceRecord(recordId, complianceData) {
-    return api.put(`/compliance/records/${recordId}`, complianceData)
   },
   getGapAnalysis(zoneId = null) {
     const url = zoneId 
@@ -790,7 +802,27 @@ export default {
   testSMTPConfig(configData) {
     return api.post('/smtp-config/test', configData)
   },
-  
+
+  getSyslogConfig() {
+    return api.get('/syslog-config')
+  },
+  getSyslogConfigExists() {
+    return api.get('/syslog-config/exists')
+  },
+  setSyslogConfig(data) {
+    return api.post('/syslog-config', data)
+  },
+  testSyslogConfig(configData) {
+    return api.post('/syslog-config/test', configData)
+  },
+
+  getTenantFeatures() {
+    return api.get('/tenant-features')
+  },
+  updateTenantFeatures(data) {
+    return api.patch('/tenant-features', data)
+  },
+
   // Risk Scoring APIs
   calculateAssetRisk(assetId) {
     return api.post(`/assets/${assetId}/calculate-risk`)
@@ -954,6 +986,44 @@ export default {
     return api.get(`/print/kit/download/${filename}`, {
       responseType: 'blob'
     })
+  },
+
+  // Network Probes (Industrace PRO)
+  getNetworkProbes(params = {}) {
+    return api.get('/network-probes', { params })
+  },
+  createNetworkProbe(probeData) {
+    return api.post('/network-probes', probeData)
+  },
+  updateNetworkProbe(probeId, updateData) {
+    return api.put(`/network-probes/${probeId}`, updateData)
+  },
+  deauthorizeNetworkProbe(probeId) {
+    return api.post(`/network-probes/${probeId}/deauthorize`)
+  },
+  deleteNetworkProbe(probeId) {
+    return api.delete(`/network-probes/${probeId}`)
+  },
+  getNetworkProbeStatus(probeId) {
+    return api.get(`/network-probes/${probeId}/status`)
+  },
+  getNetworkProbeConfiguration(probeId, apiKey) {
+    return api.get(`/network-probes/configuration/${probeId}`, {
+      headers: { 'X-API-Key': apiKey }
+    })
+  },
+  getNetworkProbesOverview() {
+    // Aggregazioni leggere lato backend (total/active/error + health percentage)
+    return api.get('/network-probes/overview')
+  },
+  getDiscoveredDevices(params = {}) {
+    return api.get('/discovered-devices', { params })
+  },
+  updateDiscoveredDevice(deviceId, updateData) {
+    return api.put(`/discovered-devices/${deviceId}`, updateData)
+  },
+  onboardDiscoveredDevice(deviceId, payload = {}) {
+    return api.post(`/discovered-devices/${deviceId}/onboard`, payload)
   },
   
   // Generic HTTP methods for direct API calls

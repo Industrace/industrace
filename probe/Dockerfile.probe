@@ -1,0 +1,42 @@
+FROM python:3.11-slim
+
+# Installa dipendenze di sistema
+RUN apt-get update && apt-get install -y \
+    tcpdump \
+    iproute2 \
+    net-tools \
+    procps \
+    gcc \
+    build-essential \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Crea utente non-root per sicurezza
+RUN useradd -m -s /bin/bash probe && \
+    mkdir -p /app /logs && \
+    chown -R probe:probe /app /logs
+
+# Imposta directory di lavoro
+WORKDIR /app
+
+# Copia requirements
+COPY requirements.probe.txt .
+
+# Installa dipendenze Python
+RUN pip install --no-cache-dir -r requirements.probe.txt
+
+# Copia codice della sonda
+COPY network_probe_client.py .
+COPY probe.conf.example .
+
+# Cambia proprietario
+RUN chown -R probe:probe /app
+
+# Passa all'utente non-root
+USER probe
+
+# Esponi porta per monitoraggio (opzionale)
+EXPOSE 8080
+
+# Comando di avvio
+CMD ["python", "network_probe_client.py", "-c", "probe.conf"]

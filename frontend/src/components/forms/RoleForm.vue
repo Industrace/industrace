@@ -153,8 +153,8 @@
             </div>
           </div>
 
-          <!-- Categoria: Compliance -->
-          <div class="permission-category">
+          <!-- Categoria: Compliance (solo se modulo IEC 62443 abilitato) -->
+          <div v-if="isIec62443Enabled" class="permission-category">
             <h4 class="category-title">{{ t('roles.categories.compliance') }}</h4>
             <div class="permissions-grid">
               <div v-for="(section, sectionKey) in getSectionsByCategory('compliance')" :key="sectionKey" class="permission-section">
@@ -243,6 +243,7 @@
 <script setup>
 import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useTenantFeatures } from '@/composables/useTenantFeatures'
 import { useApi } from '../../composables/useApi'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
@@ -254,6 +255,7 @@ import Tag from 'primevue/tag'
 import api from '../../api/api'
 
 const { t } = useI18n()
+const { isIec62443Enabled } = useTenantFeatures()
 const { execute } = useApi()
 
 const props = defineProps({
@@ -314,6 +316,8 @@ const permissionSections = {
   users: { levels: createStandardLevels(), category: 'system' },
   roles: { levels: createStandardLevels(), category: 'system' },
   audit_logs: { levels: createStandardLevels(), category: 'system' },
+  external_log: { levels: createStandardLevels(), category: 'system' },
+  network_probes: { levels: createStandardLevels(), category: 'system' },
   utility: { levels: createStandardLevels(), category: 'system' },
   notifications: { levels: createStandardLevels(), category: 'system' },
   sso: { levels: createStandardLevels(), category: 'system' },

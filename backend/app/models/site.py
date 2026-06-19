@@ -39,6 +39,8 @@ class Site(Base):
     review_interval_months = Column(Integer, nullable=True)  # Intervallo review specifico per site (override tenant)
     assets = relationship("Asset", back_populates="site")
     areas = relationship("Area", back_populates="site")
+    network_probes = relationship("NetworkProbe", back_populates="site")
+    discovered_devices = relationship("DiscoveredDevice", back_populates="site")
     parent_id = Column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=True)
     parent = relationship("Site", remote_side=[id], backref="children")
     contacts = relationship("Contact", secondary=site_contacts, backref="sites")

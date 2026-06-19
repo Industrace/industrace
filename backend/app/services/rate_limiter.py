@@ -87,16 +87,14 @@ def get_client_identifier(request: Request, api_key=None) -> str:
     return f"ip:{get_remote_address(request)}"
 
 
-def check_rate_limit_strict(request: Request, rate_limit_str: str) -> bool:
+def check_rate_limit_for_identifier(identifier: str, rate_limit_str: str) -> bool:
     """
-    Checks rate limit with a specific limit (for login, etc.)
+    Rate limit by arbitrary identifier (e.g. probe API key hash).
+    Shared logic for strict and probe limits.
     """
     if not settings.RATE_LIMIT_ENABLED:
         return True
-    
-    identifier = f"ip:{get_remote_address(request)}"
-    
-    # Parse rate limit
+
     try:
         limit_str, period = rate_limit_str.split("/")
         limit = int(limit_str)
@@ -104,52 +102,77 @@ def check_rate_limit_strict(request: Request, rate_limit_str: str) -> bool:
         logger.warning(f"Invalid rate limit format: {rate_limit_str}. Using default.")
         limit = 10
         period = "minute"
-    
+
     period_seconds = 3600 if period == "hour" else 60 if period == "minute" else 1
-    
     redis_client = get_redis_client()
-    
+
     if redis_client:
         try:
-            key = f"rate_limit_strict:{identifier}"
+            key = f"rate_limit_id:{identifier}"
             current = redis_client.incr(key)
-            
             if current == 1:
                 redis_client.expire(key, period_seconds)
-            
             if current > limit:
-                logger.warning(f"Strict rate limit exceeded for {identifier}: {current}/{limit} {period}")
+                logger.warning(
+                    "Rate limit exceeded for %s: %s/%s %s",
+                    identifier,
+                    current,
+                    limit,
+                    period,
+                )
                 return False
-            
             return True
         except Exception as e:
-            logger.error(f"Redis error in strict rate limiting: {e}. Falling back to in-memory.")
-    
-    # In-memory fallback
-    if not hasattr(check_rate_limit_strict, '_memory_store'):
-        check_rate_limit_strict._memory_store = {}
-        check_rate_limit_strict._memory_timestamps = {}
-    
+            logger.error(f"Redis error in rate limiting: {e}. Falling back to in-memory.")
+
+    store_attr = "_memory_store_by_id"
+    ts_attr = "_memory_timestamps_by_id"
+    if not hasattr(check_rate_limit_for_identifier, store_attr):
+        setattr(check_rate_limit_for_identifier, store_attr, {})
+        setattr(check_rate_limit_for_identifier, ts_attr, {})
+
     current_time = time.time()
-    store = check_rate_limit_strict._memory_store
-    timestamps = check_rate_limit_strict._memory_timestamps
-    
+    store = getattr(check_rate_limit_for_identifier, store_attr)
+    timestamps = getattr(check_rate_limit_for_identifier, ts_attr)
+
     if identifier in timestamps:
         if current_time - timestamps[identifier] > period_seconds:
             store[identifier] = 0
             timestamps[identifier] = current_time
-    
+
     if identifier not in store:
         store[identifier] = 0
         timestamps[identifier] = current_time
-    
+
     store[identifier] += 1
-    
     if store[identifier] > limit:
-        logger.warning(f"Strict rate limit exceeded (in-memory) for {identifier}: {store[identifier]}/{limit} {period}")
+        logger.warning(
+            "Rate limit exceeded (in-memory) for %s: %s/%s %s",
+            identifier,
+            store[identifier],
+            limit,
+            period,
+        )
         return False
-    
     return True
+
+
+def check_probe_rate_limit(api_key: str, rate_limit_str: str) -> bool:
+    """Rate limit network probe traffic per API key."""
+    import hashlib
+
+    digest = hashlib.sha256(api_key.encode("utf-8")).hexdigest()[:24]
+    return check_rate_limit_for_identifier(f"probe:{digest}", rate_limit_str)
+
+
+def check_rate_limit_strict(request: Request, rate_limit_str: str) -> bool:
+    """
+    Checks rate limit with a specific limit (for login, etc.)
+    """
+    if not settings.RATE_LIMIT_ENABLED:
+        return True
+    identifier = f"ip:{get_remote_address(request)}"
+    return check_rate_limit_for_identifier(identifier, rate_limit_str)
 
 
 def check_rate_limit(request: Request, api_key=None) -> bool:

@@ -25,6 +25,7 @@ from app.schemas.asset_capability import (
     BulkCapabilityUpdate,
     BulkCapabilityResponse,
 )
+from app.services.feature_guard import require_iec62443_enabled
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/assets",
     tags=["asset-capabilities"],
+    dependencies=[Depends(require_iec62443_enabled)],
 )
 
 

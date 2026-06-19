@@ -12,10 +12,37 @@
     <Card class="mb-4">
       <template #title>{{ t('isa62443.securityZones.details') }}</template>
       <template #content>
+        <div class="zone-status-row mb-3">
+          <Tag
+            v-if="zone.compliance_status"
+            :value="getComplianceStatusLabel(zone.compliance_status)"
+            :severity="getComplianceSeverity(zone.compliance_status)"
+          />
+          <Tag
+            :value="`SL-T: ${zone.security_level_target ?? '-'}`"
+            severity="info"
+          />
+          <Tag
+            :value="`SL-A: ${zone.security_level_achieved ?? '-'}`"
+            :severity="getSLASeverity(zone.security_level_achieved, zone.security_level_target)"
+          />
+          <Tag
+            v-if="zone.security_level_capability != null"
+            :value="`SL-C: ${zone.security_level_capability}`"
+            severity="secondary"
+          />
+          <Tag
+            v-if="zone.security_level_target != null && zone.security_level_achieved != null"
+            :value="`${t('isa62443.compliance.gap')}: ${Math.max(0, zone.security_level_target - zone.security_level_achieved)}`"
+            :severity="getGapSeverity(zone.security_level_target, zone.security_level_achieved)"
+          />
+        </div>
         <div class="zone-details-grid">
           <div><strong>{{ t('common.fields.description') }}:</strong> {{ zone.description || '-' }}</div>
           <div><strong>{{ t('isa62443.securityZones.zoneType') }}:</strong> {{ zone.zone_type || '-' }}</div>
-          <div><strong>{{ t('isa62443.securityZones.securityLevel') }}:</strong> SL-{{ zone.security_level_target || '-' }}</div>
+          <div><strong>{{ t('isa62443.securityZones.securityLevel') }}:</strong> SL-T {{ zone.security_level_target || '-' }}</div>
+          <div><strong>{{ t('isa62443.compliance.slAchieved') }}:</strong> SL-A {{ zone.security_level_achieved ?? '-' }}</div>
+          <div><strong>{{ t('isa62443.compliance.securityLevelCapability') }}:</strong> SL-C {{ zone.security_level_capability ?? '-' }}</div>
           <div><strong>{{ t('isa62443.securityZones.assets') }}:</strong> {{ zone.asset_count || 0 }}</div>
           <div><strong>{{ t('isa62443.securityZones.conduits') }}:</strong> {{ zone.conduit_count || 0 }}</div>
         </div>
@@ -619,6 +646,21 @@ function getComplianceSeverity(status) {
   return severityMap[status] || 'info'
 }
 
+function getSLASeverity(slAchieved, slTarget) {
+  if (slTarget == null || slAchieved == null) return 'info'
+  if (slAchieved >= slTarget) return 'success'
+  if (slTarget - slAchieved === 1) return 'warning'
+  return 'danger'
+}
+
+function getGapSeverity(slTarget, slAchieved) {
+  if (slTarget == null || slAchieved == null) return 'info'
+  const gap = slTarget - slAchieved
+  if (gap <= 0) return 'success'
+  if (gap === 1) return 'warning'
+  return 'danger'
+}
+
 function onSort(event) {
   sortField.value = event.sortField
   sortOrder.value = event.sortOrder
@@ -898,6 +940,12 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1rem;
+}
+
+.zone-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .asset-link,

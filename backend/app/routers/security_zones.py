@@ -4,6 +4,8 @@ from typing import List, Optional
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
+
+from app.services.feature_guard import require_iec62443_enabled
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from pydantic import BaseModel, Field
@@ -25,7 +27,11 @@ from app.schemas.asset_zone_membership import (
     AssetZoneMembershipRead
 )
 
-router = APIRouter(prefix="/security-zones", tags=["Security Zones"])
+router = APIRouter(
+    prefix="/security-zones",
+    tags=["Security Zones"],
+    dependencies=[Depends(require_iec62443_enabled)],
+)
 
 
 class SecurityZoneBase(BaseModel):

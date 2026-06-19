@@ -11,6 +11,7 @@ from app.init_data.init_notification_templates import init_notification_template
 from app.init_data.init_security_requirements import init_security_requirements
 from app.init_data.init_security_capabilities import init_security_capabilities
 from app.init_data.init_sr_capability_mappings import init_sr_capability_mappings
+from app.init_data.init_requirement_enhancements import init_requirement_enhancements
 
 ADMIN_EMAIL = "admin@example.com"
 EDITOR_EMAIL = "editor@example.com"
@@ -117,6 +118,12 @@ def setup_system():
         init_sr_capability_mappings(db)
     except Exception as e:
         print(f"⚠️  SR-Capability mappings initialization failed: {e}")
+
+    # 11. IEC 62443 Requirement Enhancements RE 1-4 (system-wide)
+    try:
+        init_requirement_enhancements(db)
+    except Exception as e:
+        print(f"⚠️  Requirement Enhancements initialization failed: {e}")
 
     # Add demo data if no assets exist (first initialization)
     # This ensures demo data is created even in production during first setup

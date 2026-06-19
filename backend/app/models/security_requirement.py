@@ -45,4 +45,9 @@ class SecurityRequirement(Base):
     compliance_records = relationship("SecurityRequirementCompliance", back_populates="requirement")
     capability_mappings = relationship("SRCapability", back_populates="security_requirement", cascade="all, delete-orphan")
     assessments = relationship("SRAssessment", back_populates="security_requirement", cascade="all, delete-orphan")
+    requirement_enhancements = relationship(
+        "RequirementEnhancement",
+        back_populates="security_requirement",
+        cascade="all, delete-orphan",
+    )
 

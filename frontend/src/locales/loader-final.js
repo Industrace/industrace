@@ -61,6 +61,10 @@ import itVulnerabilities from './it/vulnerabilities.json'
 import enVulnerabilities from './en/vulnerabilities.json'
 import itSSO from './it/sso.json'
 import enSSO from './en/sso.json'
+import itNetworkProbes from './it/networkProbes.json'
+import enNetworkProbes from './en/networkProbes.json'
+import itDiscoveredDevices from './it/discoveredDevices.json'
+import enDiscoveredDevices from './en/discoveredDevices.json'
 import itCore from './it/core.json'
 import enCore from './en/core.json'
 
@@ -133,6 +137,8 @@ const messages = {
     assetDependencies: itAssetDependencies,
     vulnerabilities: itVulnerabilities,
     sso: itSSO,
+    networkProbes: itNetworkProbes,
+    discoveredDevices: itDiscoveredDevices,
     core: itCore
   }),
   en: flattenObject({
@@ -165,6 +171,8 @@ const messages = {
     assetDependencies: enAssetDependencies,
     vulnerabilities: enVulnerabilities,
     sso: enSSO,
+    networkProbes: enNetworkProbes,
+    discoveredDevices: enDiscoveredDevices,
     core: enCore
   })
 }

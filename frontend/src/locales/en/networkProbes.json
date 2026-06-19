@@ -1,0 +1,50 @@
+{
+  "title": "Network Probes",
+  "addProbe": "Add probe",
+  "overview": {
+    "totalProbes": "Total probes",
+    "active": "Active",
+    "errors": "Errors",
+    "maintenance": "Maintenance",
+    "health": "Health",
+    "transmissions": "Transmissions"
+  },
+  "columns": {
+    "name": "Name",
+    "site": "Site",
+    "status": "Status",
+    "lastHeartbeat": "Last heartbeat",
+    "lastData": "Last data",
+    "actions": "Actions"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "error": "Error",
+    "maintenance": "Maintenance"
+  },
+  "dialogs": {
+    "createTitle": "Create network probe",
+    "editTitle": "Edit probe",
+    "apiKeyTitle": "Probe API key",
+    "apiKeyWarning": "Copy the API key now. It will not be shown again.",
+    "deauthorizeConfirm": "De-authorize this probe? The running client must be reconfigured with a new key."
+  },
+  "fields": {
+    "name": "Probe name",
+    "description": "Description",
+    "interface": "Network interface",
+    "heartbeatInterval": "Heartbeat interval (s)",
+    "dataInterval": "Data transmission interval (s)",
+    "samplingRate": "Sampling rate",
+    "payloadAnalysis": "Payload analysis (may capture sensitive data)"
+  },
+  "messages": {
+    "created": "Probe created",
+    "updated": "Probe updated",
+    "deleted": "Probe deleted",
+    "deauthorized": "Probe de-authorized",
+    "loadError": "Failed to load probes"
+  },
+  "legalDisclaimer": "Network sniffing may capture sensitive traffic. Ensure you have legal authorization before enabling payload analysis."
+}

@@ -52,3 +52,6 @@ python-magic==0.4.27
 
 # HTTP Client (used for external API calls)
 httpx==0.25.2
+
+# Testing
+pytest==7.4.3

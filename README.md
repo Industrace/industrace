@@ -27,12 +27,12 @@ We like to think of Industrace as an experiment in human + AI co-creation, where
 Last thing..
 Born in Italy, Industrace combines European attention to industrial processes with a global open-source mindset.
 
-[![Release](https://img.shields.io/badge/Release-v2.0.0-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.0.0)
+[![Release](https://img.shields.io/badge/Release-v2.1.0-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.1.0)
 
 ## 🌟 Key Features
 
 - **Asset Management**: Complete lifecycle management of industrial assets, dependencies, and reviews
-- **ISA/IEC 62443**: Security zones, conduits, compliance engine, and evidence (v2)
+- **ISA/IEC 62443**: Security zones, conduits, compliance engine, and evidence (v2, optional per tenant) — see [scope & limits](docs/IEC62443.md)
 - **Vulnerability Intelligence**: CVE management, feeds, and risk integration (v2)
 - **Network Mapping**: Visual representation of asset connections and communications
 - **Risk Assessment**: Built-in risk scoring, propagation, and vulnerability assessment
@@ -181,7 +181,7 @@ make config
 - **Email**: admin@example.com
 - **Password**: Admin@123456!
 
-**Note**: Demo data is automatically populated when using `make prod` or `make prod-cloud`. The system includes sample sites, areas, locations, manufacturers, suppliers, contacts, assets with interfaces, and network connections for testing purposes. On first login you will be required to change your password; see [Password Policy](docs/UPGRADE_PASSWORD_POLICY.md).
+**Note**: Demo data is automatically populated when using `make prod` or `make prod-cloud`. The system includes sample sites, areas, locations, manufacturers, suppliers, contacts, assets with interfaces, and network connections for testing purposes. On first login you will be required to change your password; see [Password Policy](docs/ADMINISTRATION.md#password-policy).
 
 ## 📊 Demo Data Included
 
@@ -198,32 +198,20 @@ The system comes pre-populated with comprehensive demo data:
 
 ## Documentation
 
-Full index: **[docs/README.md](docs/README.md)**. Quick links:
+Full index: **[docs/README.md](docs/README.md)**.
 
-**Getting started**
-- [Quick Start Guide](docs/QUICK_START.md) - Get up and running in 5 minutes
-- [Installation Guide](docs/installation.md) - Detailed installation instructions
-- [Docker Deployment](docs/docker-deployment.md) - Production deployment
-- [Configuration](docs/configuration.md) - System configuration
-- [Custom Certificates](docs/custom-certificates.md) - HTTPS with your own certificates
-
-**API & integration**
-- [API Documentation](docs/api-documentation.md) - REST API reference
-- [External API Guide](docs/external-api.md) - Integration APIs for third-party systems
-
-**Upgrades & administration**
-- [Upgrade Safety](docs/UPGRADE_SAFETY.md) - Reducing upgrade risk (backup, staging, rollback)
-- [Upgrade Guide](docs/UPGRADE.md) - How to upgrade from previous versions
-- [Upgrade v1 to v2](docs/UPGRADE_v1_TO_v2.md) - Major upgrade procedure (v1.x → v2)
-- [Password Policy](docs/UPGRADE_PASSWORD_POLICY.md) - Password security requirements
-- [RBAC Permissions](docs/RBAC_PERMISSIONS.md) - Roles and permissions (v2)
-- [SSO with Azure AD](docs/SSO_AZURE_AD_SETUP.md) - Single Sign-On configuration
-- [Backup and Restore](docs/backup-restore.md) - Data protection procedures
-- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
-
-**Reference**
-- [Release Notes](docs/release-notes.md) - Version history and changes
-- [Roadmap](docs/roadmap.md) - Planned features and improvements
+| Guide | Description |
+|-------|-------------|
+| [Quick Start](docs/QUICK_START.md) | ~5 minutes to first login |
+| [Installation](docs/INSTALLATION.md) | Docker prod/dev, custom certificates |
+| [Configuration](docs/CONFIGURATION.md) | Environment and optional modules |
+| [Migration](docs/MIGRATION.md) | **v1 frozen** — v2 is a new install; upgrade within 2.x |
+| [Administration](docs/ADMINISTRATION.md) | RBAC, SSO, password policy |
+| [API](docs/API.md) | REST and external API |
+| [IEC 62443](docs/IEC62443.md) | Scope when module is enabled |
+| [Troubleshooting](docs/troubleshooting.md) | Common issues |
+| [Release notes](docs/release-notes.md) | Version history |
+| [Network Probe](probe/README.md) | Distributed discovery (separate docs) |
 
 ## 🔧 Development
 
@@ -262,7 +250,7 @@ make migrate    # Run database migrations
 make reset-db   # Reset database
 make backup     # Backup database, uploads, config
 make backup-full # Full backup including logs
-make restore    # Restore from backup (see docs/backup-restore.md)
+make restore    # Restore from backup (see docs/MIGRATION.md)
 make restart    # Restart services
 make info       # Show system information
 make config     # Show configuration options
@@ -294,9 +282,8 @@ See **[CHANGELOG.md](CHANGELOG.md)** and **[Release Notes](docs/release-notes.md
 - **Notifications**: Templates, queue, logs, user preferences
 - **Single Sign-On**: Azure AD / Microsoft Entra ID
 - **Extended RBAC**: New permissions for zones, compliance, vulnerabilities, notifications, SSO
-- **Password policy**: Stronger requirements; see [UPGRADE_PASSWORD_POLICY.md](docs/UPGRADE_PASSWORD_POLICY.md)
-- **New Asset Detail layout**: Tabs for Overview, Relations, Security, IEC 62443, Review, etc.
-- **Upgrade**: From v1.x see [UPGRADE_v1_TO_v2.md](docs/UPGRADE_v1_TO_v2.md) and [UPGRADE_SAFETY.md](docs/UPGRADE_SAFETY.md)
+- **Password policy**: Stronger requirements; see [ADMINISTRATION.md](docs/ADMINISTRATION.md#password-policy)
+- **Upgrade**: From v1.x install v2 fresh — [MIGRATION.md](docs/MIGRATION.md)
 
 ### [v1.1.0] - November 2025
 - Trash management for Areas, multilingual printed kit, global search improvements, asset timeline filtering, performance indexes, translation restructuring. See [CHANGELOG.md](CHANGELOG.md).

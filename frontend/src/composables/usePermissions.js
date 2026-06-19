@@ -98,7 +98,7 @@ export function usePermissions() {
       // Nuove sezioni
       'vulnerabilities', 'asset_reviews', 'asset_dependencies',
       'compliance', 'security_zones', 'notifications', 'sso',
-      'api_keys', 'evidence'
+      'api_keys', 'evidence', 'external_log', 'network_probes'
     ]
     
     return allSections.map(section => getPermissionInfo(section))

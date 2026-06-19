@@ -1,0 +1,30 @@
+{
+  "title": "Dispositivi scoperti",
+  "filters": {
+    "status": "Stato",
+    "probe": "Sonda",
+    "site": "Sito",
+    "searchPlaceholder": "MAC, IP, hostname, vendor..."
+  },
+  "columns": {
+    "mac": "MAC",
+    "ip": "IP",
+    "hostname": "Hostname",
+    "vendor": "Vendor",
+    "probe": "Sonda",
+    "site": "Sito",
+    "status": "Stato",
+    "match": "Match",
+    "actions": "Azioni"
+  },
+  "actions": {
+    "onboard": "Onboard come asset",
+    "assign": "Assegna ad asset",
+    "ignore": "Ignora"
+  },
+  "messages": {
+    "onboarded": "Dispositivo importato come asset",
+    "updated": "Dispositivo aggiornato",
+    "loadError": "Errore caricamento dispositivi"
+  }
+}

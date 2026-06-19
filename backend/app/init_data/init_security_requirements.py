@@ -5,19 +5,15 @@ Based on ISA/IEC 62443-3-3:2013 standard.
 
 Structure:
 - FR 1-7: Foundational Requirements (7 macro-categories)
-- SR X.Y: Security Requirements (31 specific requirements under FR categories)
+- SR X.Y: Security Requirements (52 SR in IEC 62443-3-3:2013)
 """
 from sqlalchemy.orm import Session
 from app.models import SecurityRequirement
 import uuid
 
 
-def init_security_requirements(db: Session):
-    """Create default ISA/IEC 62443 Security Requirements"""
-    
-    # ISA/IEC 62443-3-3 Security Requirements (SR)
-    # Each SR belongs to one of the 7 Foundational Requirements (FR)
-    requirements = [
+# ISA/IEC 62443-3-3 Security Requirements (SR); each SR belongs to one of FR 1–7.
+SECURITY_REQUIREMENTS_DATA = [
         # FR 1 - Identification and Authentication Control (IAC)
         # SR 1.1 - SR 1.13
         {
@@ -371,6 +367,23 @@ def init_security_requirements(db: Session):
             'max_security_level': 4,
             'standard_version': '62443-3-3:2013',
             'section_reference': 'SR 2.12'
+        },
+        {
+            'requirement_id': 'SR 2.13',
+            'requirement_category': 'SR',
+            'title': 'Use of physical diagnostic and test interfaces',
+            'description': 'The IACS shall restrict use of physical diagnostic and test interfaces.',
+            'requirement_text': (
+                'The IACS shall enforce that physical diagnostic and test interfaces are only '
+                'enabled during maintenance or diagnostic sessions and are disabled otherwise.'
+            ),
+            'applies_to_zones': True,
+            'applies_to_conduits': False,
+            'applies_to_assets': True,
+            'min_security_level': 2,
+            'max_security_level': 4,
+            'standard_version': '62443-3-3:2013',
+            'section_reference': 'SR 2.13'
         },
         # FR 3 - System Integrity (SI)
         # SR 3.1 - SR 3.9
@@ -746,8 +759,15 @@ def init_security_requirements(db: Session):
             'standard_version': '62443-3-3:2013',
             'section_reference': 'SR 7.8'
         },
-    ]
-    
+]
+
+# Backward-compatible alias for tests and tooling
+SECURITY_REQUIREMENTS = SECURITY_REQUIREMENTS_DATA
+
+
+def init_security_requirements(db: Session):
+    """Create default ISA/IEC 62443 Security Requirements"""
+    requirements = SECURITY_REQUIREMENTS_DATA
     created_count = 0
     for req_data in requirements:
         # Check if requirement already exists

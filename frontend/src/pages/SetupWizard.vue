@@ -102,6 +102,16 @@
             </div>
           </div>
 
+          <div class="modules-section">
+            <h3>{{ t('setup.strings.features.title') }}</h3>
+            <p class="modules-hint">{{ t('setup.strings.features.help') }}</p>
+            <label class="module-toggle">
+              <InputSwitch v-model="setupData.iec62443_enabled" inputId="wizard_iec62443" />
+              <span>{{ t('setup.strings.features.iec62443') }}</span>
+            </label>
+            <small class="module-detail">{{ t('setup.strings.features.iec62443Hint') }}</small>
+          </div>
+
           <div class="step-actions">
             <Button 
               :label="t('setup.back')" 
@@ -193,6 +203,10 @@
               <span class="label">{{ t('setup.organization.language') }}:</span>
               <span class="value">{{ getLanguageLabel(setupData.language) }}</span>
             </div>
+            <div class="review-item">
+              <span class="label">{{ t('setup.strings.features.iec62443') }}:</span>
+              <span class="value">{{ setupData.iec62443_enabled ? t('setup.strings.features.enabled') : t('setup.strings.features.disabled') }}</span>
+            </div>
           </div>
           
           <div class="review-section">
@@ -272,6 +286,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Dropdown from 'primevue/dropdown'
+import InputSwitch from 'primevue/inputswitch'
 import api from '@/api/api'
 
 const { t } = useI18n()
@@ -297,7 +312,8 @@ const setupData = reactive({
   admin_name: '',
   admin_email: '',
   admin_password: '',
-  language: 'en'
+  language: 'en',
+  iec62443_enabled: false
 })
 
 const errors = reactive({})
@@ -597,6 +613,43 @@ onMounted(() => {
   margin-bottom: 0.5rem;
   font-weight: 600;
   color: #2c3e50;
+}
+
+.modules-section {
+  margin-bottom: 2rem;
+  padding: 1.25rem 1.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.modules-section h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  color: #2c3e50;
+}
+
+.modules-hint {
+  margin: 0 0 1rem;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.module-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.module-detail {
+  display: block;
+  margin-top: 0.5rem;
+  margin-left: 3.25rem;
+  color: #6c757d;
+  font-size: 0.85rem;
 }
 
 .step-actions {

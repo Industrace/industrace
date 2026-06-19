@@ -11,6 +11,7 @@ from app.init_asset_statuses import setup_asset_statuses
 from app.init_asset_types import setup_asset_types
 from app.init_data.init_notification_templates import init_notification_templates
 from app.init_data.init_security_requirements import init_security_requirements
+from app.services.tenant_features import set_iec62443_enabled
 import uuid
 
 router = APIRouter(prefix="/setup", tags=["setup"])
@@ -58,7 +59,10 @@ def initialize_system(setup_data: SetupRequest, db: Session = Depends(get_db)):
             id=uuid.uuid4(),
             name=setup_data.tenant_name,
             slug=setup_data.tenant_slug,
-            settings={"theme": "industrial", "language": setup_data.language}
+            settings=set_iec62443_enabled(
+                {"theme": "industrial", "language": setup_data.language},
+                setup_data.iec62443_enabled,
+            ),
         )
         db.add(tenant)
         db.flush()

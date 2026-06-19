@@ -19,6 +19,8 @@
     "notifications": "Notifications",
     "ssoConfig": "SSO Configuration",
     "networkMap": "Network Map",
+    "networkProbes": "Network Probes",
+    "discoveredDevices": "Discovered Devices",
     "profile": "Profile",
     "pcap": "PCAP",
     "auditLogs": "Audit Logs",

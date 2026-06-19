@@ -67,6 +67,12 @@ class Settings(BaseSettings):
     SSO_REDIRECT_URI: str = os.getenv("SSO_REDIRECT_URI") or "http://localhost:5173/auth/sso/callback"
     ENCRYPTION_KEY: str = os.getenv("ENCRYPTION_KEY", "")  # For encrypting client secrets (generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
     RATE_LIMIT_STRICT: str = os.getenv("RATE_LIMIT_STRICT", "10/minute")
+    # Network probe endpoints (per API key)
+    PROBE_RATE_LIMIT_HEARTBEAT: str = os.getenv("PROBE_RATE_LIMIT_HEARTBEAT", "120/minute")
+    PROBE_RATE_LIMIT_DATA: str = os.getenv("PROBE_RATE_LIMIT_DATA", "30/hour")
+    PROBE_RATE_LIMIT_CONFIG: str = os.getenv("PROBE_RATE_LIMIT_CONFIG", "60/hour")
+    PROBE_HEARTBEAT_STALE_SECONDS: int = int(os.getenv("PROBE_HEARTBEAT_STALE_SECONDS", "300"))
+    PROBE_RETENTION_DAYS: int = int(os.getenv("PROBE_RETENTION_DAYS", "90"))
 
     # API Versioning
     API_VERSION: str = os.getenv("API_VERSION", "v1")
@@ -101,6 +107,10 @@ class Settings(BaseSettings):
                 raise ValueError("SECURE_COOKIES must be True in production environment")
             if self.SAME_SITE_COOKIES != "strict":
                 raise ValueError("SAME_SITE_COOKIES must be 'strict' in production environment")
+            if not self.ENCRYPTION_KEY:
+                raise ValueError(
+                    "ENCRYPTION_KEY must be set in production (required for SSO client secret encryption)"
+                )
 
     class Config:
         env_file = ".env"

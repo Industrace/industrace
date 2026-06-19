@@ -41,6 +41,10 @@ class BackgroundTaskManager:
         # Start asset review checker task
         review_task = asyncio.create_task(cls._check_asset_reviews_loop())
         cls._tasks.append(review_task)
+
+        # Probe maintenance: stale status + telemetry retention
+        probe_task = asyncio.create_task(cls._probe_maintenance_loop())
+        cls._tasks.append(probe_task)
         
         logger.info("Background tasks started")
     
@@ -147,6 +151,40 @@ class BackgroundTaskManager:
             
             # Wait 24 hours before next check
             await asyncio.sleep(24 * 60 * 60)  # 24 hours
+
+    @classmethod
+    async def _probe_maintenance_loop(cls):
+        """Refresh stale probe statuses and purge old telemetry every hour."""
+        await asyncio.sleep(120)
+        while cls._running:
+            db = None
+            try:
+                from app.services.network_probe_service import NetworkProbeService
+
+                db = SessionLocal()
+                stale = NetworkProbeService.refresh_stale_probe_statuses(db)
+                purged = NetworkProbeService.purge_old_probe_telemetry(db)
+                if stale or purged["deleted_heartbeats"] or purged["deleted_transmissions"]:
+                    logger.info(
+                        "Probe maintenance: stale=%s purged_heartbeats=%s purged_transmissions=%s",
+                        stale,
+                        purged["deleted_heartbeats"],
+                        purged["deleted_transmissions"],
+                    )
+            except Exception as e:
+                logger.error(f"Error in probe maintenance loop: {e}", exc_info=True)
+                if db:
+                    try:
+                        db.rollback()
+                    except Exception:
+                        pass
+            finally:
+                if db:
+                    try:
+                        db.close()
+                    except Exception:
+                        pass
+            await asyncio.sleep(60 * 60)
 
 
 # Convenience functions for manual triggering

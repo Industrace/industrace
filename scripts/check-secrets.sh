@@ -216,6 +216,33 @@ for file in "${ENV_EXAMPLE_FILES[@]}"; do
     fi
 done
 
+# Check probe configuration files (must not be committed)
+echo ""
+echo "📋 Checking probe configuration files..."
+PROBE_TRACKED=$(git ls-files 'probe/*.conf' 2>/dev/null | grep -v '\.example$' || true)
+if [ -n "$PROBE_TRACKED" ]; then
+    echo -e "${RED}❌ ERROR${NC}: Probe config files must not be tracked in git:"
+    echo "$PROBE_TRACKED" | while read -r file; do
+        echo -e "   ${RED}→${NC} ${file}"
+        echo -e "   ${RED}→${NC} Use probe/probe.conf.example and keep local probe.conf out of version control"
+    done
+    ((ERRORS++))
+fi
+
+for file in probe/*.conf; do
+    [ -f "$file" ] || continue
+    [[ "$file" == *.example ]] && continue
+    if grep -qiE '^\s*api_key\s*=\s*(your_api_key_here|test_api_key_123)\s*$' "$file" 2>/dev/null; then
+        continue
+    fi
+    if grep -qiE '^\s*api_key\s*=\s*.+' "$file" 2>/dev/null; then
+        if git ls-files --error-unmatch "$file" >/dev/null 2>&1; then
+            echo -e "${RED}❌ ERROR${NC}: Real api_key found in tracked probe config: ${file}"
+            ((ERRORS++))
+        fi
+    fi
+done
+
 # Summary
 echo ""
 if [ $ERRORS -eq 0 ]; then

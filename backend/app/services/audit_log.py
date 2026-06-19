@@ -140,16 +140,16 @@ def translate_ids_in_data(db: Session, data: Any, tenant_id: uuid.UUID) -> Any:
     if not data:
         return data
 
-            # If it's a JSON string, parse it
+    # If it's a JSON string, parse it
     if isinstance(data, str):
         try:
             parsed_data = json.loads(data)
             translated = translate_ids_in_data(db, parsed_data, tenant_id)
             return json.dumps(translated, indent=2, ensure_ascii=False)
-        except:
+        except Exception:
             return data
 
-            # If it's a dictionary, translate ID fields
+    # If it's a dictionary, translate ID fields
     if isinstance(data, dict):
         translated = {}
         for key, value in data.items():
@@ -179,7 +179,7 @@ def translate_ids_in_data(db: Session, data: Any, tenant_id: uuid.UUID) -> Any:
                         if name:
                             translated[f"{key}_name"] = name
                         translated[key] = value
-                    except:
+                    except Exception:
                         translated[key] = value
                 else:
                     translated[key] = value
@@ -187,7 +187,7 @@ def translate_ids_in_data(db: Session, data: Any, tenant_id: uuid.UUID) -> Any:
                 translated[key] = value
         return translated
 
-            # If it's a list, translate each element
+    # If it's a list, translate each element
     if isinstance(data, list):
         return [translate_ids_in_data(db, item, tenant_id) for item in data]
 
@@ -338,4 +338,10 @@ def create_audit_log(
     db.add(audit_entry)
     if commit:
         db.commit()
+    # Inoltro verso server syslog esterno se configurato (non blocca in caso di errore)
+    try:
+        from app.services.syslog_forwarder import forward_audit_entry_to_syslog
+        forward_audit_entry_to_syslog(db, audit_entry)
+    except Exception:
+        pass  # Ignorato: l'audit è già salvato in DB
     return audit_entry

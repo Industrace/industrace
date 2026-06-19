@@ -38,6 +38,9 @@ async def read_users_me(
     
     if not user:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.USER_NOT_FOUND)
+
+    from app.services.tenant_features import get_tenant_features
+    tenant_features = get_tenant_features(user.tenant.settings if user.tenant else None)
     
     # Create response dict with full_name
     user_dict = {
@@ -53,7 +56,8 @@ async def read_users_me(
         "notifications_enabled": user.notifications_enabled,
         "created_at": user.created_at,
         "last_login": user.last_login,
-        "password_change_required": user.password_change_required or False
+        "password_change_required": user.password_change_required or False,
+        "features": tenant_features,
     }
     
     return user_dict

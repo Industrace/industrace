@@ -22,6 +22,7 @@ def seed_roles(tenant_id=None):
                 "users": 3,
                 "roles": 3,
                 "audit_logs": 3,
+                "external_log": 3,
                 "utility": 3,
                 "asset_documents": 3,
                 "asset_photos": 3,
@@ -36,6 +37,7 @@ def seed_roles(tenant_id=None):
                 "notifications": 3,
                 "sso": 3,
                 "api_keys": 3,
+                "network_probes": 3,
             },
         },
         {
@@ -53,6 +55,7 @@ def seed_roles(tenant_id=None):
                 "users": 1,
                 "roles": 1,
                 "audit_logs": 1,
+                "external_log": 1,
                 "utility": 2,
                 "asset_documents": 2,
                 "asset_photos": 2,
@@ -66,6 +69,7 @@ def seed_roles(tenant_id=None):
                 "notifications": 2,
                 "sso": 1,
                 "api_keys": 1,
+                "network_probes": 1,
             },
         },
         {
@@ -83,6 +87,7 @@ def seed_roles(tenant_id=None):
                 "users": 0,
                 "roles": 1,
                 "audit_logs": 1,
+                "external_log": 0,
                 "utility": 1,
                 "asset_documents": 1,
                 "asset_photos": 1,
@@ -96,6 +101,7 @@ def seed_roles(tenant_id=None):
                 "notifications": 1,
                 "sso": 0,
                 "api_keys": 0,
+                "network_probes": 1,
             },
         },
     ]

@@ -10,6 +10,7 @@ from uuid import UUID
 from app.database import get_db
 from app.models import User
 from app.services.auth import get_current_user
+from app.services.feature_guard import require_iec62443_enabled
 from app.schemas.evidence import EvidenceCreate, EvidenceUpdate, EvidenceResponse
 from app.crud import evidence as crud_evidence
 from app.errors.exceptions import ErrorCodeException
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/evidence",
     tags=["evidence"],
+    dependencies=[Depends(require_iec62443_enabled)],
 )
 
 

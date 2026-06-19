@@ -1,0 +1,3 @@
+# Moved
+
+See [INSTALLATION.md](INSTALLATION.md).

@@ -9,6 +9,13 @@
       "password": "Password",
       "fromEmail": "From Email",
       "useTls": "Use TLS"
+    },
+    "syslog": {
+      "host": "Syslog server",
+      "port": "Port",
+      "protocol": "Protocol",
+      "facility": "Facility (0-23)",
+      "enabled": "Enable forwarding"
     }
   },
   "strings": {
@@ -87,6 +94,23 @@
     "vulnerabilityFeeds": {
       "title": "Vulnerability Feeds",
       "description": "Configure vulnerability feeds (remote and local) for automatic matching"
+    },
+    "externalLog": {
+      "title": "External Log (Syslog)",
+      "description": "Forward audit log events to an external syslog server",
+      "testConnection": "Test connection",
+      "saveSettings": "Save settings",
+      "info": "All activity recorded in the audit log is also sent to the configured syslog server."
+    },
+    "features": {
+      "title": "Optional modules",
+      "description": "Enable or disable product modules for this tenant",
+      "help": "Disabled modules are hidden from the menu and simplified in the UI. Data is kept in the database.",
+      "iec62443": "ISA/IEC 62443 compliance",
+      "iec62443Hint": "Security zones, conduits, SR assessments, evidence and related dashboard widgets.",
+      "save": "Save modules",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
     }
   },
   "messages": {
@@ -96,6 +120,12 @@
     "templatesAlreadyExist": "Templates already exist for this tenant",
     "smtpSaveError": "Error saving SMTP configuration",
     "smtpTestError": "Error testing SMTP connection",
-    "templatesInitError": "Error initializing templates"
+    "syslogSaved": "Syslog configuration saved successfully",
+    "syslogTestSuccess": "Test message sent to syslog server",
+    "syslogSaveError": "Error saving syslog configuration",
+    "syslogTestError": "Error sending test message to syslog server",
+    "templatesInitError": "Error initializing templates",
+    "featuresSaved": "Module settings saved. Reload the page if menu items do not update.",
+    "featuresSaveError": "Error saving module settings"
   }
 }

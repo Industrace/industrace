@@ -86,3 +86,10 @@ test-certs/
 docs/images/temp/
 docs/images/*.tmp
 docs/images/*.bak
+
+# Probe local configuration (keep probe.conf.example)
+probe/probe.conf
+probe/probe-*.conf
+
+# Local pytest vendor tree (not for version control)
+backend/.pytest_deps/

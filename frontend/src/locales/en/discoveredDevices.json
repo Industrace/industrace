@@ -1,0 +1,30 @@
+{
+  "title": "Discovered Devices",
+  "filters": {
+    "status": "Status",
+    "probe": "Probe",
+    "site": "Site",
+    "searchPlaceholder": "MAC, IP, hostname, vendor..."
+  },
+  "columns": {
+    "mac": "MAC",
+    "ip": "IP",
+    "hostname": "Hostname",
+    "vendor": "Vendor",
+    "probe": "Probe",
+    "site": "Site",
+    "status": "Status",
+    "match": "Match",
+    "actions": "Actions"
+  },
+  "actions": {
+    "onboard": "Onboard as asset",
+    "assign": "Assign to asset",
+    "ignore": "Ignore"
+  },
+  "messages": {
+    "onboarded": "Device onboarded as asset",
+    "updated": "Device updated",
+    "loadError": "Failed to load discovered devices"
+  }
+}

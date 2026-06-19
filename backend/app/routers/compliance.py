@@ -6,6 +6,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from pydantic import BaseModel, Field
@@ -32,14 +33,27 @@ from app.services.auth import get_current_user
 from app.services.audit_decorator import audit_log_action
 from app.services.rbac import require_permission
 from app.services.isa62443_compliance_engine import ISA62443ComplianceEngine
+from app.services.isa62443_audit_export import audit_export_to_csv, build_zone_audit_export
+from app.services.isa62443_assessment_utils import (
+    applicable_requirements_for_target,
+    compute_fr_summary_stats,
+    excludes_from_sl_denominator,
+    extract_assessment_status,
+)
+from app.models.requirement_enhancement import RequirementEnhancement
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.crud import sr_assessments as crud_sr_assessments
 from app.crud import asset_capabilities as crud_asset_capabilities
 from app.schemas.sr_assessment import SRAssessmentCreate, SRAssessmentUpdate
 from app.schemas.sr_assessment_evidence import SRAssessmentEvidenceCreate
+from app.services.feature_guard import require_iec62443_enabled
 
-router = APIRouter(prefix="/compliance", tags=["Compliance"])
+router = APIRouter(
+    prefix="/compliance",
+    tags=["Compliance"],
+    dependencies=[Depends(require_iec62443_enabled)],
+)
 
 
 # ============================================================================
@@ -182,48 +196,24 @@ def get_zone_foundation_requirements(
                 .all()
             )
         
-        # Calculate statistics
-        total_sr = len(sr_requirements)
-        compliant_count = 0
-        partial_count = 0
-        non_compliant_count = 0
-        not_applicable_count = 0
-        
-        for sr in sr_requirements:
-            # Check SR assessments - use sr.id (UUID) for lookup
-            assessment = compliance_map.get(sr.id)
-            if assessment:
-                status = assessment.status
-                if status == 'compliant':
-                    compliant_count += 1
-                elif status == 'partial':
-                    partial_count += 1
-                elif status == 'non_compliant':
-                    non_compliant_count += 1
-                elif status == 'not_applicable':
-                    not_applicable_count += 1
-        
-        # Calculate compliance percentage
-        # Consider: compliant = 100%, partial = 50%, non_compliant = 0%, not_applicable = excluded
-        assessed_count = compliant_count + partial_count + non_compliant_count + not_applicable_count
-        if total_sr > 0:
-            # Calculate weighted percentage: (compliant * 1.0 + partial * 0.5) / total_sr
-            weighted_score = (compliant_count * 1.0) + (partial_count * 0.5)
-            compliance_percentage = (weighted_score / total_sr) * 100
-        else:
-            compliance_percentage = 0
-        
+        fr_stats = compute_fr_summary_stats(
+            sr_requirements,
+            compliance_map,
+            target_sl=zone.security_level_target,
+        )
         result.append({
             'id': str(fr.id) if hasattr(fr, 'id') else f"fr-{fr.requirement_id.replace('FR', '').strip()}",
             'requirement_id': fr.requirement_id,
             'title': fr.title,
             'description': fr.description,
-            'compliant_count': compliant_count,
-            'partial_count': partial_count,
-            'non_compliant_count': non_compliant_count,
-            'not_applicable_count': not_applicable_count,
-            'total_sr': total_sr,
-            'compliance_percentage': round(compliance_percentage, 1)
+            'compliant_count': fr_stats['compliant_count'],
+            'partial_count': fr_stats['partial_count'],
+            'non_compliant_count': fr_stats['non_compliant_count'],
+            'not_applicable_count': fr_stats['not_applicable_count'],
+            'not_assessed_count': fr_stats['not_assessed_count'],
+            'total_sr': fr_stats['total_sr'],
+            'in_scope_count': fr_stats['in_scope_count'],
+            'compliance_percentage': fr_stats['compliance_percentage'],
         })
     
     return result
@@ -451,7 +441,7 @@ def get_zone_compliance_summary(
                 summary['insufficient_info'] += 1
     except Exception as e:
         logger.warning(f"Error loading SR assessments (tables may not exist yet): {e}")
-        # Return empty summary if tables don't exist
+        assessments = []
         summary = {
             'compliant': 0,
             'partial': 0,
@@ -459,8 +449,74 @@ def get_zone_compliance_summary(
             'not_applicable': 0,
             'insufficient_info': 0
         }
-    
-    return summary
+
+    zone_requirements = (
+        db.query(SecurityRequirement)
+        .filter(SecurityRequirement.applies_to_zones == True)
+        .all()
+    )
+    compliance_map = {a.sr_id: a.status for a in assessments}
+    sl_t = zone.security_level_target
+    applicable = applicable_requirements_for_target(zone_requirements, sl_t) if sl_t else []
+    in_scope = []
+    for req in applicable:
+        status = extract_assessment_status(compliance_map.get(req.id))
+        if not excludes_from_sl_denominator(status):
+            in_scope.append(req)
+    assessed_count = sum(
+        1 for req in in_scope if extract_assessment_status(compliance_map.get(req.id)) is not None
+    )
+    sl_a = zone.security_level_achieved
+    if sl_a is None and sl_t:
+        sl_a = ISA62443ComplianceEngine.calculate_zone_security_level_achieved(db, zone)
+    compliance_status = zone.compliance_status
+    if not compliance_status or compliance_status == 'not_assessed':
+        compliance_status = ISA62443ComplianceEngine.calculate_zone_compliance_status(db, zone)
+
+    return {
+        **summary,
+        'compliance_status': compliance_status,
+        'security_level_target': sl_t,
+        'security_level_achieved': sl_a,
+        'security_level_capability': zone.security_level_capability,
+        'sl_gap': (sl_t - sl_a) if (sl_t is not None and sl_a is not None) else None,
+        'assessment_progress': {
+            'assessed_count': assessed_count,
+            'in_scope_count': len(in_scope),
+            'percent': round((assessed_count / len(in_scope)) * 100, 1) if in_scope else 0.0,
+        },
+        'total_assessments': len(assessments),
+    }
+
+
+@router.get("/sr/{sr_id}/requirement-enhancements", response_model=List[dict])
+def get_sr_requirement_enhancements(
+    sr_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
+):
+    """Requirement Enhancements (RE 1-4) for a Security Requirement."""
+    sr = db.query(SecurityRequirement).filter(SecurityRequirement.id == sr_id).first()
+    if not sr:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+
+    enhancements = (
+        db.query(RequirementEnhancement)
+        .filter(RequirementEnhancement.security_requirement_id == sr_id)
+        .order_by(RequirementEnhancement.enhancement_level)
+        .all()
+    )
+    return [
+        {
+            'id': str(re.id),
+            'enhancement_level': re.enhancement_level,
+            'title': re.title,
+            'description': re.description,
+            'standard_version': re.standard_version,
+        }
+        for re in enhancements
+    ]
 
 
 # ============================================================================
@@ -751,13 +807,31 @@ def get_sr_assessment_assist(
         logger.warning(f"Error checking missing capabilities: {e}")
         missing_capabilities = []
     
-    # C. Get current assessment if exists
+    # C. Get current assessment(s) if exist
     assessment_data = None
+    re_assessments_payload = []
     try:
-        current_assessment = crud_sr_assessments.get_sr_assessment_by_sr_and_object(
-            db, sr_id, 'zone', zone_id, current_user.tenant_id
+        all_assessments = crud_sr_assessments.list_sr_assessments_for_sr_and_object(
+            db, sr_id, "zone", zone_id, current_user.tenant_id
         )
-        
+        for row in all_assessments:
+            if row.enhancement_level is not None:
+                re_assessments_payload.append(
+                    {
+                        "enhancement_level": row.enhancement_level,
+                        "status": row.status,
+                        "justification": row.justification,
+                        "assessed_at": row.assessed_at.isoformat()
+                        if row.assessed_at
+                        else None,
+                    }
+                )
+
+        current_assessment = next(
+            (a for a in all_assessments if a.enhancement_level is None),
+            all_assessments[0] if all_assessments and not re_assessments_payload else None,
+        )
+
         if current_assessment:
             # Get evidence for this assessment
             try:
@@ -799,7 +873,26 @@ def get_sr_assessment_assist(
         logger.warning(f"Error loading current assessment (tables may not exist yet): {e}")
         # Continue without current assessment if table doesn't exist
         assessment_data = None
-    
+
+    re_rows = (
+        db.query(RequirementEnhancement)
+        .filter(RequirementEnhancement.security_requirement_id == sr_id)
+        .order_by(RequirementEnhancement.enhancement_level)
+        .all()
+    )
+    re_status_by_level = {
+        item["enhancement_level"]: item["status"] for item in re_assessments_payload
+    }
+    requirement_enhancements = [
+        {
+            "enhancement_level": re.enhancement_level,
+            "title": re.title,
+            "description": re.description,
+            "assessment_status": re_status_by_level.get(re.enhancement_level),
+        }
+        for re in re_rows
+    ]
+
     try:
         return {
             'sr': {
@@ -808,6 +901,8 @@ def get_sr_assessment_assist(
                 'title': sr.title,
                 'description': sr.description or '',
             },
+            'requirement_enhancements': requirement_enhancements,
+            're_assessments': re_assessments_payload,
             'required_capabilities': required_capabilities or [],
             'available_evidence': {
                 'assets': asset_evidence or [],
@@ -854,6 +949,189 @@ def get_sr_assessment_assist(
         }
 
 
+_VALID_ASSESSMENT_STATUSES = frozenset({
+    "compliant",
+    "non_compliant",
+    "partial",
+    "not_applicable",
+    "insufficient_info",
+})
+
+
+def _validate_assessment_status(status: str, justification: Optional[str]) -> None:
+    if status not in _VALID_ASSESSMENT_STATUSES:
+        raise ErrorCodeException(status_code=400, error_code=ErrorCode.INVALID_INPUT)
+    if status != "compliant" and not justification:
+        raise ErrorCodeException(status_code=400, error_code=ErrorCode.INVALID_INPUT)
+
+
+def _upsert_single_sr_assessment(
+    db: Session,
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    sr_id: uuid.UUID,
+    object_type: str,
+    object_id: uuid.UUID,
+    status: str,
+    justification: Optional[str],
+    enhancement_level: Optional[int],
+) -> SRAssessment:
+    if enhancement_level is not None and not (1 <= enhancement_level <= 4):
+        raise ErrorCodeException(status_code=400, error_code=ErrorCode.INVALID_INPUT)
+
+    existing = crud_sr_assessments.get_sr_assessment_by_sr_and_object(
+        db, sr_id, object_type, object_id, tenant_id, enhancement_level
+    )
+    if existing:
+        return crud_sr_assessments.update_sr_assessment(
+            db,
+            existing.id,
+            SRAssessmentUpdate(
+                status=status,
+                justification=justification,
+                assessor_id=user_id,
+            ),
+            tenant_id,
+        )
+    return crud_sr_assessments.create_sr_assessment(
+        db,
+        SRAssessmentCreate(
+            sr_id=sr_id,
+            object_type=object_type,
+            object_id=object_id,
+            status=status,
+            justification=justification,
+            assessor_id=user_id,
+            enhancement_level=enhancement_level,
+        ),
+        tenant_id,
+    )
+
+
+def _clear_conflicting_assessments(
+    db: Session,
+    tenant_id: uuid.UUID,
+    sr_id: uuid.UUID,
+    object_type: str,
+    object_id: uuid.UUID,
+    *,
+    per_re: bool,
+) -> None:
+    """Legacy SR-level vs per-RE assessments are mutually exclusive for one SR/object."""
+    rows = crud_sr_assessments.list_sr_assessments_for_sr_and_object(
+        db, sr_id, object_type, object_id, tenant_id
+    )
+    for row in rows:
+        if per_re and row.enhancement_level is None:
+            db.delete(row)
+        elif not per_re and row.enhancement_level is not None:
+            db.delete(row)
+
+
+def _attach_evidence(
+    db: Session,
+    tenant_id: uuid.UUID,
+    assessment_id: uuid.UUID,
+    evidence_list: list,
+) -> int:
+    db.query(SRAssessmentEvidence).filter(
+        SRAssessmentEvidence.sr_assessment_id == assessment_id
+    ).delete()
+    for ev in evidence_list:
+        db.add(
+            SRAssessmentEvidence(
+                tenant_id=tenant_id,
+                sr_assessment_id=assessment_id,
+                asset_id=uuid.UUID(ev["asset_id"]),
+                capability_id=uuid.UUID(ev["capability_id"]),
+                comment=ev.get("comment"),
+            )
+        )
+    return len(evidence_list)
+
+
+def _save_sr_assessment(
+    db: Session,
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    sr_id: uuid.UUID,
+    object_type: str,
+    object_id: uuid.UUID,
+    assessment_data: dict,
+) -> tuple:
+    """
+    Persist SR or per-RE assessments + optional evidence.
+    Body may include:
+    - status + optional enhancement_level (single)
+    - re_assessments: [{enhancement_level, status, justification?}, ...]
+    """
+    evidence_list = assessment_data.get("evidence", [])
+    re_assessments = assessment_data.get("re_assessments")
+
+    if re_assessments:
+        _clear_conflicting_assessments(
+            db, tenant_id, sr_id, object_type, object_id, per_re=True
+        )
+        last_assessment = None
+        for item in re_assessments:
+            level = item.get("enhancement_level")
+            status = item.get("status")
+            if level is None or status is None:
+                raise ErrorCodeException(status_code=400, error_code=ErrorCode.INVALID_INPUT)
+            justification = item.get("justification") or assessment_data.get("justification")
+            _validate_assessment_status(status, justification)
+            last_assessment = _upsert_single_sr_assessment(
+                db,
+                tenant_id,
+                user_id,
+                sr_id,
+                object_type,
+                object_id,
+                status,
+                justification,
+                int(level),
+            )
+        evidence_count = 0
+        if last_assessment and evidence_list:
+            evidence_count = _attach_evidence(
+                db, tenant_id, last_assessment.id, evidence_list
+            )
+        db.commit()
+        return last_assessment, last_assessment.id if last_assessment else None, evidence_count
+
+    status = assessment_data.get("status")
+    if not status:
+        raise ErrorCodeException(status_code=400, error_code=ErrorCode.INVALID_INPUT)
+    justification = assessment_data.get("justification")
+    _validate_assessment_status(status, justification)
+
+    enhancement_level = assessment_data.get("enhancement_level")
+    if enhancement_level is not None:
+        enhancement_level = int(enhancement_level)
+        _clear_conflicting_assessments(
+            db, tenant_id, sr_id, object_type, object_id, per_re=True
+        )
+    else:
+        _clear_conflicting_assessments(
+            db, tenant_id, sr_id, object_type, object_id, per_re=False
+        )
+
+    assessment = _upsert_single_sr_assessment(
+        db,
+        tenant_id,
+        user_id,
+        sr_id,
+        object_type,
+        object_id,
+        status,
+        justification,
+        enhancement_level,
+    )
+    evidence_count = _attach_evidence(db, tenant_id, assessment.id, evidence_list)
+    db.commit()
+    return assessment, assessment.id, evidence_count
+
+
 @router.post("/zone/{zone_id}/sr/{sr_id}/assessment", response_model=dict, status_code=201)
 @audit_log_action("create_sr_assessment", "SecurityZone", model_class=SecurityZone)
 def create_or_update_sr_assessment(
@@ -889,66 +1167,19 @@ def create_or_update_sr_assessment(
     if not sr:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
-    status = assessment_data.get('status')
-    if status not in ['compliant', 'non_compliant', 'partial', 'not_applicable', 'insufficient_info']:
+    if not sr.applies_to_zones:
         raise ErrorCodeException(status_code=400, error_code=ErrorCode.INVALID_INPUT)
-    
-    justification = assessment_data.get('justification')
-    if status != 'compliant' and not justification:
-        raise ErrorCodeException(status_code=400, error_code=ErrorCode.INVALID_INPUT)
-    
-    # Check if assessment already exists
-    existing_assessment = crud_sr_assessments.get_sr_assessment_by_sr_and_object(
-        db, sr_id, 'zone', zone_id, current_user.tenant_id
+
+    assessment, assessment_id, evidence_count = _save_sr_assessment(
+        db,
+        current_user.tenant_id,
+        current_user.id,
+        sr_id,
+        "zone",
+        zone_id,
+        assessment_data,
     )
-    
-    if existing_assessment:
-        # Update existing assessment
-        update_data = SRAssessmentUpdate(
-            status=status,
-            justification=justification,
-            assessor_id=current_user.id
-        )
-        assessment = crud_sr_assessments.update_sr_assessment(
-            db, existing_assessment.id, update_data, current_user.tenant_id
-        )
-        assessment_id = assessment.id
-    else:
-        # Create new assessment
-        create_data = SRAssessmentCreate(
-            sr_id=sr_id,
-            object_type='zone',
-            object_id=zone_id,
-            status=status,
-            justification=justification,
-            assessor_id=current_user.id
-        )
-        assessment = crud_sr_assessments.create_sr_assessment(
-            db, create_data, current_user.tenant_id
-        )
-        assessment_id = assessment.id
-    
-    # Handle evidence
-    evidence_list = assessment_data.get('evidence', [])
-    
-    # Delete existing evidence
-    db.query(SRAssessmentEvidence).filter(
-        SRAssessmentEvidence.sr_assessment_id == assessment_id
-    ).delete()
-    
-    # Create new evidence records
-    for ev in evidence_list:
-        evidence = SRAssessmentEvidence(
-            tenant_id=current_user.tenant_id,
-            sr_assessment_id=assessment_id,
-            asset_id=uuid.UUID(ev['asset_id']),
-            capability_id=uuid.UUID(ev['capability_id']),
-            comment=ev.get('comment')
-        )
-        db.add(evidence)
-    
-    db.commit()
-    
+
     # Recalculate zone SL-A and compliance status from SRAssessment data
     try:
         updated_zone = ISA62443ComplianceEngine.update_zone_security_levels(db, str(zone_id))
@@ -966,8 +1197,240 @@ def create_or_update_sr_assessment(
         'id': str(assessment_id),
         'status': assessment.status,
         'justification': assessment.justification,
-        'evidence_count': len(evidence_list),
+        'evidence_count': evidence_count,
         'zone_updated': zone_updated
+    }
+
+
+@router.get("/asset/{asset_id}/security-requirements", response_model=List[dict])
+def get_asset_security_requirements(
+    asset_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
+):
+    """SR applicable to assets with assessment status."""
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not asset:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+
+    requirements = (
+        db.query(SecurityRequirement)
+        .filter(SecurityRequirement.applies_to_assets == True)
+        .order_by(SecurityRequirement.requirement_id)
+        .all()
+    )
+    assessments = (
+        db.query(SRAssessment)
+        .filter(
+            SRAssessment.object_type == "asset",
+            SRAssessment.object_id == asset_id,
+            SRAssessment.tenant_id == current_user.tenant_id,
+        )
+        .all()
+    )
+    assessment_map = {a.sr_id: a for a in assessments}
+
+    result = []
+    for req in requirements:
+        assessment = assessment_map.get(req.id)
+        result.append({
+            "sr_id": str(req.id),
+            "requirement_id": req.requirement_id,
+            "title": req.title,
+            "min_security_level": req.min_security_level,
+            "max_security_level": req.max_security_level,
+            "status": assessment.status if assessment else None,
+            "justification": assessment.justification if assessment else None,
+            "assessed_at": assessment.assessed_at.isoformat() if assessment and assessment.assessed_at else None,
+        })
+    return result
+
+
+@router.post("/asset/{asset_id}/sr/{sr_id}/assessment", response_model=dict, status_code=201)
+@audit_log_action("create_sr_assessment", "Asset", model_class=Asset)
+def create_or_update_asset_sr_assessment(
+    asset_id: uuid.UUID,
+    sr_id: uuid.UUID,
+    assessment_data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 2)),
+):
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not asset:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+
+    sr = db.query(SecurityRequirement).filter(SecurityRequirement.id == sr_id).first()
+    if not sr or not sr.applies_to_assets:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+
+    assessment, assessment_id, evidence_count = _save_sr_assessment(
+        db,
+        current_user.tenant_id,
+        current_user.id,
+        sr_id,
+        "asset",
+        asset_id,
+        assessment_data,
+    )
+
+    try:
+        updated_asset = ISA62443ComplianceEngine.update_asset_iec62443_levels(db, str(asset_id))
+        asset_updated = {
+            "security_level_achieved": updated_asset.security_level_achieved,
+            "isa62443_compliance_status": updated_asset.isa62443_compliance_status,
+            "isa62443_last_assessment": (
+                updated_asset.isa62443_last_assessment.isoformat()
+                if updated_asset.isa62443_last_assessment
+                else None
+            ),
+        }
+    except Exception as e:
+        logger.warning(f"Asset SL recalculation failed: {e}")
+        asset_updated = None
+
+    return {
+        "id": str(assessment_id),
+        "status": assessment.status,
+        "justification": assessment.justification,
+        "evidence_count": evidence_count,
+        "asset_updated": asset_updated,
+    }
+
+
+@router.post("/asset/{asset_id}/recalculate", response_model=dict)
+def recalculate_asset_iec62443(
+    asset_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 2)),
+):
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not asset:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+    updated = ISA62443ComplianceEngine.update_asset_iec62443_levels(db, str(asset_id))
+    return {
+        "asset_id": str(updated.id),
+        "security_level_target": updated.security_level_target,
+        "security_level_achieved": updated.security_level_achieved,
+        "isa62443_compliance_status": updated.isa62443_compliance_status,
+    }
+
+
+@router.get("/conduit/{conduit_id}/security-requirements", response_model=dict)
+def get_conduit_security_requirements(
+    conduit_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
+):
+    conduit = (
+        db.query(Conduit)
+        .filter(Conduit.id == conduit_id, Conduit.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not conduit:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+
+    requirements = (
+        db.query(SecurityRequirement)
+        .filter(SecurityRequirement.applies_to_conduits == True)
+        .order_by(SecurityRequirement.requirement_id)
+        .all()
+    )
+    assessments = (
+        db.query(SRAssessment)
+        .filter(
+            SRAssessment.object_type == "conduit",
+            SRAssessment.object_id == conduit_id,
+            SRAssessment.tenant_id == current_user.tenant_id,
+        )
+        .all()
+    )
+    assessment_map = {a.sr_id: a for a in assessments}
+    meta = ISA62443ComplianceEngine.get_conduit_sl_metadata(db, conduit)
+
+    result = []
+    for req in requirements:
+        assessment = assessment_map.get(req.id)
+        result.append({
+            "sr_id": str(req.id),
+            "requirement_id": req.requirement_id,
+            "title": req.title,
+            "min_security_level": req.min_security_level,
+            "status": assessment.status if assessment else None,
+            "justification": assessment.justification if assessment else None,
+        })
+    return {
+        "requirements": result,
+        "security_level_achieved": meta["security_level_achieved"],
+        "sl_achieved_source": meta["sl_achieved_source"],
+    }
+
+
+@router.post("/conduit/{conduit_id}/sr/{sr_id}/assessment", response_model=dict, status_code=201)
+@audit_log_action("create_sr_assessment", "Conduit", model_class=Conduit)
+def create_or_update_conduit_sr_assessment(
+    conduit_id: uuid.UUID,
+    sr_id: uuid.UUID,
+    assessment_data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 2)),
+):
+    conduit = (
+        db.query(Conduit)
+        .filter(Conduit.id == conduit_id, Conduit.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not conduit:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+
+    sr = db.query(SecurityRequirement).filter(SecurityRequirement.id == sr_id).first()
+    if not sr or not sr.applies_to_conduits:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+
+    assessment, assessment_id, evidence_count = _save_sr_assessment(
+        db,
+        current_user.tenant_id,
+        current_user.id,
+        sr_id,
+        "conduit",
+        conduit_id,
+        assessment_data,
+    )
+
+    try:
+        updated = ISA62443ComplianceEngine.update_conduit_iec62443_levels(db, str(conduit_id))
+        meta = ISA62443ComplianceEngine.get_conduit_sl_metadata(db, updated)
+        conduit_updated = {
+            "security_level_achieved": updated.security_level_achieved,
+            "compliance_status": updated.compliance_status,
+            "sl_achieved_source": meta["sl_achieved_source"],
+        }
+    except Exception as e:
+        logger.warning(f"Conduit SL recalculation failed: {e}")
+        conduit_updated = None
+
+    return {
+        "id": str(assessment_id),
+        "status": assessment.status,
+        "justification": assessment.justification,
+        "evidence_count": evidence_count,
+        "conduit_updated": conduit_updated,
     }
 
 
@@ -1084,21 +1547,11 @@ def get_gap_analysis(
         
         # Use the compliance_status from the zone model if available, otherwise calculate it
         # This ensures consistency with the security zones page
-        if zone.compliance_status and zone.compliance_status != 'not_assessed':
-            compliance_status = zone.compliance_status
-        else:
-            # Calculate compliance status based on assessments
-            total_assessed = len(zone_assessments)
-            if total_assessed == 0:
-                compliance_status = 'not_assessed'
-            elif non_compliant_count > 0:
-                compliance_status = 'non_compliant'
-            elif partial_count > 0:
-                compliance_status = 'partial'
-            elif compliant_count == total_assessed and compliant_count > 0:
-                compliance_status = 'compliant'
-            else:
-                compliance_status = 'not_assessed'
+        compliance_status = zone.compliance_status
+        if not compliance_status or compliance_status == 'not_assessed':
+            compliance_status = ISA62443ComplianceEngine.calculate_zone_compliance_status(
+                db, zone
+            )
         
         # Calculate gap
         gap = None
@@ -1131,3 +1584,44 @@ def get_gap_analysis(
         'zones': result_zones,
         'summary': summary
     }
+
+
+@router.get("/zone/{zone_id}/audit-export")
+def export_zone_audit(
+    zone_id: uuid.UUID,
+    format: str = Query("json", regex="^(json|csv)$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("compliance", 1)),
+):
+    """
+    Audit matrix: zone × SR × RE × assessment status.
+    format=json (default) or csv for spreadsheet / external auditor.
+    """
+    zone = (
+        db.query(SecurityZone)
+        .filter(
+            SecurityZone.id == zone_id,
+            SecurityZone.tenant_id == current_user.tenant_id,
+            SecurityZone.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not zone:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+
+    if zone.security_level_achieved is None and zone.security_level_target:
+        zone.security_level_achieved = (
+            ISA62443ComplianceEngine.calculate_zone_security_level_achieved(db, zone)
+        )
+
+    payload = build_zone_audit_export(db, zone)
+    if format == "csv":
+        csv_body = audit_export_to_csv(payload)
+        filename = f"iec62443-audit-{zone.name.replace(' ', '_')[:40]}.csv"
+        return PlainTextResponse(
+            content=csv_body,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    return payload

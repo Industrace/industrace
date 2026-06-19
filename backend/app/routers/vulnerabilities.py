@@ -568,7 +568,7 @@ def update_asset_vulnerability(
                     
                     # Recalculate risk
                     risk_engine = CompositeRiskScoringEngine()
-                    breakdown = risk_engine.calculate(asset)
+                    breakdown = risk_engine.calculate(asset, db=db)
                     new_risk_score = breakdown["final_score"]
                     
                     # Update asset risk score if calculated
