@@ -1,6 +1,8 @@
 import pytest
 from cryptography.fernet import Fernet
 
+import app.services.sso_encryption as sso_encryption
+from app.config import settings
 from app.services.sso_encryption import encrypt_secret, decrypt_secret
 
 
@@ -8,6 +10,8 @@ from app.services.sso_encryption import encrypt_secret, decrypt_secret
 def encryption_key(monkeypatch):
     key = Fernet.generate_key().decode()
     monkeypatch.setenv("ENCRYPTION_KEY", key)
+    monkeypatch.setattr(settings, "ENCRYPTION_KEY", key)
+    monkeypatch.setattr(sso_encryption, "_fernet", None)
     return key
 
 
