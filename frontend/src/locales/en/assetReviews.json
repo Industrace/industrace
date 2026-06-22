@@ -33,6 +33,27 @@
   "upcomingDaysHint": "Select the number of days to show upcoming reviews",
   "day": "day",
   "days": "days",
+  "upcomingDaysOption": "{count} days",
+  "settings": {
+    "title": "Review Settings",
+    "defaultInterval": "Default review interval (months)",
+    "defaultIntervalHint": "Used when no site or asset override is set",
+    "dueDaysAhead": "Due window (days)",
+    "dueDaysAheadHint": "Assets due within this many days appear in the Due tab",
+    "upcomingDaysAhead": "Upcoming window (days)",
+    "upcomingDaysAheadHint": "Default lookahead for upcoming reviews",
+    "saved": "Review settings saved successfully",
+    "errorSaving": "Error saving review settings"
+  },
+  "bulk": {
+    "title": "Bulk Review",
+    "description": "Mark {count} selected assets as reviewed",
+    "confirm": "Mark as reviewed",
+    "selected": "{count} assets selected",
+    "markReviewed": "Mark as reviewed ({count})",
+    "success": "Selected assets marked as reviewed",
+    "error": "Error during bulk review"
+  },
   "status": {
     "pending": "Pending",
     "reviewed": "Reviewed",

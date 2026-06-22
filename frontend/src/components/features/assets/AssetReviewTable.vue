@@ -1,13 +1,16 @@
 <template>
   <div class="asset-review-table">
     <DataTable 
+      v-model:selection="selectionModel"
       :value="assets" 
       :loading="loading"
       :emptyMessage="t('assetReviews.noAssets')"
       :paginator="true"
       :rows="20"
+      dataKey="id"
       class="p-datatable-sm"
     >
+      <Column v-if="selectable" selectionMode="multiple" headerStyle="width: 3rem" />
       <Column field="name" :header="t('common.fields.name')" sortable>
         <template #body="{ data }">
           <a 
@@ -52,7 +55,7 @@
           {{ data.review_interval_months || 6 }} {{ t('assetReviews.months') }}
         </template>
       </Column>
-      <Column :header="t('common.strings.actions')">
+      <Column v-if="canWrite" :header="t('common.strings.actions')">
         <template #body="{ data }">
           <div class="flex gap-2">
             <Button 
@@ -89,13 +92,21 @@ import Tooltip from 'primevue/tooltip'
 
 const props = defineProps({
   assets: { type: Array, default: () => [] },
-  loading: { type: Boolean, default: false }
+  loading: { type: Boolean, default: false },
+  canWrite: { type: Boolean, default: false },
+  selectable: { type: Boolean, default: false },
+  selectedAssets: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['review', 'skip', 'refresh'])
+const emit = defineEmits(['review', 'skip', 'refresh', 'update:selectedAssets'])
 const { t } = useI18n()
 const router = useRouter()
 const { formatDate: formatDateUtil } = useDateFormatter()
+
+const selectionModel = computed({
+  get: () => props.selectedAssets,
+  set: (value) => emit('update:selectedAssets', value || [])
+})
 
 const goToAsset = (assetId) => {
   router.push(`/assets/${assetId}`)
@@ -180,4 +191,3 @@ const getDateClass = (nextReviewDate) => {
   text-decoration: underline;
 }
 </style>
-

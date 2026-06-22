@@ -380,6 +380,12 @@ export default {
   deleteAssetContact(assetId, contactId) {
     return api.delete(`/assets/${assetId}/contacts/${contactId}`)
   },
+  getTenantReviewSettings() {
+    return api.get('/assets/review/settings')
+  },
+  updateTenantReviewSettings(data) {
+    return api.patch('/assets/review/settings', data)
+  },
   // Asset Reviews
   getAssetReviewStatus(assetId) {
     return api.get(`/assets/${assetId}/review-status`)
@@ -626,6 +632,9 @@ export default {
   },
   matchVulnerabilitiesToAsset(assetId) {
     return api.post(`/vulnerabilities/assets/${assetId}/match-vulnerabilities`)
+  },
+  matchAssetsToVulnerability(vulnerabilityId, params = {}) {
+    return api.post(`/vulnerabilities/${vulnerabilityId}/match-assets`, null, { params })
   },
   getVulnerabilityStats() {
     return api.get('/vulnerabilities/stats')

@@ -35,6 +35,7 @@ import SSOError from './pages/SSOError.vue'
 import api from './api/api'
 import { useAuthStore } from './store/auth'
 import { useTenantFeatures } from './composables/useTenantFeatures'
+import { usePermissions } from './composables/usePermissions'
 
 const routes = [
   { path: '/login', name: 'Login', component: Login },
@@ -44,7 +45,7 @@ const routes = [
   { path: '/assets', name: 'Assets', component: Assets, meta: { requiresAuth: true } },
   { path: '/assets/:id', name: 'AssetDetail', component: AssetDetail, meta: { requiresAuth: true } },
   { path: '/assets-new/:id', name: 'AssetDetailNew', component: AssetDetailNew, meta: { requiresAuth: true } },
-  { path: '/asset-reviews', name: 'AssetReviews', component: AssetReviews, meta: { requiresAuth: true } },
+  { path: '/asset-reviews', name: 'AssetReviews', component: AssetReviews, meta: { requiresAuth: true, requiresPermission: 'asset_reviews' } },
   { path: '/notifications', name: 'Notifications', component: () => import('./pages/Notifications.vue'), meta: { requiresAuth: true } },
   { path: '/security-zones', name: 'SecurityZones', component: () => import('./pages/SecurityZones.vue'), meta: { requiresAuth: true, requiresIec62443: true } },
   { path: '/security-zones/:id', name: 'SecurityZoneDetail', component: () => import('./pages/SecurityZoneDetail.vue'), meta: { requiresAuth: true, requiresIec62443: true } },
@@ -72,9 +73,9 @@ const routes = [
   { path: '/roles/:id', name: 'RoleDetails', component: RoleDetails, meta: { requiresAuth: true } },
   { path: '/setup', name: 'Setup', component: Setup, meta: { requiresAuth: true } },
   { path: '/setup-wizard', name: 'SetupWizard', component: SetupWizard, meta: { requiresAuth: true } },
-  { path: '/vulnerability-feeds', name: 'VulnerabilityFeeds', component: () => import('./pages/VulnerabilityFeeds.vue'), meta: { requiresAuth: true } },
-  { path: '/vulnerabilities', name: 'Vulnerabilities', component: () => import('./pages/Vulnerabilities.vue'), meta: { requiresAuth: true } },
-  { path: '/vulnerabilities/:id', name: 'VulnerabilityDetail', component: () => import('./pages/VulnerabilityDetail.vue'), meta: { requiresAuth: true } },
+  { path: '/vulnerability-feeds', name: 'VulnerabilityFeeds', component: () => import('./pages/VulnerabilityFeeds.vue'), meta: { requiresAuth: true, requiresPermission: 'vulnerabilities' } },
+  { path: '/vulnerabilities', name: 'Vulnerabilities', component: () => import('./pages/Vulnerabilities.vue'), meta: { requiresAuth: true, requiresPermission: 'vulnerabilities' } },
+  { path: '/vulnerabilities/:id', name: 'VulnerabilityDetail', component: () => import('./pages/VulnerabilityDetail.vue'), meta: { requiresAuth: true, requiresPermission: 'vulnerabilities' } },
   { path: '/profile', name: 'Profile', component: Profile, meta: { requiresAuth: true } },
   { path: '/network-map', name: 'NetworkMap', component: NetworkMap, meta: { requiresAuth: true } },
   { path: '/network-probes', name: 'NetworkProbes', component: NetworkProbes, meta: { requiresAuth: true } },
@@ -105,6 +106,13 @@ router.beforeEach(async (to, from, next) => {
       if (to.meta.requiresIec62443) {
         const { isIec62443Enabled } = useTenantFeatures()
         if (!isIec62443Enabled.value) {
+          next('/')
+          return
+        }
+      }
+      if (to.meta.requiresPermission) {
+        const { canRead } = usePermissions()
+        if (!canRead(to.meta.requiresPermission)) {
           next('/')
           return
         }

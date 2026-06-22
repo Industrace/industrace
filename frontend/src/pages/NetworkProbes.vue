@@ -168,13 +168,16 @@
       v-model:isVisible="showProbeDetailsDialog"
       :title="probeDetailsTitle"
       :mode="'view'"
-      :showFooter="false"
+      :showFooter="canManageNetworkProbes"
       :showCancel="true"
-      :width="'65vw'"
+      :showSubmit="canManageNetworkProbes"
+      :submitLabel="t('common.actions.edit')"
+      :width="'min(900px, 92vw)'"
+      @submit="editFromDetails"
     >
       <template #default>
         <div v-if="selectedProbe" class="probe-details">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="probe-details-grid">
             <div class="detail-card">
               <div class="detail-label">{{ t('networkProbes.details.status') }}</div>
               <div class="detail-value">
@@ -202,7 +205,7 @@
 
             <div class="detail-card">
               <div class="detail-label">{{ t('networkProbes.details.probeId') }}</div>
-              <div class="detail-value">{{ selectedProbe.id }}</div>
+              <div class="detail-value detail-value--uuid">{{ selectedProbe.id }}</div>
             </div>
 
             <div class="detail-card">
@@ -251,14 +254,14 @@
       :showFooter="true"
       :showCancel="true"
       :showSubmit="true"
-      :width="'42vw'"
+      :width="'min(720px, 92vw)'"
       @cancel="closeEditDialog"
       @submit="submitEditProbe"
     >
       <template #default>
-        <TabView class="probe-edit-tabs">
-          <TabPanel :header="t('networkProbes.tabs.identity')">
-            <div class="grid grid-cols-1 gap-3">
+        <Accordion :activeIndex="0" class="probe-edit-accordion">
+          <AccordionTab :header="t('networkProbes.tabs.identity')">
+            <div class="probe-form-stack">
               <div class="field">
                 <label class="block text-sm font-medium mb-2">{{ t('common.fields.name') }}</label>
                 <InputText v-model="editForm.name" class="w-full" />
@@ -279,10 +282,10 @@
                 <Textarea v-model="editForm.description" rows="3" class="w-full" />
               </div>
             </div>
-          </TabPanel>
+          </AccordionTab>
 
-          <TabPanel :header="t('networkProbes.tabs.sniffing')">
-            <div class="grid grid-cols-1 gap-3">
+          <AccordionTab :header="t('networkProbes.tabs.sniffing')">
+            <div class="probe-form-stack">
               <div class="field">
                 <label class="block text-sm font-medium mb-2">{{ t('networkProbes.fields.captureFilter') }}</label>
                 <InputText v-model="editForm.capture_filter" class="w-full" :placeholder="t('networkProbes.fields.captureFilterPlaceholder')" />
@@ -327,10 +330,10 @@
                 </label>
               </div>
             </div>
-          </TabPanel>
+          </AccordionTab>
 
-          <TabPanel :header="t('networkProbes.tabs.telecontrol')">
-            <div class="grid grid-cols-1 gap-3">
+          <AccordionTab :header="t('networkProbes.tabs.telecontrol')">
+            <div class="probe-form-stack">
               <div class="field">
                 <label class="block text-sm font-medium mb-2">{{ t('networkProbes.fields.heartbeatInterval') }}</label>
                 <InputNumber v-model="editForm.heartbeat_interval" :min="10" :max="300" :step="5" class="w-full" />
@@ -346,8 +349,8 @@
                 <InputNumber v-model="editForm.max_retry_attempts" :min="1" :max="10" :step="1" class="w-full" />
               </div>
             </div>
-          </TabPanel>
-        </TabView>
+          </AccordionTab>
+        </Accordion>
       </template>
     </BaseDialog>
 
@@ -358,12 +361,12 @@
       :showFooter="true"
       :showCancel="true"
       :showSubmit="true"
-      :width="'42vw'"
+      :width="'min(720px, 92vw)'"
       @cancel="closeCreateDialog"
       @submit="createProbe"
     >
       <template #default>
-        <div class="grid grid-cols-1 gap-3">
+        <div class="probe-form-stack">
           <div class="field">
             <label class="block text-sm font-medium mb-2">{{ t('common.fields.name') }}</label>
             <InputText v-model="form.name" class="w-full" />
@@ -407,23 +410,27 @@
           <div class="mt-4">
             <TabView>
               <TabPanel :header="t('networkProbes.tabs.docker')">
-                <div class="field">
-                  <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.probeConf') }}</label>
-                  <Textarea :value="probeConfText" :readonly="true" rows="12" class="w-full" />
-                </div>
-                <div class="field mt-3">
-                  <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.dockerStart') }}</label>
-                  <Textarea :value="dockerRunCommand" :readonly="true" rows="5" class="w-full" />
+                <div class="probe-form-stack">
+                  <div class="field">
+                    <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.probeConf') }}</label>
+                    <Textarea :value="probeConfText" :readonly="true" rows="12" class="w-full" />
+                  </div>
+                  <div class="field">
+                    <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.dockerStart') }}</label>
+                    <Textarea :value="dockerRunCommand" :readonly="true" rows="5" class="w-full" />
+                  </div>
                 </div>
               </TabPanel>
               <TabPanel :header="t('networkProbes.tabs.host')">
-                <div class="field">
-                  <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.probeConf') }}</label>
-                  <Textarea :value="probeConfText" :readonly="true" rows="12" class="w-full" />
-                </div>
-                <div class="field mt-3">
-                  <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.hostStart') }}</label>
-                  <Textarea :value="hostRunCommands" :readonly="true" rows="8" class="w-full" />
+                <div class="probe-form-stack">
+                  <div class="field">
+                    <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.probeConf') }}</label>
+                    <Textarea :value="probeConfText" :readonly="true" rows="12" class="w-full" />
+                  </div>
+                  <div class="field">
+                    <label class="block text-sm font-medium mb-2">{{ t('networkProbes.apiKey.hostStart') }}</label>
+                    <Textarea :value="hostRunCommands" :readonly="true" rows="8" class="w-full" />
+                  </div>
                 </div>
               </TabPanel>
             </TabView>
@@ -451,6 +458,8 @@ import Checkbox from 'primevue/checkbox'
 import Message from 'primevue/message'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
+import Accordion from 'primevue/accordion'
+import AccordionTab from 'primevue/accordiontab'
 
 import BaseDataTable from '../components/base/BaseDataTable.vue'
 import BaseDialog from '../components/base/BaseDialog.vue'
@@ -794,6 +803,13 @@ async function fetchProbeStatus(probeId) {
   }
 }
 
+function editFromDetails() {
+  if (!selectedProbe.value) return
+  const probe = selectedProbe.value
+  showProbeDetailsDialog.value = false
+  openEditProbe(probe)
+}
+
 function openEditProbe(probe) {
   selectedProbe.value = probe
 
@@ -1111,6 +1127,29 @@ onMounted(async () => {
 
 .probe-details {
   padding: 0.25rem 0;
+  overflow-x: hidden;
+}
+
+.probe-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.probe-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
+
+.probe-form-stack .field {
+  width: 100%;
+  min-width: 0;
+}
+
+.probe-edit-accordion :deep(.p-accordion-content) {
+  overflow-x: hidden;
 }
 
 .detail-card {
@@ -1129,6 +1168,13 @@ onMounted(async () => {
 .detail-value {
   font-size: 1.05rem;
   font-weight: 600;
+}
+
+.detail-value--uuid {
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .detail-sub {

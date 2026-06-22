@@ -103,7 +103,8 @@
           :asset="asset"
           :assetId="asset.id"
           :canWrite="canWrite"
-          @updated="fetchAsset"
+          :canRead="canRead"
+          @updated="onManagementUpdated"
         />
       </TabPanel>
     </TabView>
@@ -163,7 +164,7 @@ const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
 const { t } = useI18n()
-const { canWrite, canDelete } = usePermissions()
+const { canWrite, canDelete, canRead } = usePermissions()
 
 // State
 const asset = ref(null)
@@ -174,6 +175,7 @@ const showNoteDialog = ref(false)
 const noteDraft = ref('')
 const riskTabRef = ref(null)
 const activeTabIndex = ref(0)
+const assetReviewStatus = ref(null)
 
 // Data
 const sites = ref([])
@@ -214,9 +216,24 @@ const criticalVulnerabilitiesCount = computed(() => {
 })
 
 const reviewStatus = computed(() => {
-  // TODO: Calcolare da review prossima
-  return 'ok'
+  if (!assetReviewStatus.value) return null
+  return assetReviewStatus.value.review_status || null
 })
+
+async function loadAssetReviewStatus() {
+  if (!canRead('asset_reviews') || !route.params.id) return
+  try {
+    const res = await api.getAssetReviewStatus(route.params.id)
+    assetReviewStatus.value = res.data
+  } catch (e) {
+    assetReviewStatus.value = null
+  }
+}
+
+function onManagementUpdated() {
+  fetchAsset()
+  loadAssetReviewStatus()
+}
 
 // Methods
 function onTabChange(event) {
@@ -237,6 +254,7 @@ async function fetchAsset() {
     if (lastTab) {
       activeTabIndex.value = parseInt(lastTab)
     }
+    await loadAssetReviewStatus()
   } catch (e) {
     toast.add({
       severity: 'error',

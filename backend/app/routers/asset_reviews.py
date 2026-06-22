@@ -54,6 +54,58 @@ class BulkReviewRequest(BaseModel):
     notes: Optional[str] = Field(None, max_length=5000, description="Review notes")
 
 
+class TenantReviewSettingsResponse(BaseModel):
+    default_review_interval_months: int
+    review_due_days_ahead: int
+    review_upcoming_days_ahead: int
+
+
+class TenantReviewSettingsUpdate(BaseModel):
+    default_review_interval_months: Optional[int] = Field(None, ge=1, le=120)
+    review_due_days_ahead: Optional[int] = Field(None, ge=1, le=365)
+    review_upcoming_days_ahead: Optional[int] = Field(None, ge=1, le=365)
+
+
+@router.get("/review/settings", response_model=TenantReviewSettingsResponse)
+def get_tenant_review_settings(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_reviews", 1)),
+):
+    """Get tenant-level asset review configuration."""
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND, detail="Tenant not found")
+    return TenantReviewSettingsResponse(
+        default_review_interval_months=tenant.default_review_interval_months or 6,
+        review_due_days_ahead=tenant.review_due_days_ahead or 30,
+        review_upcoming_days_ahead=tenant.review_upcoming_days_ahead or 30,
+    )
+
+
+@router.patch("/review/settings", response_model=TenantReviewSettingsResponse)
+def update_tenant_review_settings(
+    settings: TenantReviewSettingsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    perm=Depends(require_permission("asset_reviews", 3)),
+):
+    """Update tenant-level asset review configuration."""
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND, detail="Tenant not found")
+    update_data = settings.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(tenant, field, value)
+    db.commit()
+    db.refresh(tenant)
+    return TenantReviewSettingsResponse(
+        default_review_interval_months=tenant.default_review_interval_months or 6,
+        review_due_days_ahead=tenant.review_due_days_ahead or 30,
+        review_upcoming_days_ahead=tenant.review_upcoming_days_ahead or 30,
+    )
+
+
 @router.get("/{asset_id}/review-status", response_model=AssetReviewStatusResponse)
 def get_asset_review_status(
     asset_id: uuid.UUID,
@@ -69,6 +121,19 @@ def get_asset_review_status(
     )
     if not asset:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
+
+    needs_commit = False
+    if not asset.next_review_date:
+        asset.next_review_date = AssetReviewService.calculate_next_review_date(asset, db)
+        needs_commit = bool(asset.next_review_date)
+    if asset.next_review_date:
+        old_status = asset.review_status
+        AssetReviewService.update_review_status(asset, db)
+        if old_status != asset.review_status:
+            needs_commit = True
+    if needs_commit:
+        db.commit()
+        db.refresh(asset)
     
     # Calculate days until review or days overdue
     days_until_review = None

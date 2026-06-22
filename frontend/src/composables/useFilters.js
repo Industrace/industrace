@@ -199,6 +199,9 @@ export function useFilters(initialFilters = {}, storageKey = null, initialColumn
     
     // Extract values from filter objects
     Object.entries(filters.value).forEach(([key, filterObj]) => {
+      if (key === 'global') {
+        return
+      }
       if (filterObj && typeof filterObj === 'object' && 'value' in filterObj) {
         // Filter object with value property
         if (filterObj.value !== null && filterObj.value !== undefined && filterObj.value !== '') {
@@ -210,8 +213,9 @@ export function useFilters(initialFilters = {}, storageKey = null, initialColumn
       }
     })
     
-    if (globalSearch.value) {
-      params.search = globalSearch.value
+    const searchValue = filters.value.global?.value ?? globalSearch.value
+    if (searchValue) {
+      params.global_search = searchValue
     }
     
     if (sortField.value) {

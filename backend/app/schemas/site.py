@@ -20,12 +20,14 @@ class SiteUpdate(BaseModel):
     address: Optional[str] = None
     description: Optional[str] = None
     parent_id: Optional[uuid.UUID] = None
+    review_interval_months: Optional[int] = Field(None, ge=1, le=120, description="Review interval override in months")
 
 
 class Site(SiteCreate):
     id: uuid.UUID
     tenant_id: uuid.UUID
     created_at: datetime
+    review_interval_months: Optional[int] = None
     children: list[Site] = []
 
     class Config:

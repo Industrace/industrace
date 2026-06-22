@@ -25,7 +25,9 @@
         "updateLocationError": "Errore nell'aggiornamento della località"
     },
     "fields": {
-        "parent": "Sito padre"
+        "parent": "Sito padre",
+        "reviewIntervalMonths": "Intervallo review (mesi)",
+        "reviewIntervalMonthsHint": "Override opzionale del default tenant"
     },
     "strings": {
         "select": "Seleziona",

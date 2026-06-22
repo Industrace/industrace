@@ -78,6 +78,22 @@ class AssetReviewService:
         return next_review
     
     @staticmethod
+    def _is_overdue(asset: Asset, today: datetime) -> bool:
+        """Asset is overdue when past next review date and not skipped."""
+        return bool(
+            asset.next_review_date
+            and asset.next_review_date < today
+            and asset.review_status != 'skipped'
+        )
+
+    @staticmethod
+    def _needs_review_in_due_window(asset: Asset, today: datetime, future_date: datetime) -> bool:
+        """Asset due in the future window (not yet overdue)."""
+        if not asset.next_review_date or asset.review_status == 'skipped':
+            return False
+        return today <= asset.next_review_date <= future_date
+    
+    @staticmethod
     def update_review_status(asset: Asset, db: Session) -> Asset:
         """
         Update review status based on next_review_date.
@@ -90,14 +106,9 @@ class AssetReviewService:
         if asset.next_review_date:
             today = datetime.utcnow()
             if asset.next_review_date < today:
-                # Only set to overdue if not already reviewed or skipped
-                if asset.review_status not in ['reviewed', 'skipped']:
+                if asset.review_status != 'skipped':
                     asset.review_status = 'overdue'
-            elif asset.review_status == 'reviewed':
-                # Keep reviewed status if already reviewed
-                pass
-            elif asset.review_status != 'skipped':
-                # Set to pending if not reviewed or skipped
+            elif asset.review_status not in ['reviewed', 'skipped']:
                 asset.review_status = 'pending'
         else:
             # If we can't calculate next_review_date, set status to pending
@@ -153,20 +164,15 @@ class AssetReviewService:
                 else:
                     logger.warning(f"Asset {asset.id} ({asset.name}): could not calculate next_review_date")
             
-            # Check if due (includes overdue)
             if asset.next_review_date:
-                if asset.next_review_date <= future_date:
-                    # Include if due in next N days or overdue
-                    if asset.next_review_date < today:
-                        # Overdue
-                        if asset.review_status in ['pending', 'overdue', None]:
-                            logger.info(f"Asset {asset.id} ({asset.name}): ADDED to due list (overdue)")
-                            due_assets.append(asset)
-                    else:
-                        # Due in future
-                        if asset.review_status in ['pending', None]:
-                            logger.info(f"Asset {asset.id} ({asset.name}): ADDED to due list (future)")
-                            due_assets.append(asset)
+                old_status = asset.review_status
+                AssetReviewService.update_review_status(asset, db)
+                if old_status != asset.review_status:
+                    needs_commit = True
+                if AssetReviewService._is_overdue(asset, today):
+                    due_assets.append(asset)
+                elif AssetReviewService._needs_review_in_due_window(asset, today, future_date):
+                    due_assets.append(asset)
         
         # Commit all changes at once
         if needs_commit:
@@ -209,19 +215,13 @@ class AssetReviewService:
                 else:
                     logger.warning(f"Asset {asset.id} ({asset.name}): could not calculate next_review_date (no base date)")
             
-            # Check if overdue
             if asset.next_review_date:
-                logger.info(f"Asset {asset.id} ({asset.name}): next_review_date = {asset.next_review_date}, status = {asset.review_status}")
-                if asset.next_review_date < today:
-                    if asset.review_status in ['pending', 'overdue', None]:
-                        logger.info(f"Asset {asset.id} ({asset.name}): ADDED to overdue list")
-                        overdue.append(asset)
-                    else:
-                        logger.info(f"Asset {asset.id} ({asset.name}): NOT added (status = {asset.review_status})")
-                else:
-                    logger.info(f"Asset {asset.id} ({asset.name}): NOT overdue (next_review_date >= today)")
-            else:
-                logger.warning(f"Asset {asset.id} ({asset.name}): no next_review_date after calculation")
+                old_status = asset.review_status
+                AssetReviewService.update_review_status(asset, db)
+                if old_status != asset.review_status:
+                    needs_commit = True
+                if AssetReviewService._is_overdue(asset, today):
+                    overdue.append(asset)
         
         # Commit all changes at once
         if needs_commit:

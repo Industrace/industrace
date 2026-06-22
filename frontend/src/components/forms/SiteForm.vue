@@ -34,6 +34,19 @@
           :showClear="true"
         />
       </div>
+
+      <div class="p-field">
+        <label for="review_interval_months">{{ t('sites.fields.reviewIntervalMonths') }}</label>
+        <InputNumber
+          id="review_interval_months"
+          v-model="form.review_interval_months"
+          :min="1"
+          :max="120"
+          showButtons
+          class="w-full"
+        />
+        <small class="text-600">{{ t('sites.fields.reviewIntervalMonthsHint') }}</small>
+      </div>
       
       <div class="flex justify-content-end gap-2 mt-4">
         <Button :label="t('common.actions.cancel')" class="p-button-text" @click="handleCancel" />
@@ -47,6 +60,7 @@
 import { ref, watch, computed } from 'vue'
 import Textarea from 'primevue/textarea'
 import Dropdown from 'primevue/dropdown'
+import InputNumber from 'primevue/inputnumber'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -71,7 +85,8 @@ const form = ref({
   code: '',
   address: '',
   description: '',
-  parent_id: null
+  parent_id: null,
+  review_interval_months: null
 })
 
 // Watch to update the form when a site is edited
@@ -84,7 +99,8 @@ watch(
         code: site.code || '',
         address: site.address || '',
         description: site.description || '',
-        parent_id: site.parent_id || null
+        parent_id: site.parent_id || null,
+        review_interval_months: site.review_interval_months ?? null
       }
     } else {
       form.value = {
@@ -92,7 +108,8 @@ watch(
         code: '',
         address: '',
         description: '',
-        parent_id: null
+        parent_id: null,
+        review_interval_months: null
       }
     }
   },

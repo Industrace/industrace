@@ -273,7 +273,7 @@ async function fetchReviewStatus() {
     reviewStatus.value = res.data
   } catch (error) {
     console.error('Error fetching review status:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: t('assetReviews.errorLoading') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: t('assetReviews.errorLoading') })
   } finally {
     loading.value = false
   }
@@ -286,7 +286,7 @@ async function confirmReview() {
       notes: reviewNotes.value || null,
       next_review_override: nextReviewDate.value ? new Date(nextReviewDate.value).toISOString() : null
     })
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('assetReviews.assetReviewed') })
+    toast.add({ severity: 'success', summary: t('common.messages.success'), detail: t('assetReviews.assetReviewed') })
     showReviewDialog.value = false
     reviewNotes.value = ''
     nextReviewDate.value = null
@@ -294,7 +294,7 @@ async function confirmReview() {
     emit('updated')
   } catch (error) {
     console.error('Error reviewing asset:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: error.response?.data?.detail || t('assetReviews.errorReviewing') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: error.response?.data?.detail || t('assetReviews.errorReviewing') })
   } finally {
     reviewing.value = false
   }
@@ -309,7 +309,7 @@ async function confirmSkip() {
       reason: skipReason.value,
       next_review_date: new Date(skipNextReviewDate.value).toISOString()
     })
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('assetReviews.reviewSkipped') })
+    toast.add({ severity: 'success', summary: t('common.messages.success'), detail: t('assetReviews.reviewSkipped') })
     showSkipDialog.value = false
     skipReason.value = ''
     skipNextReviewDate.value = null
@@ -317,7 +317,7 @@ async function confirmSkip() {
     emit('updated')
   } catch (error) {
     console.error('Error skipping review:', error)
-    toast.add({ severity: 'error', summary: t('common.errors.error'), detail: error.response?.data?.detail || t('assetReviews.errorSkipping') })
+    toast.add({ severity: 'error', summary: t('common.messages.error'), detail: error.response?.data?.detail || t('assetReviews.errorSkipping') })
   } finally {
     skipping.value = false
   }

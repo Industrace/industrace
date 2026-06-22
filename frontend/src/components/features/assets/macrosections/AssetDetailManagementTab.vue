@@ -47,9 +47,9 @@
     </Accordion>
 
     <!-- Review e Audit (default espanso) -->
-    <Accordion :activeIndex="[2]" class="mb-4">
+    <Accordion v-if="canReadReview" :activeIndex="[2]" class="mb-4">
       <AccordionTab :header="t('assets.tabs.review')">
-        <AssetDetailReviewTab :assetId="assetId" :canWrite="canWrite('assets')" @updated="$emit('updated')" />
+        <AssetDetailReviewTab :assetId="assetId" :canWrite="canWrite('asset_reviews')" @updated="onReviewUpdated" />
       </AccordionTab>
     </Accordion>
 
@@ -86,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
@@ -104,18 +104,20 @@ import DOMPurify from 'dompurify'
 const props = defineProps({
   asset: { type: Object, required: true },
   assetId: { type: [String, Number], required: true },
-  canWrite: { type: Function, required: true }
+  canWrite: { type: Function, required: true },
+  canRead: { type: Function, default: () => () => true }
 })
 
 const emit = defineEmits(['updated', 'edit-note'])
 
 const { t } = useI18n()
 
+const canReadReview = computed(() => props.canRead('asset_reviews'))
+
 const documentsCount = ref(0)
 const contactsCount = ref(0)
 const suppliersCount = ref(0)
-const reviewStatus = ref('ok')
-const reviewDate = ref(null)
+const reviewData = ref(null)
 
 const sanitizedDescription = computed(() => {
   if (!props.asset?.description) return ''
@@ -123,17 +125,40 @@ const sanitizedDescription = computed(() => {
 })
 
 const reviewStatusLabel = computed(() => {
-  if (reviewStatus.value === 'overdue') return t('assets.management.reviewOverdue')
-  if (reviewStatus.value === 'due') return t('assets.management.reviewDue')
-  if (reviewDate.value) return new Date(reviewDate.value).toLocaleDateString()
+  if (!reviewData.value) return t('assets.management.noReviewScheduled')
+  const status = reviewData.value.review_status
+  if (status === 'overdue') return t('assets.management.reviewOverdue')
+  if (status === 'pending' || status === 'due') return t('assets.management.reviewDue')
+  if (reviewData.value.next_review_date) {
+    return new Date(reviewData.value.next_review_date).toLocaleDateString()
+  }
   return t('assets.management.noReviewScheduled')
 })
 
 const reviewStatusSeverity = computed(() => {
-  if (reviewStatus.value === 'overdue') return 'danger'
-  if (reviewStatus.value === 'due') return 'warning'
+  if (!reviewData.value) return 'info'
+  const status = reviewData.value.review_status
+  if (status === 'overdue') return 'danger'
+  if (status === 'pending') return 'warning'
+  if (status === 'reviewed') return 'success'
   return 'info'
 })
+
+async function loadReviewStatus() {
+  if (!canReadReview.value) return
+  try {
+    const res = await api.getAssetReviewStatus(props.assetId)
+    reviewData.value = res.data
+  } catch (e) {
+    console.error('Error loading review status:', e)
+    reviewData.value = null
+  }
+}
+
+function onReviewUpdated() {
+  loadReviewStatus()
+  emit('updated')
+}
 
 async function loadCounts() {
   try {
@@ -148,6 +173,11 @@ async function loadCounts() {
 
 onMounted(() => {
   loadCounts()
+  loadReviewStatus()
+})
+
+watch(() => props.assetId, () => {
+  loadReviewStatus()
 })
 </script>
 

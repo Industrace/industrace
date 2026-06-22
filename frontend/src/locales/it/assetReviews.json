@@ -33,6 +33,27 @@
   "upcomingDaysHint": "Seleziona il numero di giorni per visualizzare le review in arrivo",
   "day": "giorno",
   "days": "giorni",
+  "upcomingDaysOption": "{count} giorni",
+  "settings": {
+    "title": "Impostazioni Review",
+    "defaultInterval": "Intervallo review predefinito (mesi)",
+    "defaultIntervalHint": "Usato se non c'è override su site o asset",
+    "dueDaysAhead": "Finestra in scadenza (giorni)",
+    "dueDaysAheadHint": "Gli asset in scadenza entro questi giorni compaiono nel tab In Scadenza",
+    "upcomingDaysAhead": "Finestra in arrivo (giorni)",
+    "upcomingDaysAheadHint": "Anticipo predefinito per le review in arrivo",
+    "saved": "Impostazioni review salvate con successo",
+    "errorSaving": "Errore nel salvataggio delle impostazioni review"
+  },
+  "bulk": {
+    "title": "Review multipla",
+    "description": "Segna {count} asset selezionati come rivisti",
+    "confirm": "Segna come rivisti",
+    "selected": "{count} asset selezionati",
+    "markReviewed": "Segna come rivisti ({count})",
+    "success": "Asset selezionati marcati come rivisti",
+    "error": "Errore durante la review multipla"
+  },
   "status": {
     "pending": "In Attesa",
     "reviewed": "Rivisto",

@@ -25,7 +25,9 @@
         "updateLocationError": "Error updating location"
     },
     "fields": {
-        "parent": "Parent site"
+        "parent": "Parent site",
+        "reviewIntervalMonths": "Review interval (months)",
+        "reviewIntervalMonthsHint": "Optional override of tenant default"
     },
     "strings": {
         "select": "Select",

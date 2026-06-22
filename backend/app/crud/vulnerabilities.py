@@ -572,6 +572,28 @@ def update_vulnerability_feed_source(
     return db_feed
 
 
+def delete_vulnerability_feed_source(
+    db: Session,
+    feed_source_id: uuid.UUID,
+    tenant_id: uuid.UUID
+) -> bool:
+    """Delete a vulnerability feed source"""
+    db_feed = db.query(VulnerabilityFeedSource).filter(
+        VulnerabilityFeedSource.id == feed_source_id,
+        or_(
+            VulnerabilityFeedSource.tenant_id == tenant_id,
+            VulnerabilityFeedSource.tenant_id.is_(None)
+        )
+    ).first()
+
+    if not db_feed:
+        return False
+
+    db.delete(db_feed)
+    db.commit()
+    return True
+
+
 def get_assets_with_vulnerabilities(
     db: Session,
     tenant_id: uuid.UUID,

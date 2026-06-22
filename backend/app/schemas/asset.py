@@ -101,6 +101,13 @@ class AssetBase(BaseModel):
     last_update_date: Optional[datetime] = None
     physical_access_ease: Optional[str] = Field(None, max_length=50, description="Physical access ease")
 
+    # Asset review fields
+    last_review_date: Optional[datetime] = None
+    next_review_date: Optional[datetime] = None
+    review_status: Optional[str] = None
+    review_notes: Optional[str] = None
+    review_interval_months: Optional[int] = None
+
     documents: List[AssetDocument] = []
     photos: List[AssetPhoto] = []
     contacts: List[Contact] = []
@@ -142,6 +149,9 @@ class AssetUpdate(BaseModel):
     exposure_level: Optional[str] = Field(None, max_length=50, description="Exposure level")
     update_status: Optional[str] = Field(None, max_length=50, description="Update status")
     risk_score: Optional[float] = None
+
+    # Asset review fields
+    review_interval_months: Optional[int] = None
 
     # Validators
     _validate_impact_value = validator('impact_value', allow_reuse=True)(validate_impact_value)

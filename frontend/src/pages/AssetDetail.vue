@@ -89,7 +89,7 @@
         </Dialog>
       </TabPanel>
 
-      <TabPanel>
+      <TabPanel v-if="canRead('asset_reviews')">
         <template #header>
           <span :title="t('assets.tabs.reviewTooltip')" style="display: flex; align-items: center; gap: 0.4em; white-space: nowrap;">
             <i class="pi pi-calendar"></i> {{ t('assets.tabs.review') }}
@@ -216,7 +216,7 @@ const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
 const { t } = useI18n()
-const { canWrite, canDelete } = usePermissions()
+const { canWrite, canDelete, canRead } = usePermissions()
 const { isIec62443Enabled } = useTenantFeatures()
 
 const { formatDate } = useDateFormatter()
