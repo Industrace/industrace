@@ -134,10 +134,10 @@
     "notes": "Note aggiuntive sul fornitore"
   },
   "footer": {
-    "powered_by": "Patrocinato da",
-    "copyright": "© {year} Industrace. Licenza AGPL v3.",
-    "github": "GitHub",
-    "report_bug": "Segnala Bug",
+    "powered_by": "Powered by",
+    "copyright": "© {year} Industrace — Licenza AGPL v3",
+    "github": "Repository",
+    "report_bug": "Segnala un bug",
     "license": "Licenza"
   },
   "title": "Form",

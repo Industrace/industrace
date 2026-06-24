@@ -6,6 +6,70 @@ from typing import Optional, Any, Dict
 import uuid
 import datetime
 
+REDACTED_VALUE = "[REDACTED]"
+
+SENSITIVE_KEY_NAMES = frozenset(
+    {
+        "api_key",
+        "key_hash",
+        "password",
+        "password_hash",
+        "client_secret",
+        "client_secret_encrypted",
+        "secret",
+        "access_token",
+        "refresh_token",
+        "private_key",
+    }
+)
+
+NON_SENSITIVE_KEY_NAMES = frozenset(
+    {
+        "password_change_required",
+    }
+)
+
+
+def _is_sensitive_key(key: str) -> bool:
+    normalized = key.lower()
+    if normalized in NON_SENSITIVE_KEY_NAMES:
+        return False
+    if normalized in SENSITIVE_KEY_NAMES:
+        return True
+    if normalized.endswith("_secret") or normalized.endswith("_password"):
+        return True
+    if "password" in normalized:
+        return True
+    return False
+
+
+def redact_sensitive_data(data: Any) -> Any:
+    """Remove or mask secrets before persisting audit log payloads."""
+    if data is None:
+        return None
+
+    if isinstance(data, str):
+        try:
+            parsed = json.loads(data)
+        except (json.JSONDecodeError, TypeError):
+            return data
+        redacted = redact_sensitive_data(parsed)
+        return json.dumps(redacted, indent=2, ensure_ascii=False)
+
+    if isinstance(data, dict):
+        redacted: Dict[str, Any] = {}
+        for key, value in data.items():
+            if _is_sensitive_key(key):
+                redacted[key] = REDACTED_VALUE if value not in (None, "") else value
+            else:
+                redacted[key] = redact_sensitive_data(value)
+        return redacted
+
+    if isinstance(data, list):
+        return [redact_sensitive_data(item) for item in data]
+
+    return data
+
 
 def clean_dict(obj: Any) -> dict:
     if not obj:
@@ -189,6 +253,11 @@ def get_entity_name_by_id(
                 .filter(ApiKey.id == entity_id, ApiKey.tenant_id == tenant_id)
                 .first()
             )
+            return obj.name if obj else None
+        elif entity_type == "Tenant":
+            from app.models.tenant import Tenant
+
+            obj = db.query(Tenant).filter(Tenant.id == entity_id).first()
             return obj.name if obj else None
     except Exception:
         return None
@@ -481,8 +550,12 @@ def create_audit_log(
             return str(data)
 
             # Translate IDs in data to make them more readable
-    old_data_with_names = translate_ids_in_data(db, old_data, tenant_id)
-    new_data_with_names = translate_ids_in_data(db, new_data, tenant_id)
+    old_data_with_names = redact_sensitive_data(
+        translate_ids_in_data(db, old_data, tenant_id)
+    )
+    new_data_with_names = redact_sensitive_data(
+        translate_ids_in_data(db, new_data, tenant_id)
+    )
 
             # Get the main entity name
     entity_name = (

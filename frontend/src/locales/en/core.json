@@ -421,9 +421,9 @@
   "moveToTrash": "Move to Trash",
   "footer": {
     "powered_by": "Powered by",
-    "copyright": "© {year} BeSafe. AGPL v3 License.",
-    "github": "GitHub",
-    "report_bug": "Report Bug",
+    "copyright": "© {year} Industrace — AGPL v3 License",
+    "github": "Repository",
+    "report_bug": "Report a bug",
     "license": "License"
   },
   "status": "Status",

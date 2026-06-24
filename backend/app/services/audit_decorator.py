@@ -1,5 +1,6 @@
 # backend/services/audit_decorator.py
 import asyncio
+import logging
 from functools import wraps
 from typing import Optional
 from fastapi import Request
@@ -7,6 +8,24 @@ from app.services.audit_log import (
     create_audit_log,
     clean_dict,
     resolve_audit_language,
+)
+
+logger = logging.getLogger(__name__)
+
+ENTITY_ID_KWARGS = {
+    "NetworkProbe": "probe_id",
+    "DiscoveredDevice": "device_id",
+}
+
+ACTIONS_WITH_OLD_DATA = frozenset(
+    {
+        "update",
+        "delete",
+        "deauthorize",
+        "soft_delete",
+        "hard_delete",
+        "restore",
+    }
 )
 
 
@@ -21,13 +40,7 @@ def get_client_ip(request: Request) -> Optional[str]:
     return None
 
 
-ENTITY_ID_KWARGS = {
-    "NetworkProbe": "probe_id",
-    "DiscoveredDevice": "device_id",
-}
-
-
-def _extract_entity_id(entity: str, kwargs, result):
+def _extract_entity_id(entity: str, kwargs, result=None):
     alias_key = ENTITY_ID_KWARGS.get(entity)
     entity_id = None
     if alias_key:
@@ -38,51 +51,68 @@ def _extract_entity_id(entity: str, kwargs, result):
             or kwargs.get("entity_id")
             or kwargs.get("id")
         )
-    if not entity_id and result and hasattr(result, "id"):
+    if not entity_id and result is not None and hasattr(result, "id"):
         entity_id = result.id
     return entity_id
 
 
-def _write_audit_log(action, entity, model_class, result, kwargs):
+def _capture_old_data(action, entity, model_class, kwargs, result=None):
+    if action not in ACTIONS_WITH_OLD_DATA:
+        return None
+
+    db = kwargs.get("db")
+    if not db or not model_class:
+        return None
+
+    entity_id = _extract_entity_id(entity, kwargs, result)
+    if not entity_id:
+        return None
+
+    query = db.query(model_class).filter(model_class.id == entity_id)
+    current_user = kwargs.get("current_user")
+    if current_user and hasattr(model_class, "tenant_id"):
+        query = query.filter(model_class.tenant_id == current_user.tenant_id)
+
+    obj = query.first()
+    if not obj:
+        return None
+    return clean_dict(obj)
+
+
+def _extract_new_data(action, result):
+    if action not in ("create", "update") or result is None:
+        return None
+
+    if hasattr(result, "_sa_instance_state"):
+        return clean_dict(result)
+    if hasattr(result, "__dict__") and not isinstance(result, dict):
+        return clean_dict(result.__dict__)
+    if isinstance(result, dict):
+        return clean_dict(result)
+    try:
+        if hasattr(result, "model_dump"):
+            return clean_dict(result.model_dump())
+        if hasattr(result, "dict"):
+            return clean_dict(result.dict())
+    except Exception:
+        pass
+    return clean_dict(str(result))
+
+
+def _write_audit_log(action, entity, model_class, result, kwargs, old_data=None):
     db = kwargs.get("db")
     current_user = kwargs.get("current_user")
     request: Request = kwargs.get("request")
 
-    ip_address = get_client_ip(request)
+    if not db or not current_user:
+        return
 
-    entity_id = _extract_entity_id(entity, kwargs, None)
-
-    old_data = None
-    if action in ("update", "delete", "deauthorize") and entity_id and db and model_class:
-        obj = db.query(model_class).filter(model_class.id == entity_id).first()
-        if obj:
-            old_data = clean_dict(obj.__dict__)
-
-    new_data = None
-    if action in ("create", "update") and result:
-        if hasattr(result, '_sa_instance_state'):
-            new_data = clean_dict(result)
-        elif hasattr(result, "__dict__"):
-            new_data = clean_dict(result.__dict__)
-        elif isinstance(result, dict):
-            new_data = clean_dict(result)
-        else:
-            try:
-                if hasattr(result, 'model_dump'):
-                    new_data = clean_dict(result.model_dump())
-                elif hasattr(result, 'dict'):
-                    new_data = clean_dict(result.dict())
-                else:
-                    new_data = clean_dict(str(result))
-            except Exception:
-                new_data = clean_dict(str(result))
-
-    if not entity_id:
+    try:
+        ip_address = get_client_ip(request)
         entity_id = _extract_entity_id(entity, kwargs, result)
+        new_data = _extract_new_data(action, result)
+        language = resolve_audit_language(current_user, request)
 
-    language = resolve_audit_language(current_user, request)
-
-    if db and current_user:
         create_audit_log(
             db=db,
             user_id=current_user.id,
@@ -95,6 +125,12 @@ def _write_audit_log(action, entity, model_class, result, kwargs):
             ip_address=ip_address,
             commit=True,
             language=language,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to write audit log for action=%s entity=%s",
+            action,
+            entity,
         )
 
 
@@ -109,16 +145,18 @@ def audit_log_action(action: str, entity: str, model_class=None):
         if asyncio.iscoroutinefunction(func):
             @wraps(func)
             async def async_wrapper(*args, **kwargs):
+                old_data = _capture_old_data(action, entity, model_class, kwargs)
                 result = await func(*args, **kwargs)
-                _write_audit_log(action, entity, model_class, result, kwargs)
+                _write_audit_log(action, entity, model_class, result, kwargs, old_data)
                 return result
 
             return async_wrapper
 
         @wraps(func)
         def wrapper(*args, **kwargs):
+            old_data = _capture_old_data(action, entity, model_class, kwargs)
             result = func(*args, **kwargs)
-            _write_audit_log(action, entity, model_class, result, kwargs)
+            _write_audit_log(action, entity, model_class, result, kwargs, old_data)
             return result
 
         return wrapper

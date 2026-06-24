@@ -1,7 +1,7 @@
 {
-    "powered_by": "Powered by",
-    "copyright": "Copyright {year} BeSafe",
-    "license": "License",
-    "github": "GitHub",
-    "report_bug": "Report Bug"
+  "powered_by": "Powered by",
+  "copyright": "© {year} Industrace — Licenza AGPL v3",
+  "license": "Licenza",
+  "github": "Repository",
+  "report_bug": "Segnala un bug"
 }

@@ -17,7 +17,7 @@
         <div class="footer-info">
           <span class="version">v{{ version }}</span>
           <span class="separator">•</span>
-          <span class="copyright">{{ $t('footer.copyright', { year: currentYear }) }}</span>
+          <span class="copyright">{{ copyrightText }}</span>
           <span class="separator">•</span>
           <a :href="appConfig.links.license" target="_blank" rel="noopener" class="footer-link">
             {{ $t('footer.license') }}
@@ -42,13 +42,17 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { appConfig } from '@/config/app'
 
-// Utilizziamo la versione dalla configurazione
-const version = appConfig.version
+const { t } = useI18n()
 
-// Anno corrente per il copyright
-const currentYear = computed(() => new Date().getFullYear())
+const version = appConfig.version
+const currentYear = new Date().getFullYear()
+
+const copyrightText = computed(() =>
+  t('footer.copyright', { year: currentYear })
+)
 </script>
 
 <style scoped>

@@ -1,7 +1,9 @@
 // Configurazione dell'applicazione
+import packageJson from '../../package.json'
+
 export const appConfig = {
-  // Versione dell'applicazione
-  version: '1.0.0',
+  // Versione dell'applicazione (allineata a package.json)
+  version: packageJson.version,
   
   // Nome dell'applicazione
   name: 'Industrace',
@@ -11,17 +13,16 @@ export const appConfig = {
   
   // Informazioni sul copyright
   copyright: {
-    company: 'BeSafe',
-    year: '2024',
+    company: 'Industrace',
     url: 'https://www.besafe.it'
   },
   
   // Link utili
   links: {
     website: 'https://www.besafe.it',
-    github: 'https://github.com/besafe/industrace',
-    issues: 'https://github.com/besafe/industrace/issues',
-    license: 'https://github.com/besafe/industrace/blob/main/LICENSE'
+    github: 'https://github.com/Industrace/industrace',
+    issues: 'https://github.com/Industrace/industrace/issues',
+    license: 'https://github.com/Industrace/industrace/blob/main/LICENSE'
   },
   
   // Configurazione API

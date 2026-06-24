@@ -72,11 +72,11 @@ const formatTimeAgo = (timestamp) => {
   if (diffMins < 1) {
     return t('dashboard.change.justNow')
   } else if (diffMins < 60) {
-    return t('dashboard.change.minutesAgo', diffMins, { count: diffMins })
+    return t('dashboard.change.minutesAgo', { count: diffMins })
   } else if (diffHours < 24) {
-    return t('dashboard.change.hoursAgo', diffHours, { count: diffHours })
+    return t('dashboard.change.hoursAgo', { count: diffHours })
   } else {
-    return t('dashboard.change.daysAgo', diffDays, { count: diffDays })
+    return t('dashboard.change.daysAgo', { count: diffDays })
   }
 }
 </script>
