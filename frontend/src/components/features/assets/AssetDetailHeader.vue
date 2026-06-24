@@ -81,6 +81,7 @@ import CriticalityBadge from '../../common/CriticalityBadge.vue'
 import FloorplanPositioningDialog from './widgets/FloorplanPositioningDialog.vue'
 
 import { computed, ref } from 'vue'
+import { useRiskLabels } from '@/composables/useRiskLabels'
 
 const props = defineProps({
   asset: { type: Object, required: true },
@@ -90,6 +91,7 @@ const props = defineProps({
 })
 
 const { t } = useI18n()
+const { riskLevelLabel, riskLevelSeverity } = useRiskLabels()
 const emit = defineEmits(['back', 'edit', 'print', 'position-saved'])
 
 // State
@@ -105,21 +107,6 @@ const purdueLevelDisplay = computed(() => {
 
 // Computed properties
 const hasFloorplan = computed(() => !!(props.asset?.location?.floorplan?.id))
-
-// Risk utility functions
-function riskLevelLabel(score) {
-  if (score === null || score === undefined) return t('assets.strings.riskLevelUndefined')
-  if (score >= 7) return t('assets.strings.riskLevelHigh')
-  if (score >= 4) return t('assets.strings.riskLevelMedium')
-  return t('assets.strings.riskLevelLow')
-}
-
-function riskLevelSeverity(score) {
-  if (score === null || score === undefined) return 'info'
-  if (score >= 7) return 'danger'
-  if (score >= 4) return 'warning'
-  return 'success'
-}
 
 // Methods
 function onAssetPositionSaved({ id, map_x, map_y }) {

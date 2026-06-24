@@ -22,6 +22,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { getAlertTier } from '@/composables/useRiskLabels'
 
 const props = defineProps({
   totalRiskScore: { type: Number, default: null },
@@ -31,14 +32,7 @@ const props = defineProps({
 
 const { t } = useI18n()
 
-const alertLevel = computed(() => {
-  if (!props.totalRiskScore) return null
-  const risk = props.totalRiskScore
-  if (risk >= 8) return 'critical'
-  if (risk >= 6) return 'high'
-  if (risk >= 4) return 'medium'
-  return null
-})
+const alertLevel = computed(() => getAlertTier(props.totalRiskScore))
 
 const alertClass = computed(() => {
   const level = alertLevel.value

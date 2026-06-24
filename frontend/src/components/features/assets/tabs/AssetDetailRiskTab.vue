@@ -145,6 +145,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRiskLabels } from '@/composables/useRiskLabels'
 import RiskBreakdown from '../components/RiskBreakdown.vue'
 import RiskPropagationView from './components/RiskPropagationView.vue'
 import Button from 'primevue/button'
@@ -159,6 +160,7 @@ const props = defineProps({
 })
 const { t } = useI18n()
 const { criticalityColors } = useCriticality()
+const { riskLevelLabel, riskLevelSeverity } = useRiskLabels()
 
 const riskBreakdown = ref(null)
 const loadingRisk = ref(false)
@@ -172,20 +174,6 @@ const propagationDepth = ref(5)
 const showBaseBreakdown = ref(false)
 const showDependenciesBreakdown = ref(false)
 const showPropagation = ref(false)
-
-function riskLevelLabel(score) {
-  if (score === null || score === undefined) return t('assets.riskBreakdown.riskLevelUndefined')
-  if (score >= 7) return t('assets.riskBreakdown.riskLevelHigh')
-  if (score >= 4) return t('assets.riskBreakdown.riskLevelMedium')
-  return t('assets.riskBreakdown.riskLevelLow')
-}
-
-function riskLevelSeverity(score) {
-  if (score === null || score === undefined) return 'info'
-  if (score >= 7) return 'danger'
-  if (score >= 4) return 'warning'
-  return 'success'
-}
 
 async function fetchRiskBreakdown() {
   if (!props.assetId) return

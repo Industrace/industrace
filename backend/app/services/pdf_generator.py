@@ -132,6 +132,14 @@ class PDFGenerator:
             return ", ".join(str(v) for v in value if v)
         return str(value)
 
+    def _format_risk_score(self, risk_score, translations=None):
+        """Format asset risk score on 0-10 scale."""
+        if risk_score is None:
+            if translations is None:
+                translations = self._get_translations("en")
+            return translations.get("not_available", "N/A")
+        return f"{float(risk_score):.2f} / 10"
+
     def _create_compact_info_table(
         self,
         asset: Dict[str, Any],
@@ -254,7 +262,7 @@ class PDFGenerator:
     ) -> Table:
         """Crea una tabella compatta per le informazioni di rischio"""
         data = [
-            ["Risk Score", f"{asset.get('risk_score', 0)}%"],
+            ["Risk Score", self._format_risk_score(asset.get("risk_score"))],
             ["Purdue Level", str(asset.get("purdue_level", "N/A"))],
             ["Business Criticality", str(asset.get("business_criticality", "N/A"))],
             ["Impact Value", str(asset.get("impact_value", "N/A"))],
@@ -566,10 +574,7 @@ class PDFGenerator:
                 "business_criticality", translations.get("not_available", "N/A")
             )
         elif field_name == "asset_risk_score":
-            risk_score = asset.get("risk_score")
-            if risk_score is not None:
-                return f"{risk_score}%"
-            return translations.get("not_available", "N/A")
+            return self._format_risk_score(asset.get("risk_score"), translations)
         elif field_name == "asset_vlan":
             return asset.get("vlan", translations.get("not_available", "N/A"))
         elif field_name == "asset_logical_port":
@@ -933,7 +938,7 @@ class PDFGenerator:
         risk_info_data = [
             [
                 Paragraph(
-                    f"<b>{translations.get('risk_score', 'Rischio')}:</b> {self._format_value(asset.get('risk_score'), translations)}",
+                    f"<b>{translations.get('risk_score', 'Rischio')}:</b> {self._format_risk_score(asset.get('risk_score'), translations)}",
                     self.styles["InfoText"],
                 ),
                 Paragraph(

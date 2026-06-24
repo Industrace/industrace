@@ -452,6 +452,7 @@ import InputNumber from 'primevue/inputnumber'
 import ConduitForm from '@/components/features/isa62443/ConduitForm.vue'
 import ZoneComplianceTab from '@/components/features/isa62443/ZoneComplianceTab.vue'
 import api from '@/api/api'
+import { getRiskSeverity } from '@/composables/useRiskLabels'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -614,12 +615,6 @@ function goToAsset(assetId) {
 
 function goToConduit(conduitId) {
   router.push(`/conduits`)
-}
-
-function getRiskSeverity(riskScore) {
-  if (riskScore >= 7) return 'danger'
-  if (riskScore >= 4) return 'warning'
-  return 'success'
 }
 
 function getComplianceStatusLabel(status) {

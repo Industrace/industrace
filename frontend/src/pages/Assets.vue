@@ -333,6 +333,7 @@ import AssetsHeader from '../components/features/assets/AssetsHeader.vue'
 import AssetsFilters from '../components/features/assets/AssetsFilters.vue'
 import AssetsBulkActions from '../components/features/assets/AssetsBulkActions.vue'
 import AssetsTrashActions from '../components/features/assets/AssetsTrashActions.vue'
+import { getRiskSeverity } from '../composables/useRiskLabels'
 
 const router = useRouter()
 const route = useRoute()
@@ -1089,12 +1090,7 @@ async function emptyTrash() {
   }
 }
 
-function riskLevelSeverity(score) {
-  if (score === null || score === undefined) return 'info'
-  if (score >= 7) return 'danger'
-  if (score >= 4) return 'warning'
-  return 'success'
-}
+const riskLevelSeverity = getRiskSeverity
 
 function getBusinessCriticalityLabel(value) {
   switch ((value || '').toLowerCase()) {

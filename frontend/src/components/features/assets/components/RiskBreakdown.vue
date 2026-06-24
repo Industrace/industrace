@@ -39,6 +39,8 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { getRiskLevel } from '@/composables/useRiskLabels'
+
 const { t } = useI18n()
 const props = defineProps({
   breakdown: { type: Object, required: true }
@@ -49,17 +51,17 @@ const partials = computed(() => ({
   'operational': props.breakdown.operational
 }))
 const riskLabel = computed(() => {
-  const score = props.breakdown.final_score
-  if (score === null) return t('assets.riskBreakdown.undefined')
-  if (score >= 7) return t('assets.riskBreakdown.high')
-  if (score >= 4) return t('assets.riskBreakdown.medium')
+  const level = getRiskLevel(props.breakdown.final_score)
+  if (level === 'undefined') return t('assets.riskBreakdown.undefined')
+  if (level === 'high') return t('assets.riskBreakdown.high')
+  if (level === 'medium') return t('assets.riskBreakdown.medium')
   return t('assets.riskBreakdown.low')
 })
 const riskClass = computed(() => {
-  const score = props.breakdown.final_score
-  if (score === null) return 'risk-undefined'
-  if (score >= 7) return 'risk-high'
-  if (score >= 4) return 'risk-medium'
+  const level = getRiskLevel(props.breakdown.final_score)
+  if (level === 'undefined') return 'risk-undefined'
+  if (level === 'high') return 'risk-high'
+  if (level === 'medium') return 'risk-medium'
   return 'risk-low'
 })
 function keyLabel(key) {

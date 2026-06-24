@@ -203,6 +203,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import i18n from '../../locales/loader-final.js'
 import PrintLayout from './PrintLayout.vue'
+import { formatRiskScore, getPrintRiskClass } from '../../composables/useRiskLabels'
 
 const { t } = useI18n()
 
@@ -235,14 +236,7 @@ const statusClass = computed(() => {
   return 'status-default'
 })
 
-const riskScoreClass = computed(() => {
-  const score = props.asset.risk_score || 0
-  if (score >= 80) return 'risk-critical'
-  if (score >= 60) return 'risk-high'
-  if (score >= 40) return 'risk-medium'
-  if (score >= 20) return 'risk-low'
-  return 'risk-minimal'
-})
+const riskScoreClass = computed(() => getPrintRiskClass(props.asset.risk_score))
 
 const qrCodeUrl = computed(() => {
   // Genera QR code con URL per accedere alla scheda
@@ -345,7 +339,7 @@ const getFieldValue = (fieldName) => {
     case 'asset_notes':
       return asset.notes || 'N/A'
     case 'asset_risk_score':
-      return asset.risk_score ? `${asset.risk_score}/100` : 'N/A'
+      return formatRiskScore(asset.risk_score, { suffix: true })
     case 'asset_business_criticality':
       return asset.business_criticality || 'N/A'
     case 'asset_installation_date':

@@ -41,6 +41,21 @@ const { t } = useI18n()
 const { isIec62443Enabled } = useTenantFeatures()
 
 const riskTabRef = ref(null)
+
+defineExpose({
+  get riskBreakdown() {
+    return riskTabRef.value?.riskBreakdown
+  },
+  getTotalRiskScore() {
+    return riskTabRef.value?.getTotalRiskScore?.() ?? null
+  },
+  getRiskFromDependencies() {
+    return riskTabRef.value?.getRiskFromDependencies?.() ?? null
+  },
+  getBaseRiskScore() {
+    return riskTabRef.value?.getBaseRiskScore?.() ?? null
+  },
+})
 </script>
 
 <style scoped>

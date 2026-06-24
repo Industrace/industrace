@@ -110,6 +110,7 @@ import AccordionTab from 'primevue/accordiontab'
 import AssetDetailMainInfo from '../AssetDetailMainInfo.vue'
 import AssetDetailTechnicalInfo from '../AssetDetailTechnicalInfo.vue'
 import AssetAlertBanner from '../components/AssetAlertBanner.vue'
+import { getRiskSeverity } from '@/composables/useRiskLabels'
 
 const props = defineProps({
   asset: { type: Object, required: true },
@@ -131,14 +132,6 @@ const baseRiskScore = computed(() => {
   if (!props.riskBreakdown) return 0.0
   return props.riskBreakdown.final_score || 0.0
 })
-
-function getRiskSeverity(score) {
-  if (!score) return 'info'
-  if (score >= 8) return 'danger'
-  if (score >= 6) return 'warning'
-  if (score >= 4) return 'info'
-  return 'success'
-}
 
 function getStatusSeverity(status) {
   if (status === 'active') return 'success'

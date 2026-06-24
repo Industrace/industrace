@@ -228,6 +228,7 @@ import DashboardCard from '../components/dashboard/DashboardCard.vue'
 import SectionHeader from '../components/dashboard/SectionHeader.vue'
 import RecentChangesList from '../components/dashboard/RecentChangesList.vue'
 import api from '../api/api'
+import { getRiskSeverity } from '../composables/useRiskLabels'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -269,11 +270,7 @@ const hasIssues = computed(() => {
 })
 
 // Functions
-const getExposureSeverity = (score) => {
-  if (score >= 7) return 'danger'
-  if (score >= 4) return 'warning'
-  return 'info'
-}
+const getExposureSeverity = getRiskSeverity
 
 const getPostureScore = () => {
   const total = complianceSummary.value.total_zones || 1

@@ -10,8 +10,8 @@
     
     <AssetDetailHeader
       :asset="asset"
-      :riskBreakdown="riskTabRef?.riskBreakdown"
-      :totalRiskScore="riskTabRef?.totalRiskScore"
+      :riskBreakdown="riskBreakdown"
+      :totalRiskScore="totalRiskScore"
       :canWrite="canWrite"
       @edit="showEditDialog = true"
       @print="openPrintDialog"
@@ -36,9 +36,9 @@
         </template>
         <AssetDetailOverviewTab
           :asset="asset"
-          :riskBreakdown="riskTabRef?.riskBreakdown"
-          :totalRiskScore="riskTabRef?.totalRiskScore"
-          :riskFromDependencies="riskTabRef?.riskFromDependencies"
+          :riskBreakdown="riskBreakdown"
+          :totalRiskScore="totalRiskScore"
+          :riskFromDependencies="riskFromDependencies"
           :getRemoteAccessTypeLabel="getRemoteAccessTypeLabel"
           :getPhysicalAccessLabel="getPhysicalAccessLabel"
           :getBusinessCriticalityLabel="getBusinessCriticalityLabel"
@@ -149,13 +149,13 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import { QuillEditor } from '@vueup/vue-quill'  
 import { usePrint } from '../composables/usePrint'
 import AssetDetailHeader from '../components/features/assets/AssetDetailHeader.vue'
-import AssetDetailRiskTab from '../components/features/assets/tabs/AssetDetailRiskTab.vue'
 
 // Nuovi componenti macro-sezioni
 import AssetDetailOverviewTab from '../components/features/assets/macrosections/AssetDetailOverviewTab.vue'
 import AssetDetailRelationsTab from '../components/features/assets/macrosections/AssetDetailRelationsTab.vue'
 import AssetDetailSecurityTab from '../components/features/assets/macrosections/AssetDetailSecurityTab.vue'
 import AssetDetailManagementTab from '../components/features/assets/macrosections/AssetDetailManagementTab.vue'
+import { getAlertTier } from '../composables/useRiskLabels'
 
 const { loadTemplates } = usePrint()
 
@@ -186,22 +186,24 @@ const manufacturers = ref([])
 const assetStatusOptions = ref([])
 const securityZones = ref([])
 
+const riskBreakdown = computed(() => riskTabRef.value?.riskBreakdown ?? null)
+const totalRiskScore = computed(() => riskTabRef.value?.getTotalRiskScore?.() ?? null)
+const riskFromDependencies = computed(() => riskTabRef.value?.getRiskFromDependencies?.() ?? null)
+
 // Computed per alert e badge
 const alertLevel = computed(() => {
-  if (!riskTabRef.value?.totalRiskScore) return null
-  const risk = riskTabRef.value.totalRiskScore
-  if (risk >= 8) return t('assets.alerts.critical')
-  if (risk >= 6) return t('assets.alerts.high')
-  if (risk >= 4) return t('assets.alerts.medium')
+  const tier = getAlertTier(totalRiskScore.value)
+  if (tier === 'critical') return t('assets.alerts.critical')
+  if (tier === 'high') return t('assets.alerts.high')
+  if (tier === 'medium') return t('assets.alerts.medium')
   return null
 })
 
 const alertSeverity = computed(() => {
-  if (!riskTabRef.value?.totalRiskScore) return 'info'
-  const risk = riskTabRef.value.totalRiskScore
-  if (risk >= 8) return 'danger'
-  if (risk >= 6) return 'warning'
-  if (risk >= 4) return 'info'
+  const tier = getAlertTier(totalRiskScore.value)
+  if (tier === 'critical') return 'danger'
+  if (tier === 'high') return 'warning'
+  if (tier === 'medium') return 'info'
   return 'success'
 })
 

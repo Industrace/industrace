@@ -172,6 +172,7 @@ import Checkbox from 'primevue/checkbox'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import api from '@/api/api'
+import { getNetworkMapRiskColor } from '@/composables/useRiskLabels'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -308,9 +309,9 @@ function buildNetworkData() {
 }
 
 function getAssetColor(asset) {
-  // Colore basato sul tipo di asset o rischio
-  if (asset.risk_score && asset.risk_score > 7) return '#ff4444'
-  if (asset.risk_score && asset.risk_score > 4) return '#ffaa00'
+  if (asset.risk_score !== null && asset.risk_score !== undefined) {
+    return getNetworkMapRiskColor(asset.risk_score)
+  }
   if (asset.asset_type?.name?.toLowerCase().includes('switch')) return '#4caf50'
   if (asset.asset_type?.name?.toLowerCase().includes('router')) return '#2196f3'
   if (asset.asset_type?.name?.toLowerCase().includes('server')) return '#9c27b0'
