@@ -1,7 +1,7 @@
 # backend/app/routers/vulnerabilities.py
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -502,6 +502,7 @@ def update_asset_vulnerability(
     asset_id: uuid.UUID,
     asset_vulnerability_id: uuid.UUID,
     asset_vulnerability_update: AssetVulnerabilityUpdate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     perm=Depends(require_permission("vulnerabilities", 2)),
@@ -668,16 +669,17 @@ def update_asset_vulnerability(
         
         # Create audit log manually
         try:
-            from app.services.audit_log import create_audit_log
+            from app.services.audit_log import create_audit_log, resolve_audit_language
             create_audit_log(
                 db=db,
                 user_id=current_user.id,
                 tenant_id=current_user.tenant_id,
-                action="update",
+                action="update_vulnerability_status",
                 entity="AssetVulnerability",
                 entity_id=asset_vulnerability_id,
-                description=f"Updated asset vulnerability status to {asset_vuln_with_relations.status}",
-                commit=True
+                commit=True,
+                language=resolve_audit_language(current_user, request),
+                status=asset_vuln_with_relations.status,
             )
         except Exception as audit_error:
             logger.warning(f"Failed to create audit log: {audit_error}")

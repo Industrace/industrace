@@ -105,12 +105,13 @@
             <div class="timeline-header">
               <span class="timeline-time">{{ formatTimestamp(log.timestamp) }}</span>
               <span class="timeline-user">{{ getUserName(log.user_id) }}</span>
-              <Tag :value="log.action" :severity="getActionSeverity(log.action)" />
+              <Tag :value="getActionLabel(log.action)" :severity="getActionSeverity(log.action)" />
             </div>
             <div class="timeline-body">
               <p class="timeline-description">{{ getFormattedDescription(log) }}</p>
               <div v-if="log.entity_id" class="timeline-entity">
                 <Button 
+                  v-if="log.entity_id && canNavigateToEntity(log.entity)"
                   :label="t('auditlog.strings.viewEntity')" 
                   icon="pi pi-external-link" 
                   size="small"
@@ -148,7 +149,7 @@
         </template>
         
         <template #body-action="{ data }">
-          <Tag :value="data.action" :severity="getActionSeverity(data.action)" />
+          <Tag :value="getActionLabel(data.action)" :severity="getActionSeverity(data.action)" />
         </template>
         
         <template #body-entity="{ data }">
@@ -171,7 +172,7 @@
               @click="showDetails(data)" 
             />
             <Button 
-              v-if="data.entity_id"
+              v-if="data.entity_id && canNavigateToEntity(data.entity)"
               icon="pi pi-external-link" 
               size="small"
               severity="info"
@@ -201,7 +202,7 @@
           </div>
           <div class="detail-item">
             <label class="text-sm font-medium text-gray-600">{{ t('auditlog.strings.action') }}</label>
-            <Tag :value="selectedLog.action" :severity="getActionSeverity(selectedLog.action)" />
+            <Tag :value="getActionLabel(selectedLog.action)" :severity="getActionSeverity(selectedLog.action)" />
           </div>
           <div class="detail-item">
             <label class="text-sm font-medium text-gray-600">{{ t('auditlog.strings.entity') }}</label>
@@ -235,7 +236,7 @@
           </div>
         </div>
         
-        <div v-if="selectedLog.entity_id" class="mt-6">
+        <div v-if="selectedLog.entity_id && canNavigateToEntity(selectedLog.entity)" class="mt-6">
           <Button 
             :label="t('auditlog.strings.viewEntity')" 
             icon="pi pi-external-link"
@@ -255,6 +256,7 @@ import i18n from '../locales/loader-final.js'
 import { useApi } from '../composables/useApi'
 import { useFilters } from '../composables/useFilters'
 import { useDialog } from '../composables/useDialog'
+import { useAuditLogLabels } from '../composables/useAuditLogLabels'
 import api from '../api/api'
 
 import BaseDataTable from '../components/base/BaseDataTable.vue'
@@ -268,7 +270,6 @@ import Avatar from 'primevue/avatar'
 const { t } = useI18n()
 const router = useRouter()
 
-// Composables
 const { loading, execute } = useApi()
 const { filters: tableFilters, updateFilter } = useFilters({
   global: { value: null, matchMode: 'contains' }
@@ -276,12 +277,10 @@ const { filters: tableFilters, updateFilter } = useFilters({
 
 const { isVisible: showDialog, data: selectedLog, openEdit, close: closeDialog } = useDialog()
 
-// Data
 const auditLogs = ref([])
 const users = ref([])
 const showTimelineView = ref(false)
 
-// Filtri
 const filters = ref({
   dateRange: null,
   action: null,
@@ -289,25 +288,19 @@ const filters = ref({
   user_id: null
 })
 
-const actionOptions = [
-  { label: t('auditlog.strings.actionCreate'), value: 'create' },
-  { label: t('auditlog.strings.actionUpdate'), value: 'update' },
-  { label: t('auditlog.strings.actionDelete'), value: 'delete' },
-  { label: t('auditlog.strings.actionLogin'), value: 'login' },
-  { label: t('auditlog.strings.actionLogout'), value: 'logout' }
-]
-
-const entityOptions = [
-  { label: t('auditlog.strings.entityAsset'), value: 'Asset' },
-  { label: t('auditlog.strings.entityUser'), value: 'User' },
-  { label: t('auditlog.strings.entitySite'), value: 'Site' },
-  { label: t('auditlog.strings.entityLocation'), value: 'Location' },
-  { label: t('auditlog.strings.entitySupplier'), value: 'Supplier' },
-  { label: t('auditlog.strings.entityContact'), value: 'Contact' },
-  { label: t('auditlog.strings.entityAssetType'), value: 'AssetType' },
-  { label: t('auditlog.strings.entityAssetStatus'), value: 'AssetStatus' },
-  { label: t('auditlog.strings.entityManufacturer'), value: 'Manufacturer' }
-]
+const {
+  actionOptions,
+  entityOptions,
+  getActionLabel,
+  getEntityLabel,
+  getActionSeverity,
+  getActionClass,
+  getActionIcon,
+  getEntityIcon,
+  getEntityRoute,
+  canNavigateToEntity,
+  formatDescription,
+} = useAuditLogLabels()
 
 const userOptions = computed(() => {
   return users.value.map(user => ({
@@ -384,20 +377,7 @@ function showDetails(log) {
 }
 
 function viewEntity(entity, entityId) {
-  // Naviga alla pagina dell'entità specifica
-  const routeMap = {
-    'Asset': { name: 'AssetDetail', params: { id: entityId } },
-    'User': { name: 'UserDetail', params: { id: entityId } },
-    'Site': { name: 'SiteDetail', params: { id: entityId } },
-    'Location': { name: 'LocationDetail', params: { id: entityId } },
-    'Supplier': { name: 'SupplierDetail', params: { id: entityId } },
-    'Contact': { name: 'ContactDetail', params: { id: entityId } },
-    'AssetType': { name: 'AssetTypeDetail', params: { id: entityId } },
-    'AssetStatus': { name: 'AssetStatusDetail', params: { id: entityId } },
-    'Manufacturer': { name: 'ManufacturerDetail', params: { id: entityId } }
-  }
-  
-  const route = routeMap[entity]
+  const route = getEntityRoute(entity, entityId)
   if (route) {
     router.push(route)
   }
@@ -415,70 +395,8 @@ function getUserInitials(userId) {
   const name = user.name || user.email || user.username || ''
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
-
-function getEntityLabel(entity) {
-  const option = entityOptions.find(e => e.value === entity)
-  return option ? option.label : entity
-}
-
-function getEntityIcon(entity) {
-  const iconMap = {
-    'Asset': 'pi pi-desktop',
-    'User': 'pi pi-user',
-    'Site': 'pi pi-building',
-    'Location': 'pi pi-map-marker',
-    'Supplier': 'pi pi-briefcase',
-    'Contact': 'pi pi-address-book',
-    'AssetType': 'pi pi-tag',
-    'AssetStatus': 'pi pi-circle-fill',
-    'Manufacturer': 'pi pi-cog'
-  }
-  return iconMap[entity] || 'pi pi-file'
-}
-
-function getActionSeverity(action) {
-  const severityMap = {
-    'create': 'success',
-    'update': 'info',
-    'delete': 'danger',
-    'login': 'warning',
-    'logout': 'secondary'
-  }
-  return severityMap[action] || 'info'
-}
-
-function getActionClass(action) {
-  const classMap = {
-    'create': 'bg-green-500',
-    'update': 'bg-blue-500',
-    'delete': 'bg-red-500',
-    'login': 'bg-yellow-500',
-    'logout': 'bg-gray-500'
-  }
-  return classMap[action] || 'bg-gray-500'
-}
-
-function getActionIcon(action) {
-  const iconMap = {
-    'create': 'pi pi-plus',
-    'update': 'pi pi-pencil',
-    'delete': 'pi pi-trash',
-    'login': 'pi pi-sign-in',
-    'logout': 'pi pi-sign-out'
-  }
-  return iconMap[action] || 'pi pi-info'
-}
-
 function getFormattedDescription(log) {
-  if (!log.description) return '-'
-  
-  // Sostituisci l'ID con il nome dell'entità se disponibile
-  let description = log.description
-  if (log.entity_name) {
-    description = description.replace(log.entity_id, log.entity_name)
-  }
-  
-  return description
+  return formatDescription(log)
 }
 
 function formatTimestamp(timestamp) {
@@ -505,8 +423,27 @@ function formatJson(data) {
   }
 }
 
-function exportAuditLogs() {
-  // TODO: Implementare export CSV dei log di audit
+async function exportAuditLogs() {
+  try {
+    const params = {
+      from: filters.value.dateRange && filters.value.dateRange[0] ? filters.value.dateRange[0].toISOString() : undefined,
+      to: filters.value.dateRange && filters.value.dateRange[1] ? filters.value.dateRange[1].toISOString() : undefined,
+      action: filters.value.action,
+      entity: filters.value.entity,
+      user_id: filters.value.user_id,
+    }
+    const response = await api.exportAuditLogs(params)
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'audit_logs.csv')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch {
+    // Error handled silently; user can retry export
+  }
 }
 </script>
 

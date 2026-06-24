@@ -129,10 +129,219 @@ def get_entity_name_by_id(
                 .first()
             )
             return obj.name or obj.email if obj else None
+        elif entity_type == "Role":
+            from app.models.role import Role
+
+            obj = (
+                db.query(Role)
+                .filter(Role.id == entity_id, Role.tenant_id == tenant_id)
+                .first()
+            )
+            return obj.name if obj else None
+        elif entity_type == "NetworkProbe":
+            from app.models.network_probe import NetworkProbe
+
+            obj = (
+                db.query(NetworkProbe)
+                .filter(NetworkProbe.id == entity_id, NetworkProbe.tenant_id == tenant_id)
+                .first()
+            )
+            return obj.name if obj else None
+        elif entity_type == "DiscoveredDevice":
+            from app.models.discovered_device import DiscoveredDevice
+
+            obj = (
+                db.query(DiscoveredDevice)
+                .filter(
+                    DiscoveredDevice.id == entity_id,
+                    DiscoveredDevice.tenant_id == tenant_id,
+                )
+                .first()
+            )
+            if not obj:
+                return None
+            return obj.hostname or obj.mac_address or str(entity_id)
+        elif entity_type == "SecurityZone":
+            from app.models.security_zone import SecurityZone
+
+            obj = (
+                db.query(SecurityZone)
+                .filter(
+                    SecurityZone.id == entity_id, SecurityZone.tenant_id == tenant_id
+                )
+                .first()
+            )
+            return obj.name if obj else None
+        elif entity_type == "Conduit":
+            from app.models.conduit import Conduit
+
+            obj = (
+                db.query(Conduit)
+                .filter(Conduit.id == entity_id, Conduit.tenant_id == tenant_id)
+                .first()
+            )
+            return obj.name if obj else None
+        elif entity_type == "ApiKey":
+            from app.models.api_key import ApiKey
+
+            obj = (
+                db.query(ApiKey)
+                .filter(ApiKey.id == entity_id, ApiKey.tenant_id == tenant_id)
+                .first()
+            )
+            return obj.name if obj else None
     except Exception:
         return None
 
     return None
+
+
+def resolve_audit_language(user=None, request=None) -> str:
+    """Resolve audit log language from request Accept-Language header."""
+    if request is not None:
+        accept = (request.headers.get("Accept-Language") or "").lower()
+        if accept.startswith("it") or ",it" in accept.split(";")[0]:
+            return "it"
+    return "en"
+
+
+ENTITY_LABELS: Dict[str, Dict[str, str]] = {
+    "en": {
+        "Asset": "device",
+        "Site": "site",
+        "Location": "location",
+        "AssetType": "device type",
+        "AssetStatus": "device status",
+        "Manufacturer": "manufacturer",
+        "Supplier": "supplier",
+        "Contact": "contact",
+        "User": "user",
+        "Role": "role",
+        "Area": "area",
+        "ApiKey": "API key",
+        "AssetDocument": "asset document",
+        "AssetPhoto": "asset photo",
+        "AssetInterface": "asset interface",
+        "AssetConnection": "asset connection",
+        "AssetDependency": "asset dependency",
+        "AssetCapability": "asset capability",
+        "SecurityZone": "security zone",
+        "AssetZoneMembership": "zone membership",
+        "Conduit": "conduit",
+        "Vulnerability": "vulnerability",
+        "VulnerabilityFeedSource": "vulnerability feed",
+        "AssetVulnerability": "asset vulnerability",
+        "TenantSSOConfig": "SSO configuration",
+        "TenantFeatures": "tenant features",
+        "LocationFloorplan": "floor plan",
+        "SupplierDocument": "supplier document",
+        "NotificationPreference": "notification preference",
+        "NetworkProbe": "network probe",
+        "DiscoveredDevice": "discovered device",
+        "TenantSyslogConfig": "syslog configuration",
+        "Tenant": "tenant",
+    },
+    "it": {
+        "Asset": "dispositivo",
+        "Site": "sito",
+        "Location": "posizione",
+        "AssetType": "tipo dispositivo",
+        "AssetStatus": "stato dispositivo",
+        "Manufacturer": "produttore",
+        "Supplier": "fornitore",
+        "Contact": "contatto",
+        "User": "utente",
+        "Role": "ruolo",
+        "Area": "area",
+        "ApiKey": "API key",
+        "AssetDocument": "documento dispositivo",
+        "AssetPhoto": "foto dispositivo",
+        "AssetInterface": "interfaccia dispositivo",
+        "AssetConnection": "connessione dispositivo",
+        "AssetDependency": "dipendenza dispositivo",
+        "AssetCapability": "capability dispositivo",
+        "SecurityZone": "security zone",
+        "AssetZoneMembership": "appartenenza zona",
+        "Conduit": "conduit",
+        "Vulnerability": "vulnerabilità",
+        "VulnerabilityFeedSource": "feed vulnerabilità",
+        "AssetVulnerability": "vulnerabilità dispositivo",
+        "TenantSSOConfig": "configurazione SSO",
+        "TenantFeatures": "funzionalità tenant",
+        "LocationFloorplan": "planimetria",
+        "SupplierDocument": "documento fornitore",
+        "NotificationPreference": "preferenza notifica",
+        "NetworkProbe": "sonda di rete",
+        "DiscoveredDevice": "dispositivo scoperto",
+        "TenantSyslogConfig": "configurazione syslog",
+        "Tenant": "tenant",
+    },
+}
+
+ACTION_TEMPLATES: Dict[str, Dict[str, str]] = {
+    "en": {
+        "create": "Created {entity_label} '{entity_identifier}'",
+        "update": "Updated {entity_label} '{entity_identifier}'",
+        "delete": "Deleted {entity_label} '{entity_identifier}'",
+        "bulk_update": "Bulk update: changed {fields} for '{entity_identifier}'",
+        "bulk_soft_delete": "Bulk soft delete of {entity_label}",
+        "soft_delete": "Moved {entity_label} '{entity_identifier}' to trash",
+        "restore": "Restored {entity_label} '{entity_identifier}'",
+        "hard_delete": "Permanently deleted {entity_label} '{entity_identifier}'",
+        "empty_trash": "Emptied trash for {entity_label}",
+        "login": "User login {entity_identifier}",
+        "logout": "User logout {entity_identifier}",
+        "api_key_used": "API Key '{entity_identifier}' used from {ip_address}",
+        "mark_asset_reviewed": "Marked {entity_label} '{entity_identifier}' as reviewed",
+        "skip_asset_review": "Skipped review for {entity_label} '{entity_identifier}'",
+        "bulk_mark_assets_reviewed": "Bulk marked assets as reviewed",
+        "recalculate_all_review_dates": "Recalculated review dates for assets",
+        "reset_password": "Reset password for {entity_label} '{entity_identifier}'",
+        "deauthorize": "Deauthorized {entity_label} '{entity_identifier}'",
+        "onboard": "Onboarded {entity_label} '{entity_identifier}' from discovery",
+        "sso_login": "SSO login via {provider} for {entity_identifier}",
+        "import_users": "Imported {imported} users, skipped {skipped}",
+        "update_vulnerability_status": "Updated vulnerability status to {status} for '{entity_identifier}'",
+        "create_security_zone": "Created {entity_label} '{entity_identifier}'",
+        "update_security_zone": "Updated {entity_label} '{entity_identifier}'",
+        "delete_security_zone": "Deleted {entity_label} '{entity_identifier}'",
+        "create_conduit": "Created {entity_label} '{entity_identifier}'",
+        "update_conduit": "Updated {entity_label} '{entity_identifier}'",
+        "delete_conduit": "Deleted {entity_label} '{entity_identifier}'",
+        "default": "{action} {entity_label} '{entity_identifier}'",
+    },
+    "it": {
+        "create": "Creato {entity_label} '{entity_identifier}'",
+        "update": "Aggiornato {entity_label} '{entity_identifier}'",
+        "delete": "Eliminato {entity_label} '{entity_identifier}'",
+        "bulk_update": "Aggiornamento massivo: modificati {fields} per '{entity_identifier}'",
+        "bulk_soft_delete": "Eliminazione massiva nel cestino di {entity_label}",
+        "soft_delete": "Spostato {entity_label} '{entity_identifier}' nel cestino",
+        "restore": "Ripristinato {entity_label} '{entity_identifier}'",
+        "hard_delete": "Eliminato definitivamente {entity_label} '{entity_identifier}'",
+        "empty_trash": "Svuotato cestino per {entity_label}",
+        "login": "Login utente {entity_identifier}",
+        "logout": "Logout utente {entity_identifier}",
+        "api_key_used": "API Key '{entity_identifier}' utilizzata da {ip_address}",
+        "mark_asset_reviewed": "Revisione completata per {entity_label} '{entity_identifier}'",
+        "skip_asset_review": "Revisione saltata per {entity_label} '{entity_identifier}'",
+        "bulk_mark_assets_reviewed": "Revisione massiva completata per i dispositivi",
+        "recalculate_all_review_dates": "Ricalcolate le date di revisione dei dispositivi",
+        "reset_password": "Reset password per {entity_label} '{entity_identifier}'",
+        "deauthorize": "De-autorizzata {entity_label} '{entity_identifier}'",
+        "onboard": "Onboarding {entity_label} '{entity_identifier}' da discovery",
+        "sso_login": "Login SSO via {provider} per {entity_identifier}",
+        "import_users": "Importati {imported} utenti, saltati {skipped}",
+        "update_vulnerability_status": "Aggiornato stato vulnerabilità a {status} per '{entity_identifier}'",
+        "create_security_zone": "Creata {entity_label} '{entity_identifier}'",
+        "update_security_zone": "Aggiornata {entity_label} '{entity_identifier}'",
+        "delete_security_zone": "Eliminata {entity_label} '{entity_identifier}'",
+        "create_conduit": "Creato {entity_label} '{entity_identifier}'",
+        "update_conduit": "Aggiornato {entity_label} '{entity_identifier}'",
+        "delete_conduit": "Eliminato {entity_label} '{entity_identifier}'",
+        "default": "{action} {entity_label} '{entity_identifier}'",
+    },
+}
 
 
 def translate_ids_in_data(db: Session, data: Any, tenant_id: uuid.UUID) -> Any:
@@ -202,70 +411,36 @@ def create_readable_description(
     old_data: Optional[Any] = None,
     new_data: Optional[Any] = None,
     language: str = "en",
+    **context: Any,
 ) -> str:
-    """Crea una descrizione leggibile per l'audit log"""
-    TRANSLATIONS = {
-        "en": {
-            "unknown": "unknown",
-            "Asset": "device",
-            "Site": "site",
-            "Location": "location",
-            "AssetType": "device type",
-            "AssetStatus": "device status",
-            "Manufacturer": "manufacturer",
-            "Supplier": "supplier",
-            "Contact": "contact",
-            "User": "user",
-            "create": "Created {entity_label} '{entity_identifier}'",
-            "update": "Updated {entity_label} '{entity_identifier}'",
-            "delete": "Deleted {entity_label} '{entity_identifier}'",
-            "bulk_update": "Bulk update of {entity_label}",
-            "default": "{action} {entity_label} '{entity_identifier}'",
-        },
-        "it": {
-            "unknown": "sconosciuto",
-            "Asset": "dispositivo",
-            "Site": "sito",
-            "Location": "posizione",
-            "AssetType": "tipo dispositivo",
-            "AssetStatus": "stato dispositivo",
-            "Manufacturer": "produttore",
-            "Supplier": "fornitore",
-            "Contact": "contatto",
-            "User": "utente",
-            "create": "Creato {entity_label} '{entity_identifier}'",
-            "update": "Aggiornato {entity_label} '{entity_identifier}'",
-            "delete": "Eliminato {entity_label} '{entity_identifier}'",
-            "bulk_update": "Aggiornamento massivo di {entity_label}",
-            "default": "{action} {entity_label} '{entity_identifier}'",
-        },
+    """Create a human-readable audit log description."""
+    labels = ENTITY_LABELS.get(language, ENTITY_LABELS["en"])
+    templates = ACTION_TEMPLATES.get(language, ACTION_TEMPLATES["en"])
+    unknown = "sconosciuto" if language == "it" else "unknown"
+
+    entity_identifier = entity_name or (str(entity_id) if entity_id else unknown)
+    entity_label = labels.get(entity, entity.replace("_", " ").lower())
+
+    fields = context.get("fields")
+    if not fields and isinstance(new_data, dict) and action == "bulk_update":
+        fields = ", ".join(new_data.keys())
+
+    template = templates.get(action, templates["default"])
+    format_args = {
+        "entity_label": entity_label,
+        "entity_identifier": entity_identifier,
+        "action": action.replace("_", " "),
+        "fields": fields or ("-" if language == "en" else "-"),
+        "ip_address": context.get("ip_address") or unknown,
+        "provider": context.get("provider") or unknown,
+        "imported": context.get("imported", 0),
+        "skipped": context.get("skipped", 0),
+        "status": context.get("status") or unknown,
     }
-    t = TRANSLATIONS.get(language, TRANSLATIONS["en"])
-            # Use entity name if available, otherwise the ID
-    entity_identifier = entity_name or str(entity_id) if entity_id else t["unknown"]
-            # Translate entity names
-    entity_label = t.get(entity, entity.lower())
-    # Crea la descrizione base
-    if action == "create":
-        return t["create"].format(
-            entity_label=entity_label, entity_identifier=entity_identifier
-        )
-    elif action == "update":
-        return t["update"].format(
-            entity_label=entity_label, entity_identifier=entity_identifier
-        )
-    elif action == "delete":
-        return t["delete"].format(
-            entity_label=entity_label, entity_identifier=entity_identifier
-        )
-    elif action == "bulk_update":
-        return t["bulk_update"].format(entity_label=entity_label)
-    else:
-        return t["default"].format(
-            action=action.capitalize(),
-            entity_label=entity_label,
-            entity_identifier=entity_identifier,
-        )
+    try:
+        return template.format(**format_args)
+    except (KeyError, ValueError):
+        return templates["default"].format(**format_args)
 
 
 def create_audit_log(
@@ -279,8 +454,9 @@ def create_audit_log(
     new_data: Optional[Any] = None,
     description: Optional[str] = None,
     ip_address: Optional[str] = None,
-    commit: bool = True,  # Commit di default a True per sicurezza
-    language: str = "en",  # Nuovo parametro lingua
+    commit: bool = True,
+    language: str = "en",
+    **context: Any,
 ):
 
     def serialize(data):
@@ -322,6 +498,8 @@ def create_audit_log(
         old_data_with_names,
         new_data_with_names,
         language,
+        ip_address=ip_address or context.get("ip_address"),
+        **context,
     )
 
     audit_entry = AuditLog(

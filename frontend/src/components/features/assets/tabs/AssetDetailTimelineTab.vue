@@ -112,11 +112,11 @@
               <span class="timeline-time">{{ formatTimestamp(log.timestamp) }}</span>
               <span class="timeline-user">{{ getUserName(log.user_id) }}</span>
             </div>
-            <Tag :value="log.action" :severity="getActionSeverity(log.action)" />
+            <Tag :value="getActionLabel(log.action)" :severity="getActionSeverity(log.action)" />
           </div>
           
           <div class="timeline-body">
-            <p class="timeline-description">{{ log.description }}</p>
+            <p class="timeline-description">{{ formatDescription(log) }}</p>
             
             <!-- Dettagli delle modifiche -->
             <div v-if="log.old_data || log.new_data" class="timeline-changes">
@@ -216,6 +216,7 @@ import { useI18n } from 'vue-i18n'
 import i18n from '@/locales/loader-final.js'
 import api from '@/api/api'
 import { useApi } from '@/composables/useApi'
+import { useAuditLogLabels, ASSET_TIMELINE_ACTIONS } from '@/composables/useAuditLogLabels'
 
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
@@ -236,25 +237,26 @@ const props = defineProps({
 // Composables
 const { loading, execute } = useApi()
 
-// Data
+const {
+  actionOptions,
+  getActionLabel,
+  getActionSeverity,
+  getActionClass,
+  getActionIcon,
+  formatDescription,
+} = useAuditLogLabels(ASSET_TIMELINE_ACTIONS, ['Asset'])
+
 const timeline = ref([])
 const users = ref([])
 const total = ref(0)
 const first = ref(0)
 const pageSize = ref(25)
 
-// Filtri
 const filters = ref({
   action: null,
   user_id: null,
   dateRange: null
 })
-
-const actionOptions = [
-  { label: t('assets.timeline.actionCreate'), value: 'create' },
-  { label: t('assets.timeline.actionUpdate'), value: 'update' },
-  { label: t('assets.timeline.actionDelete'), value: 'delete' }
-]
 
 const userOptions = computed(() => {
   return users.value.map(user => ({
@@ -329,33 +331,6 @@ function onPage(e) {
 function getUserName(userId) {
   const user = users.value.find(u => u.id === userId)
   return user ? (user.name || user.email || user.username || userId) : userId
-}
-
-function getActionSeverity(action) {
-  const severityMap = {
-    'create': 'success',
-    'update': 'info',
-    'delete': 'danger'
-  }
-  return severityMap[action] || 'info'
-}
-
-function getActionClass(action) {
-  const classMap = {
-    'create': 'bg-green-500',
-    'update': 'bg-blue-500',
-    'delete': 'bg-red-500'
-  }
-  return classMap[action] || 'bg-gray-500'
-}
-
-function getActionIcon(action) {
-  const iconMap = {
-    'create': 'pi pi-plus',
-    'update': 'pi pi-pencil',
-    'delete': 'pi pi-trash'
-  }
-  return iconMap[action] || 'pi pi-info'
 }
 
 function formatTimestamp(timestamp) {
@@ -519,7 +494,7 @@ function formatFieldValue(field, value) {
     try {
       const parsed = JSON.parse(value)
       if (typeof parsed === 'object') {
-        return '[oggetto]'
+        return t('assets.timeline.objectValue')
       }
     } catch {
     }
@@ -530,7 +505,7 @@ function formatFieldValue(field, value) {
     case 'risk_score':
       return `${value}%`
     case 'purdue_level':
-      return `Livello ${value}`
+      return t('assets.timeline.purdueLevelValue', { level: value })
     case 'impact_value':
     case 'access_ease':
     case 'exposure_level':
@@ -589,8 +564,8 @@ async function exportTimeline() {
     link.click()
     link.remove()
     window.URL.revokeObjectURL(url)
-  } catch (e) {
-    toast.add({ severity: 'error', summary: t('common.strings.error'), detail: t('assets.timeline.fetchError') })
+  } catch {
+    // export failed silently
   }
 }
 </script>

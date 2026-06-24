@@ -6,8 +6,7 @@ from fastapi import Request
 from app.services.audit_log import (
     create_audit_log,
     clean_dict,
-    create_readable_description,
-    get_entity_name_by_id,
+    resolve_audit_language,
 )
 
 
@@ -22,6 +21,28 @@ def get_client_ip(request: Request) -> Optional[str]:
     return None
 
 
+ENTITY_ID_KWARGS = {
+    "NetworkProbe": "probe_id",
+    "DiscoveredDevice": "device_id",
+}
+
+
+def _extract_entity_id(entity: str, kwargs, result):
+    alias_key = ENTITY_ID_KWARGS.get(entity)
+    entity_id = None
+    if alias_key:
+        entity_id = kwargs.get(alias_key)
+    if not entity_id:
+        entity_id = (
+            kwargs.get(f"{entity.lower()}_id")
+            or kwargs.get("entity_id")
+            or kwargs.get("id")
+        )
+    if not entity_id and result and hasattr(result, "id"):
+        entity_id = result.id
+    return entity_id
+
+
 def _write_audit_log(action, entity, model_class, result, kwargs):
     db = kwargs.get("db")
     current_user = kwargs.get("current_user")
@@ -29,14 +50,10 @@ def _write_audit_log(action, entity, model_class, result, kwargs):
 
     ip_address = get_client_ip(request)
 
-    entity_id = (
-        kwargs.get(f"{entity.lower()}_id")
-        or kwargs.get("entity_id")
-        or kwargs.get("id")
-    )
+    entity_id = _extract_entity_id(entity, kwargs, None)
 
     old_data = None
-    if action in ("update", "delete") and entity_id and db and model_class:
+    if action in ("update", "delete", "deauthorize") and entity_id and db and model_class:
         obj = db.query(model_class).filter(model_class.id == entity_id).first()
         if obj:
             old_data = clean_dict(obj.__dict__)
@@ -60,18 +77,10 @@ def _write_audit_log(action, entity, model_class, result, kwargs):
             except Exception:
                 new_data = clean_dict(str(result))
 
-    if not entity_id and result and hasattr(result, "id"):
-        entity_id = result.id
+    if not entity_id:
+        entity_id = _extract_entity_id(entity, kwargs, result)
 
-    entity_name = None
-    if entity_id and db and current_user:
-        entity_name = get_entity_name_by_id(
-            db, entity, entity_id, current_user.tenant_id
-        )
-
-    description = create_readable_description(
-        action, entity, entity_id, entity_name, old_data, new_data
-    )
+    language = resolve_audit_language(current_user, request)
 
     if db and current_user:
         create_audit_log(
@@ -83,9 +92,9 @@ def _write_audit_log(action, entity, model_class, result, kwargs):
             entity_id=entity_id,
             old_data=old_data,
             new_data=new_data,
-            description=description,
             ip_address=ip_address,
             commit=True,
+            language=language,
         )
 
 

@@ -6,10 +6,12 @@ from uuid import UUID
 from app.database import get_db
 from app.services.auth import get_current_user
 from app.models.user import User
+from app.models.network_probe import NetworkProbe
 from app.services.network_probe_service import NetworkProbeService
 from app.services.probe_auth import get_probe_api_key, log_probe_auth_failure
 from app.services.rate_limiter import check_probe_rate_limit
 from app.services.rbac import require_permission
+from app.services.audit_decorator import audit_log_action
 from app.config import settings
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -34,8 +36,10 @@ def _enforce_probe_rate_limit(api_key: str, rate_limit: str) -> None:
 
 
 @router.post("", response_model=NetworkProbeCreateResponse)
+@audit_log_action("create", "NetworkProbe", model_class=NetworkProbe)
 async def create_network_probe(
     probe_data: NetworkProbeCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     perm=Depends(require_permission("network_probes", 3)),
@@ -150,9 +154,11 @@ async def get_network_probe(
 
 
 @router.put("/{probe_id}", response_model=NetworkProbeRead)
+@audit_log_action("update", "NetworkProbe", model_class=NetworkProbe)
 async def update_network_probe(
     probe_id: UUID,
     update_data: NetworkProbeUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     perm=Depends(require_permission("network_probes", 2)),
@@ -164,8 +170,10 @@ async def update_network_probe(
 
 
 @router.delete("/{probe_id}")
+@audit_log_action("delete", "NetworkProbe", model_class=NetworkProbe)
 async def delete_network_probe(
     probe_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     perm=Depends(require_permission("network_probes", 3)),
@@ -177,8 +185,10 @@ async def delete_network_probe(
 
 
 @router.post("/{probe_id}/deauthorize")
+@audit_log_action("deauthorize", "NetworkProbe", model_class=NetworkProbe)
 async def deauthorize_network_probe(
     probe_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     perm=Depends(require_permission("network_probes", 3)),

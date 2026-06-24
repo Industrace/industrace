@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models.api_key import ApiKey
 from app.models.tenant import Tenant
 from app.config import settings
-from app.services.audit_log import create_audit_log
+from app.services.audit_log import create_audit_log, resolve_audit_language
 
 
 def generate_api_key() -> str:
@@ -62,7 +62,6 @@ async def get_api_key_user(
 
     # Log dell'uso dell'API Key
     ip_address = request.client.host if request.client else None
-    user_agent = request.headers.get("user-agent")
 
     create_audit_log(
         db=db,
@@ -71,14 +70,9 @@ async def get_api_key_user(
         action="api_key_used",
         entity="ApiKey",
         entity_id=api_key.id,
-        description=f"API Key '{api_key.name}' utilizzata da {ip_address}",
         ip_address=ip_address,
-        additional_data={
-            "endpoint": str(request.url),
-            "method": request.method,
-            "user_agent": user_agent,
-        },
-                    commit=False,  # Don't commit here because it's already done above
+        commit=False,
+        language=resolve_audit_language(request=request),
     )
 
     return api_key

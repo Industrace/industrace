@@ -53,7 +53,7 @@ from app.services.auth import (
     get_password_hash,
     create_access_token,
 )
-from app.services.audit_log import create_audit_log
+from app.services.audit_log import create_audit_log, resolve_audit_language
 from app.services.rate_limiter import check_rate_limit_strict, add_rate_limit_headers_strict
 from app.services.security_logging import (
     log_failed_login,
@@ -711,9 +711,9 @@ async def login(
         action="login",
         entity="User",
         entity_id=user.id,
-        description=f"User login {user.email}",
         ip_address=ip_address,
         commit=True,
+        language=resolve_audit_language(user, request),
     )
 
     response = JSONResponse(
@@ -839,9 +839,9 @@ async def logout(
             action="logout",
             entity="User",
             entity_id=current_user.id,
-            description=f"User logout {current_user.email}",
             ip_address=ip_address,
             commit=True,
+            language=resolve_audit_language(current_user, request),
         )
     else:
         # For anonymous logout, we can't create audit log since user_id is required

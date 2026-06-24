@@ -22,7 +22,7 @@ from app.schemas import (
 )
 from app.services.auth import get_current_user
 from app.services.feature_guard import require_iec62443_enabled
-from app.services.audit_log import create_audit_log
+from app.services.audit_log import create_audit_log, resolve_audit_language
 from app.crud import assets as crud_assets
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -1067,32 +1067,14 @@ def import_assets_xlsx_confirm(
 
 
 @router.post("/bulk-update")
-@audit_log_action("bulk_update", "Asset", model_class=Asset)
 def bulk_update_assets(
     req: AssetBulkUpdateRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     updated, errors = [], []
-
-    # Get the field names for the description
-    field_names = []
-    for field in req.fields.keys():
-        field_labels = {
-            "manufacturer_id": "produttore",
-            "asset_status_id": "stato",
-            "site_id": "sito",
-            "area_id": "area",
-            "location_id": "posizione",
-            "asset_type_id": "tipo",
-            "risk_score": "risk score",
-            "purdue_level": "livello Purdue",
-            "impact_value": "valore impatto",
-            "access_ease": "facilità accesso",
-            "exposure_level": "livello esposizione",
-            "update_status": "stato aggiornamento",
-        }
-        field_names.append(field_labels.get(field, field))
+    language = resolve_audit_language(current_user, request)
 
     for asset_id in req.ids:
         asset = (
@@ -1119,14 +1101,6 @@ def bulk_update_assets(
             db.commit()
             updated.append(str(asset_id))
 
-            # Create readable description
-            asset_name = asset.name or str(asset_id)
-            fields_text = ", ".join(field_names)
-            description = (
-                f"Aggiornamento massivo: modificati {fields_text} per '{asset_name}'"
-            )
-
-            # Audit log with automatic translation
             create_audit_log(
                 db=db,
                 user_id=current_user.id,
@@ -1136,7 +1110,7 @@ def bulk_update_assets(
                 entity_id=asset_id,
                 old_data=old_data,
                 new_data=req.fields,
-                description=description,
+                language=language,
             )
         except Exception as e:
             db.rollback()
@@ -1147,13 +1121,14 @@ def bulk_update_assets(
 
 # Bulk soft delete
 @router.post("/bulk-soft-delete")
-@audit_log_action("bulk_soft_delete", "Asset", model_class=Asset)
 def bulk_soft_delete_assets(
-    req: AssetBulkSoftDeleteRequest,  # Riutilizziamo lo stesso schema per gli ID
+    req: AssetBulkSoftDeleteRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     deleted, errors = [], []
+    language = resolve_audit_language(current_user, request)
 
     for asset_id in req.ids:
         asset = (
@@ -1172,16 +1147,10 @@ def bulk_soft_delete_assets(
         try:
             # Soft delete
             asset.deleted_at = datetime.utcnow()
-            
-            # Create readable description
-            asset_name = asset.name or str(asset_id)
-            description = f"Asset '{asset_name}' spostato nel cestino"
 
-            # Commit the soft delete
             db.commit()
             deleted.append(str(asset_id))
 
-            # Create audit log after successful commit
             try:
                 create_audit_log(
                     db=db,
@@ -1192,7 +1161,7 @@ def bulk_soft_delete_assets(
                     entity_id=asset_id,
                     old_data={"deleted_at": None},
                     new_data={"deleted_at": asset.deleted_at.isoformat()},
-                    description=description,
+                    language=language,
                 )
             except Exception as audit_error:
                 # Log audit error but don't rollback the soft delete

@@ -68,7 +68,7 @@ const routes = [
   { path: '/locations', name: 'Locations', component: Locations, meta: { requiresAuth: true } },
   { path: '/contacts', name: 'Contacts', component: Contacts, meta: { requiresAuth: true } },
   { path: '/contacts/:id', name: 'ContactDetail', component: ContactDetail,meta: { requiresAuth: true }  },
-  { path: '/audit-logs', name: 'AuditLogs', component: AuditLogs, meta: { requiresAuth: true } },
+  { path: '/audit-logs', name: 'AuditLogs', component: AuditLogs, meta: { requiresAuth: true, requiresPermission: 'audit_logs' } },
   { path: '/roles', name: 'Roles', component: Roles, meta: { requiresAuth: true } },
   { path: '/roles/:id', name: 'RoleDetails', component: RoleDetails, meta: { requiresAuth: true } },
   { path: '/setup', name: 'Setup', component: Setup, meta: { requiresAuth: true } },

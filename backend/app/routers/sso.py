@@ -30,7 +30,7 @@ from app.errors.error_codes import ErrorCode
 from app.services.sso_auth import SSOAuthService
 from app.services.azure_ad_service import AzureADService
 from app.config import settings
-from app.services.audit_log import create_audit_log
+from app.services.audit_log import create_audit_log, resolve_audit_language
 from app.config import settings
 from datetime import datetime
 import logging
@@ -359,9 +359,10 @@ async def sso_callback(
             action="sso_login",
             entity="User",
             entity_id=user.id,
-            description=f"SSO login via {provider}",
             ip_address=ip_address,
             commit=True,
+            language=resolve_audit_language(user, request),
+            provider=provider,
         )
         
         logger.info(f"SSO login successful for user {user.id} ({user.email})")
@@ -589,6 +590,7 @@ async def list_azure_ad_users(
 @router.post("/azure-ad/import", response_model=ImportUsersResponse)
 async def import_azure_ad_users(
     import_request: ImportUsersRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     perm=Depends(require_permission("sso", 3)),
@@ -813,11 +815,13 @@ async def import_azure_ad_users(
                 db=db,
                 user_id=current_user.id,
                 tenant_id=current_user.tenant_id,
-                action="import_users_from_azure_ad",
+                action="import_users",
                 entity="User",
                 entity_id=None,
-                description=f"Imported {imported} users from Azure AD, skipped {skipped}",
-                commit=True
+                commit=True,
+                language=resolve_audit_language(current_user, request),
+                imported=imported,
+                skipped=skipped,
             )
         except Exception as audit_error:
             logger.warning(f"Failed to create audit log for user import: {audit_error}")

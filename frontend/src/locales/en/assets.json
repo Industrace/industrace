@@ -441,7 +441,11 @@
     "refresh": "Refresh",
     "export": "Export",
     "noChangesDetected": "No changes detected",
-    "modified": "Modified"
+    "modified": "Modified",
+    "objectValue": "[object]",
+    "purdueLevelValue": "Level {level}",
+    "from": "From",
+    "to": "To"
   },
   "contacts": {
     "title": "Contacts",

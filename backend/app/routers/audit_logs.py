@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models import User, AuditLog
 from app.schemas.audit_log import AuditLog as AuditLogSchema
 from app.services.auth import get_current_user
+from app.services.rbac import require_permission
 from app.services.audit_log import get_entity_name_by_id
 
 router = APIRouter(
@@ -30,6 +31,7 @@ def list_audit_logs(
     limit: int = 50,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    perm=Depends(require_permission("audit_logs", 1)),
 ):
     query = db.query(AuditLog).filter(AuditLog.tenant_id == current_user.tenant_id)
     if from_date:
@@ -70,6 +72,7 @@ def export_audit_logs(
     user_id: Optional[uuid.UUID] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    perm=Depends(require_permission("audit_logs", 1)),
 ):
     query = db.query(AuditLog).filter(AuditLog.tenant_id == current_user.tenant_id)
     if from_date:

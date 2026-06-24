@@ -430,7 +430,11 @@
     "refresh": "Aggiorna",
     "export": "Esporta",
     "noChangesDetected": "Nessuna modifica rilevata",
-    "modified": "Modificato"
+    "modified": "Modificato",
+    "objectValue": "[oggetto]",
+    "purdueLevelValue": "Livello {level}",
+    "from": "Da",
+    "to": "A"
   },
   "contacts": {
     "title": "Contatti",

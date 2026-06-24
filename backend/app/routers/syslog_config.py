@@ -2,7 +2,7 @@
 API per la configurazione del server syslog esterno (inoltro audit log).
 """
 import logging
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -14,6 +14,7 @@ from app.schemas.tenant_syslog_config import (
 )
 from app.services.auth import get_current_user
 from app.services.rbac import require_permission
+from app.services.audit_decorator import audit_log_action
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.services.syslog_forwarder import _format_bsd_message, _send_udp, _send_tcp
@@ -61,8 +62,10 @@ def syslog_config_exists(
 
 @router.post("", response_model=TenantSyslogConfigRead)
 @router.put("", response_model=TenantSyslogConfigRead)
+@audit_log_action("update", "TenantSyslogConfig", model_class=TenantSyslogConfig)
 def set_syslog_config(
     config_in: TenantSyslogConfigCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     perm=Depends(require_permission("external_log", 2)),
@@ -109,8 +112,10 @@ def set_syslog_config(
 
 
 @router.patch("", response_model=TenantSyslogConfigRead)
+@audit_log_action("update", "TenantSyslogConfig", model_class=TenantSyslogConfig)
 def update_syslog_config(
     config_in: TenantSyslogConfigUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     perm=Depends(require_permission("external_log", 2)),

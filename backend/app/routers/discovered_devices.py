@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, false
 from typing import List, Optional
@@ -25,6 +25,7 @@ from app.schemas.discovered_device import (
     DiscoveredDeviceMatchCandidate,
 )
 from app.services.oui_lookup import lookup_vendor_by_mac
+from app.services.audit_decorator import audit_log_action
 
 
 # NOTE: gli altri router dell'app sono montati senza prefisso `/api`, mentre
@@ -169,9 +170,11 @@ async def get_discovered_device(
 
 
 @router.put("/{device_id}", response_model=DiscoveredDeviceRead)
+@audit_log_action("update", "DiscoveredDevice", model_class=DiscoveredDevice)
 async def update_discovered_device(
     device_id: UUID,
     update_data: DiscoveredDeviceUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -193,9 +196,11 @@ async def update_discovered_device(
 
 
 @router.post("/{device_id}/onboard", response_model=DiscoveredDeviceOnboardResponse)
+@audit_log_action("onboard", "DiscoveredDevice", model_class=DiscoveredDevice)
 async def onboard_discovered_device(
     device_id: UUID,
     request_data: DiscoveredDeviceOnboardRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
