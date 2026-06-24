@@ -178,11 +178,11 @@
     "allOk": "Tutto OK",
     "noIssues": "Nessun problema rilevato per questo asset",
     "criticalTitle": "Rischio Critico",
-    "criticalMessage": "Questo asset presenta un rischio critico ({{score}}). Richiede attenzione immediata.",
+    "criticalMessage": "Questo asset presenta un rischio critico ({score}). Richiede attenzione immediata.",
     "highTitle": "Rischio Alto",
-    "highMessage": "Questo asset presenta un rischio alto ({{score}}). Si consiglia una revisione.",
+    "highMessage": "Questo asset presenta un rischio alto ({score}). Si consiglia una revisione.",
     "mediumTitle": "Rischio Medio",
-    "mediumMessage": "Questo asset presenta un rischio medio ({{score}}). Monitorare regolarmente."
+    "mediumMessage": "Questo asset presenta un rischio medio ({score}). Monitorare regolarmente."
   },
   "status": {
     "active": "Attivo",

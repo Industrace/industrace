@@ -182,6 +182,7 @@ const i18n = createI18n({
   locale: getUserLanguage(),
   fallbackLocale: 'en',
   messages,
+  flatJson: true,
   legacy: false,
   globalInjection: true,
   silentTranslationWarn: false,

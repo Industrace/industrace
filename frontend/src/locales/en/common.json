@@ -1,4 +1,11 @@
 {
+  "confirmBulkAction": "Are you sure you want to {action} {count} items?",
+  "confirmRestore": "Are you sure you want to restore {count} items?",
+  "bulkActionCompleted": "Bulk action completed successfully",
+  "restored": "Restored successfully",
+  "confirmEmptyTrash": "Are you sure you want to empty the trash?",
+  "emptyTrash": "Empty trash",
+  "trashEmptied": "Trash emptied successfully",
   "strings": {
     "actions": "Actions",
     "info": "Information",
@@ -52,7 +59,10 @@
     "show": "Show",
     "hide": "Hide",
     "print": "Print",
-    "clearAll": "Clear all"
+    "clearAll": "Clear all",
+    "selectedItems": "{count} items selected",
+    "confirmAction": "Are you sure you want to perform this action?",
+    "deletePermanently": "Delete permanently"
   },
   "fields": {
     "name": "Name",

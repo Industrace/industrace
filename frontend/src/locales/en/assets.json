@@ -189,11 +189,11 @@
     "allOk": "All OK",
     "noIssues": "No issues detected for this asset",
     "criticalTitle": "Critical Risk",
-    "criticalMessage": "This asset has a critical risk ({{score}}). Immediate attention required.",
+    "criticalMessage": "This asset has a critical risk ({score}). Immediate attention required.",
     "highTitle": "High Risk",
-    "highMessage": "This asset has a high risk ({{score}}). Review recommended.",
+    "highMessage": "This asset has a high risk ({score}). Review recommended.",
     "mediumTitle": "Medium Risk",
-    "mediumMessage": "This asset has a medium risk ({{score}}). Monitor regularly."
+    "mediumMessage": "This asset has a medium risk ({score}). Monitor regularly."
   },
   "status": {
     "active": "Active",

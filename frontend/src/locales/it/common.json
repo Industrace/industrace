@@ -1,4 +1,11 @@
 {
+  "confirmBulkAction": "Sei sicuro di voler {action} {count} elementi?",
+  "confirmRestore": "Sei sicuro di voler ripristinare {count} elementi?",
+  "bulkActionCompleted": "Azione in batch completata con successo",
+  "restored": "Ripristinato con successo",
+  "confirmEmptyTrash": "Sei sicuro di voler svuotare il cestino?",
+  "emptyTrash": "Svuota cestino",
+  "trashEmptied": "Cestino svuotato con successo",
   "strings":{
     "actions": "Azioni",
     "info": "Informazioni",
@@ -50,7 +57,10 @@
     "show": "Mostra",
     "hide": "Nascondi",
     "print": "Stampa",
-    "clearAll": "Pulisci tutto"
+    "clearAll": "Pulisci tutto",
+    "selectedItems": "{count} elementi selezionati",
+    "confirmAction": "Sei sicuro di voler eseguire questa azione?",
+    "deletePermanently": "Elimina definitivamente"
   },
   "fields": {
     "name": "Nome",
