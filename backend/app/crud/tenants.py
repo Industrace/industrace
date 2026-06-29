@@ -27,7 +27,7 @@ def get_tenants(db: Session, skip: int = 0, limit: int = 100) -> List[Tenant]:
 
 def create_tenant(db: Session, tenant: TenantCreate) -> Tenant:
     """Create a new tenant"""
-    db_tenant = Tenant(**tenant.dict())
+    db_tenant = Tenant(**tenant.model_dump())
     db.add(db_tenant)
     db.commit()
     db.refresh(db_tenant)
@@ -40,7 +40,7 @@ def update_tenant(
     """Update an existing tenant"""
     db_tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if db_tenant:
-        for key, value in tenant_update.dict(exclude_unset=True).items():
+        for key, value in tenant_update.model_dump(exclude_unset=True).items():
             setattr(db_tenant, key, value)
         db.commit()
         db.refresh(db_tenant)

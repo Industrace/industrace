@@ -57,7 +57,7 @@ def get_site_by_code(db: Session, tenant_id: uuid.UUID, code: str) -> Optional[S
 
 def create_site(db: Session, site: SiteCreate, tenant_id: uuid.UUID) -> Site:
     """Create a new site"""
-    data = sanitize_text_fields(site.dict(), ["description", "address"])
+    data = sanitize_text_fields(site.model_dump(), ["description", "address"])
     data["tenant_id"] = tenant_id
     db_site = Site(**data)
     db.add(db_site)
@@ -73,7 +73,7 @@ def update_site(
     db_site = db.query(Site).filter(Site.id == site_id).first()
     if db_site:
         update_data = sanitize_text_fields(
-            site_update.dict(exclude_unset=True), ["description", "address"]
+            site_update.model_dump(exclude_unset=True), ["description", "address"]
         )
         for key, value in update_data.items():
             setattr(db_site, key, value)

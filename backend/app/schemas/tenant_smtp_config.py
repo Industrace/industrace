@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from uuid import UUID
 
@@ -30,5 +30,4 @@ class TenantSMTPConfigRead(TenantSMTPConfigBase):
     id: UUID
     tenant_id: UUID
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

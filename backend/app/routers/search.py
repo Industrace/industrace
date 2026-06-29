@@ -7,12 +7,14 @@ from sqlalchemy import or_, and_, func, String
 from app.database import get_db
 from app.models import User, Asset, Contact, Supplier, Manufacturer, Site, Location
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 
 router = APIRouter(
     prefix="/search",
     tags=["search"],
+    dependencies=[Depends(require_section_access("utility"))],
 )
 
 

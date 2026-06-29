@@ -392,7 +392,7 @@ def get_asset_vulnerabilities(
         # Convert vulnerability to dict if it's a SQLAlchemy object
         vulnerability_dict = None
         if av.vulnerability:
-            vulnerability_dict = VulnerabilityRead.from_orm(av.vulnerability).dict()
+            vulnerability_dict = VulnerabilityRead.model_validate(av.vulnerability).model_dump()
         
         av_dict = {
             'id': av.id,

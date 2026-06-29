@@ -9,6 +9,7 @@ from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.database import get_db
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.models import User, AssetConnection
 from app.schemas import AssetConnection as AssetConnectionSchema
 from app.crud import asset_connections as crud_assetconnections
@@ -16,6 +17,7 @@ from app.crud import asset_connections as crud_assetconnections
 router = APIRouter(
     prefix="/asset-connections",
     tags=["connections"],
+    dependencies=[Depends(require_section_access("assets"))],
 )
 
 

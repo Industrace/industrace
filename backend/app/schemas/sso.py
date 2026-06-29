@@ -1,6 +1,6 @@
 # backend/app/schemas/sso.py
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 import uuid
 from datetime import datetime
 
@@ -71,8 +71,7 @@ class TenantSSOConfigRead(BaseModel):
     last_test_status: Optional[str] = None
     last_test_error: Optional[str] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SSOConnectStart(BaseModel):

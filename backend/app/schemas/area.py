@@ -1,6 +1,6 @@
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 import uuid
 
 from app.schemas.site import Site
@@ -33,8 +33,7 @@ class AreaRead(AreaBase):
     updated_at: datetime
     site: Optional[Site] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AreaList(BaseModel):
@@ -47,5 +46,4 @@ class AreaList(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True 
+    model_config = ConfigDict(from_attributes=True) 

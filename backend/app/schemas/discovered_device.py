@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import uuid
@@ -52,8 +52,7 @@ class DiscoveredDeviceRead(DiscoveredDeviceBase):
     updated_at: datetime
     processed_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DiscoveredDeviceMatchCandidate(BaseModel):

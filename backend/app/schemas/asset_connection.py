@@ -1,5 +1,5 @@
 # backend/schemas/asset_connection.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 import uuid
@@ -26,8 +26,7 @@ class AssetConnection(BaseModel):
     local_interface: Optional[AssetInterface] = None
     remote_interface: Optional[AssetInterface] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AssetConnectionCreate(BaseModel):

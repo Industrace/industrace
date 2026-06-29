@@ -32,7 +32,7 @@ def create_asset_connection(
     # Set connection_type if not present
     if not connection_in.connection_type and local_iface:
         connection_in.connection_type = local_iface.type
-    connection = AssetConnection(**connection_in.dict(), tenant_id=tenant_id)
+    connection = AssetConnection(**connection_in.model_dump(), tenant_id=tenant_id)
     db.add(connection)
     db.commit()
     db.refresh(connection)
@@ -97,7 +97,7 @@ def update_asset_connection(
     db: Session, connection: AssetConnection, update_data: AssetConnectionUpdate
 ) -> AssetConnection:
     """Update an existing connection"""
-    for key, value in update_data.dict(exclude_unset=True).items():
+    for key, value in update_data.model_dump(exclude_unset=True).items():
         setattr(connection, key, value)
     db.commit()
     db.refresh(connection)

@@ -12,12 +12,14 @@ from app.database import get_db
 from app.models import User, AssetType
 from app.schemas import AssetType as AssetTypeSchema, AssetTypeCreate, AssetTypeUpdate
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.crud import asset_types as crud_asset_types
 
 
 router = APIRouter(
     prefix="/asset-types",
     tags=["asset_types"],
+    dependencies=[Depends(require_section_access("asset_types"))],
 )
 
 

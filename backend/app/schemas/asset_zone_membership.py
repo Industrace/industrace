@@ -3,7 +3,7 @@
 Pydantic schemas for AssetZoneMembership
 """
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 import uuid
 
@@ -17,8 +17,7 @@ class AssetZoneMembershipBase(BaseModel):
     sl_target: Optional[int] = Field(None, ge=1, le=4, description="Security Level Target override (1-4)")
     notes: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AssetZoneMembershipCreate(BaseModel):
@@ -30,8 +29,7 @@ class AssetZoneMembershipCreate(BaseModel):
     sl_target: Optional[int] = Field(None, ge=1, le=4, description="Security Level Target override (1-4)")
     notes: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AssetZoneMembershipUpdate(BaseModel):
@@ -41,8 +39,7 @@ class AssetZoneMembershipUpdate(BaseModel):
     sl_target: Optional[int] = Field(None, ge=1, le=4)
     notes: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AssetZoneMembershipRead(AssetZoneMembershipBase):
@@ -58,8 +55,5 @@ class AssetZoneMembershipRead(AssetZoneMembershipBase):
     asset: Optional[dict] = None  # Asset summary
     security_zone: Optional[dict] = None  # SecurityZone summary
 
-    class Config:
-        from_attributes = True
-        # Exclude relationships from automatic ORM conversion
-        # They will be handled manually in the router
+    model_config = ConfigDict(from_attributes=True)
 

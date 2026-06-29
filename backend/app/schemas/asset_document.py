@@ -1,6 +1,6 @@
 # backend/schemas/asset_document.py
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 import uuid
@@ -22,5 +22,4 @@ class AssetDocument(AssetDocumentBase):
     tenant_id: uuid.UUID
     uploaded_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

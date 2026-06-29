@@ -26,6 +26,7 @@ from app.schemas.asset_capability import (
     BulkCapabilityResponse,
 )
 from app.services.feature_guard import require_iec62443_enabled
+from app.services.rbac import require_section_access
 import logging
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/assets",
     tags=["asset-capabilities"],
-    dependencies=[Depends(require_iec62443_enabled)],
+    dependencies=[
+        Depends(require_iec62443_enabled),
+        Depends(require_section_access("compliance")),
+    ],
 )
 
 

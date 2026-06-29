@@ -12,6 +12,7 @@ from app.schemas.contact import Contact as ContactSchema, ContactCreate, Contact
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.crud import contacts as crud_contacts
 from app.services.audit_decorator import audit_log_action
 from datetime import datetime
@@ -20,6 +21,7 @@ import csv
 router = APIRouter(
     prefix="/contacts",
     tags=["contacts"],
+    dependencies=[Depends(require_section_access("contacts"))],
 )
 
 

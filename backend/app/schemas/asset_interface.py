@@ -1,11 +1,11 @@
-from pydantic import BaseModel, Field, ConfigDict, validator
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, List
 from datetime import datetime
 from uuid import UUID
-from app.schemas.validators import *
+from app.schemas.schema_mixins import AssetInterfaceFieldsMixin
 
 
-class AssetInterfaceBase(BaseModel):
+class AssetInterfaceBase(AssetInterfaceFieldsMixin, BaseModel):
     name: Optional[str] = Field(None, max_length=50, description="Interface name")
     type: Optional[str] = Field(None, max_length=50, description="Interface type")
     vlan: Optional[str] = Field(None, max_length=50, description="VLAN")
@@ -18,11 +18,6 @@ class AssetInterfaceBase(BaseModel):
     mac_address: Optional[str] = Field(None, max_length=50, description="MAC address")
     other: Optional[str] = Field(None, max_length=255, description="Other information")
     protocols: Optional[List[str]] = Field(default_factory=list, description="Industrial protocols supported by this interface")
-
-    # Validators
-    _validate_ip_address = validator('ip_address', allow_reuse=True)(validate_ip_address)
-    _validate_mac_address = validator('mac_address', allow_reuse=True)(validate_mac_address)
-    _validate_vlan = validator('vlan', allow_reuse=True)(validate_vlan)
 
 
 class AssetInterfaceCreate(AssetInterfaceBase):

@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from app.database import get_db
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.models.user import User
 from app.models.discovered_device import DiscoveredDevice, DeviceDiscoveryStatus
 from app.models.asset import Asset
@@ -31,7 +32,11 @@ from app.services.audit_decorator import audit_log_action
 # NOTE: gli altri router dell'app sono montati senza prefisso `/api`, mentre
 # il frontend chiama sempre `/api/...`. Rimuoviamo quindi `/api` da qui per
 # evitare un doppio prefisso.
-router = APIRouter(prefix="/discovered-devices", tags=["discovered-devices"])
+router = APIRouter(
+    prefix="/discovered-devices",
+    tags=["discovered-devices"],
+    dependencies=[Depends(require_section_access("network_probes"))],
+)
 
 
 @router.get("", response_model=List[DiscoveredDeviceReadEnriched])

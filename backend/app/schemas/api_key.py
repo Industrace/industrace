@@ -1,5 +1,5 @@
 # backend/schemas/api_key.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 import uuid
@@ -36,8 +36,7 @@ class ApiKeyRead(ApiKeyBase):
     created_at: datetime
     created_by: uuid.UUID
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ApiKeyResponse(BaseModel):
@@ -49,8 +48,7 @@ class ApiKeyResponse(BaseModel):
     expires_at: Optional[datetime]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ApiKeyUsage(BaseModel):

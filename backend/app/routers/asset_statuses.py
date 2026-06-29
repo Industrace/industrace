@@ -10,6 +10,7 @@ from app.schemas.asset_status import (
     AssetStatusUpdate,
 )
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.crud import asset_statuses as crud_asset_statuses
 from app.services.audit_decorator import audit_log_action
 from app.errors.exceptions import ErrorCodeException
@@ -18,6 +19,7 @@ from app.errors.error_codes import ErrorCode
 router = APIRouter(
     prefix="/asset-statuses",
     tags=["asset_statuses"],
+    dependencies=[Depends(require_section_access("asset_statuses"))],
 )
 
 

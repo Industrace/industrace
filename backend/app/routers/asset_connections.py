@@ -11,6 +11,7 @@ from app.errors.error_codes import ErrorCode
 from app.services.audit_decorator import audit_log_action
 from app.database import get_db
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.models import User, AssetConnection
 from app.schemas import (
     AssetConnection as AssetConnectionSchema,
@@ -20,7 +21,7 @@ from app.schemas import (
 from app.crud import asset_connections as crud_assetconnections
 from app.services.connection_dependency_analyzer import ConnectionDependencyAnalyzer
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/assets/{asset_id}/connections",
     tags=["assets"],
+    dependencies=[Depends(require_section_access("assets"))],
 )
 
 
@@ -49,8 +51,7 @@ class AssetConnectionWithDependencyStatus(BaseModel):
     remote_interface_id: Optional[uuid.UUID] = None
     dependency_status: Optional[dict] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 @router.get("")
@@ -120,8 +121,8 @@ def list_connections(
             from app.schemas.asset_connection import AssetConnection as AssetConnectionSchema
             
             # Crea schema base
-            conn_schema = AssetConnectionSchema.from_orm(conn)
-            conn_dict = conn_schema.dict()
+            conn_schema = AssetConnectionSchema.model_validate(conn)
+            conn_dict = conn_schema.model_dump()
             
             # Aggiungi dependency_status
             conn_dict['dependency_status'] = dependency_status
@@ -131,7 +132,7 @@ def list_connections(
     
     # Ritorna formato standard senza dependency_status usando schema Pydantic
     from app.schemas.asset_connection import AssetConnection as AssetConnectionSchema
-    return [AssetConnectionSchema.from_orm(conn).dict() for conn in all_connections]
+    return [AssetConnectionSchema.model_validate(conn).model_dump() for conn in all_connections]
 
 
 @router.get("/dependency-analysis")

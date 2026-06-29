@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models import User, Asset, AssetStatus
 from app.services.audit_decorator import audit_log_action
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.services.feature_guard import require_iec62443_enabled
 from app.services.audit_log import create_audit_log
 
@@ -26,6 +27,7 @@ def clean_float_values(data):
 router = APIRouter(
     prefix="/dashboard",
     tags=["dashboard"],
+    dependencies=[Depends(require_section_access("utility"))],
 )
 
 

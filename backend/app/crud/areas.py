@@ -9,7 +9,7 @@ from app.schemas.area import AreaCreate, AreaUpdate
 
 def create_area(db: Session, area_in: AreaCreate, tenant_id: uuid.UUID) -> Area:
     """Create a new area"""
-    area_data = area_in.dict()
+    area_data = area_in.model_dump()
     area_data["tenant_id"] = tenant_id
     
     db_area = Area(**area_data)
@@ -56,7 +56,7 @@ def update_area(
     if not db_area:
         return None
     
-    update_data = area_update.dict(exclude_unset=True)
+    update_data = area_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_area, field, value)
     

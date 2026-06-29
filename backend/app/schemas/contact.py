@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_serializer, Field
+from pydantic import BaseModel, EmailStr, field_serializer, Field, ConfigDict
 from typing import Optional, List, Any
 import uuid
 from datetime import datetime
@@ -54,6 +54,4 @@ class Contact(ContactBase):
     def serialize_assets(self, assets: Any):
         return [a.id if hasattr(a, "id") else a for a in assets]
 
-    class Config:
-        from_attributes = True
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

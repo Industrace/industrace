@@ -10,7 +10,7 @@ def create_role(db: Session, role_in: RoleCreate | Dict[str, Any]) -> Role:
     if isinstance(role_in, dict):
         role_data = role_in
     else:
-        role_data = role_in.dict()
+        role_data = role_in.model_dump()
     
     role = Role(**role_data)
     db.add(role)
@@ -132,7 +132,7 @@ def get_role_hierarchy(db: Session, role_id: uuid.UUID) -> Optional[Dict[str, An
 
 def update_role(db: Session, role: Role, update_data: RoleUpdate) -> Role:
     """Update an existing role"""
-    for key, value in update_data.dict(exclude_unset=True).items():
+    for key, value in update_data.model_dump(exclude_unset=True).items():
         setattr(role, key, value)
     db.commit()
     db.refresh(role)

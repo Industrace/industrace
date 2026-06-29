@@ -40,7 +40,7 @@ def create_print_template(
     db: Session, template: PrintTemplateCreate, tenant_id: Optional[UUID] = None
 ) -> PrintTemplate:
     """Create a new print template for tenant"""
-    data = sanitize_text_fields(template.dict(), ["description"])
+    data = sanitize_text_fields(template.model_dump(), ["description"])
     if tenant_id:
         data["tenant_id"] = tenant_id
     db_template = PrintTemplate(**data)
@@ -58,7 +58,7 @@ def update_print_template(
     if not db_template:
         return None
     update_data = sanitize_text_fields(
-        template.dict(exclude_unset=True), ["description"]
+        template.model_dump(exclude_unset=True), ["description"]
     )
     for field, value in update_data.items():
         setattr(db_template, field, value)

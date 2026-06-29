@@ -70,7 +70,7 @@ def update_api_key(
     if not api_key:
         return None
 
-    update_data = api_key_update.dict(exclude_unset=True)
+    update_data = api_key_update.model_dump(exclude_unset=True)
 
     # Handle scopes as JSON
     if "scopes" in update_data:

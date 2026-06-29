@@ -1,40 +1,30 @@
 # backend/schemas/manufacturer.py
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 import uuid
-from app.schemas.validators import *
+from app.schemas.schema_mixins import PhoneWebsiteEmailMixin
 
 
-class ManufacturerBase(BaseModel):
+class ManufacturerBase(PhoneWebsiteEmailMixin, BaseModel):
     name: str = Field(..., max_length=255, description="Manufacturer name")
     description: Optional[str] = Field(None, max_length=10000, description="Manufacturer description")
     website: Optional[str] = Field(None, max_length=255, description="Website URL")
     email: Optional[str] = Field(None, max_length=255, description="Email address")
     phone: Optional[str] = Field(None, max_length=50, description="Phone number")
 
-    # Validators
-    _validate_phone = validator('phone', allow_reuse=True)(validate_phone)
-    _validate_website = validator('website', allow_reuse=True)(validate_website)
-    _validate_email = validator('email', allow_reuse=True)(validate_email)
-
 
 class ManufacturerCreate(ManufacturerBase):
     pass
 
 
-class ManufacturerUpdate(BaseModel):
+class ManufacturerUpdate(PhoneWebsiteEmailMixin, BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     website: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
-
-    # Validators
-    _validate_phone = validator('phone', allow_reuse=True)(validate_phone)
-    _validate_website = validator('website', allow_reuse=True)(validate_website)
-    _validate_email = validator('email', allow_reuse=True)(validate_email)
 
 
 class Manufacturer(BaseModel):
@@ -48,5 +38,4 @@ class Manufacturer(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

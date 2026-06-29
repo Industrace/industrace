@@ -98,7 +98,7 @@ def create_asset_zone_membership(
 ) -> AssetZoneMembership:
     """Create a new AssetZoneMembership"""
     # Get all fields, including None values
-    membership_dict = membership_in.dict()
+    membership_dict = membership_in.model_dump()
     
     # Ensure security_zone_id is present and not None (should be set by router)
     if membership_dict.get('security_zone_id') is None:
@@ -159,7 +159,7 @@ def update_asset_zone_membership(
     if not db_membership:
         return None
     
-    update_data = membership_in.dict(exclude_unset=True)
+    update_data = membership_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_membership, field, value)
     

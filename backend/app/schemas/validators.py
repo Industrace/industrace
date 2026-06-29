@@ -1,4 +1,3 @@
-from pydantic import validator
 from app.errors.validation_errors import (
     InvalidImpactValueError,
     InvalidPurdueLevelError,
@@ -21,7 +20,7 @@ import re
 import ipaddress
 
 
-def validate_impact_value(cls, v):
+def validate_impact_value(v):
     """Validate impact value (1-5 scale)"""
     if v is None:
         return v
@@ -30,7 +29,7 @@ def validate_impact_value(cls, v):
     return v
 
 
-def validate_purdue_level(cls, v):
+def validate_purdue_level(v):
     """Validate Purdue level (0.0-5.0 scale)"""
     if v is None:
         return v
@@ -39,7 +38,7 @@ def validate_purdue_level(cls, v):
     return v
 
 
-def validate_risk_score(cls, v):
+def validate_risk_score(v):
     """Validate risk score (0.0-10.0 scale)"""
     if v is None:
         return v
@@ -48,7 +47,7 @@ def validate_risk_score(cls, v):
     return v
 
 
-def validate_business_criticality(cls, v):
+def validate_business_criticality(v):
     """Validate business criticality values"""
     if v is None:
         return v
@@ -58,7 +57,7 @@ def validate_business_criticality(cls, v):
     return v.lower()
 
 
-def validate_remote_access_type(cls, v):
+def validate_remote_access_type(v):
     """Validate remote access type values"""
     if v is None:
         return v
@@ -68,7 +67,7 @@ def validate_remote_access_type(cls, v):
     return v.lower()
 
 
-def validate_physical_access_ease(cls, v):
+def validate_physical_access_ease(v):
     """Validate physical access ease values"""
     if v is None:
         return v
@@ -79,7 +78,7 @@ def validate_physical_access_ease(cls, v):
     return v.lower()
 
 
-def validate_ip_address(cls, v):
+def validate_ip_address(v):
     """Validate IP address format - more permissive for non-standard addresses"""
     if v is None or v == "":
         return v
@@ -99,7 +98,7 @@ def validate_ip_address(cls, v):
             raise InvalidIPAddressError('ip_address')
 
 
-def validate_mac_address(cls, v):
+def validate_mac_address(v):
     """Validate MAC address format"""
     if v is None or v == "":
         return v
@@ -109,7 +108,7 @@ def validate_mac_address(cls, v):
     return v
 
 
-def validate_vlan(cls, v):
+def validate_vlan(v):
     """Validate VLAN number (1-4094)"""
     if v is None or v == "":
         return v
@@ -122,7 +121,7 @@ def validate_vlan(cls, v):
         raise InvalidVLANError('vlan')
 
 
-def validate_email(cls, v):
+def validate_email(v):
     """Validate email format"""
     if v is None or v == "":
         return v
@@ -132,7 +131,7 @@ def validate_email(cls, v):
     return v
 
 
-def validate_phone(cls, v):
+def validate_phone(v):
     """Validate phone number format"""
     if v is None or v == "":
         return v
@@ -143,7 +142,7 @@ def validate_phone(cls, v):
     return v
 
 
-def validate_website(cls, v):
+def validate_website(v):
     """Validate website URL format"""
     if v is None or v == "":
         return v
@@ -159,7 +158,7 @@ def validate_website(cls, v):
     return v
 
 
-def validate_vat_number(cls, v):
+def validate_vat_number(v):
     """Validate VAT number format (International formats)"""
     if v is None or v == "":
         return v
@@ -179,7 +178,7 @@ def validate_vat_number(cls, v):
     raise InvalidVATNumberError('vat_number')
 
 
-def validate_tax_code(cls, v):
+def validate_tax_code(v):
     """Validate tax code format (International formats)"""
     if v is None or v == "":
         return v
@@ -200,7 +199,7 @@ def validate_tax_code(cls, v):
     raise InvalidTaxCodeError('tax_code')
 
 
-def validate_tenant_slug(cls, v):
+def validate_tenant_slug(v):
     """Validate tenant slug format"""
     if v is None or v == "":
         return v
@@ -253,7 +252,7 @@ def validate_password_strength(password: str, allow_weak: bool = False) -> None:
         raise InvalidPasswordError('password')
 
 
-def validate_password(cls, v):
+def validate_password(v):
     """
     Validate password strength (Pydantic validator).
     Requires:

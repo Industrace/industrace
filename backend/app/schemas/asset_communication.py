@@ -1,4 +1,4 @@
-from pydantic import BaseModel, UUID4
+from pydantic import BaseModel, UUID4, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -24,8 +24,7 @@ class AssetCommunicationInDBBase(AssetCommunicationBase):
     site_id: UUID4
     created_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AssetCommunication(AssetCommunicationInDBBase):

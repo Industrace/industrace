@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models import User, AssetDocument
 from app.schemas import AssetDocumentCreate, AssetDocument as AssetDocumentSchema
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.services.file_validation import validate_document_file, validate_file_size
 from app.config import settings
 from app.errors.exceptions import ErrorCodeException
@@ -19,6 +20,7 @@ from app.services.audit_decorator import audit_log_action
 router = APIRouter(
     prefix="/assets/{asset_id}/documents",
     tags=["assets"],
+    dependencies=[Depends(require_section_access("asset_documents"))],
 )
 
 

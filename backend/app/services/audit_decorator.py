@@ -93,7 +93,7 @@ def _extract_new_data(action, result):
         if hasattr(result, "model_dump"):
             return clean_dict(result.model_dump())
         if hasattr(result, "dict"):
-            return clean_dict(result.dict())
+            return clean_dict(result.model_dump())
     except Exception:
         pass
     return clean_dict(str(result))

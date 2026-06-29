@@ -14,10 +14,12 @@ from app.database import get_db
 from app.models import User, AssetPhoto
 from app.schemas import AssetPhotoCreate, AssetPhoto as AssetPhotoSchema
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 
 router = APIRouter(
     prefix="/assets/{asset_id}/photos",
     tags=["assets"],
+    dependencies=[Depends(require_section_access("asset_photos"))],
 )
 
 
@@ -62,7 +64,7 @@ def upload_photo(
         tenant_id=current_user.tenant_id,
         file_path=str(relative_path),
     )
-    photo = AssetPhoto(**photo_data.dict())
+    photo = AssetPhoto(**photo_data.model_dump())
 
     db.add(photo)
     db.commit()

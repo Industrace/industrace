@@ -1,5 +1,5 @@
 # backend/schemas/user.py
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from datetime import datetime
 import uuid
 from typing import Optional
@@ -40,8 +40,7 @@ class UserRead(BaseModel):
     password_change_required: Optional[bool] = False
     features: Optional[TenantFeaturesRead] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PasswordChange(BaseModel):

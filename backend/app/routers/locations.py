@@ -15,6 +15,7 @@ from app.database import get_db
 from app.models import User, Location, Site
 from app.schemas import Location as LocationSchema, LocationCreate, LocationRead
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.crud import locations as crud_locations
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -25,6 +26,7 @@ from app.schemas.location import LocationUpdate
 router = APIRouter(
     prefix="/locations",
     tags=["locations"],
+    dependencies=[Depends(require_section_access("locations"))],
 )
 
 
@@ -130,7 +132,7 @@ def update_location(
             status_code=404, error_code=ErrorCode.LOCATION_NOT_FOUND
         )
     # Update only provided fields
-    update_data = location.dict(exclude_unset=True)
+    update_data = location.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_location, key, value)
     db.commit()
@@ -203,7 +205,7 @@ def list_location_contacts(
         raise ErrorCodeException(
             status_code=404, error_code=ErrorCode.LOCATION_NOT_FOUND
         )
-    return [ContactSchema.from_orm(c) for c in location.contacts]
+    return [ContactSchema.model_validate(c) for c in location.contacts]
 
 
 @router.put("/{location_id}/contacts", response_model=List[ContactSchema])
@@ -222,7 +224,7 @@ def update_location_contacts(
         raise ErrorCodeException(
             status_code=404, error_code=ErrorCode.LOCATION_NOT_FOUND
         )
-    return [ContactSchema.from_orm(c) for c in location.contacts]
+    return [ContactSchema.model_validate(c) for c in location.contacts]
 
 
 @router.patch("/{location_id}/restore")

@@ -9,6 +9,7 @@ from app.schemas.tenant_smtp_config import (
     TenantSMTPConfigUpdate,
 )
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.services.email_service import EmailConfig, EmailProvider, send_email
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -17,6 +18,7 @@ from pydantic import EmailStr
 router = APIRouter(
     prefix="/smtp-config",
     tags=["smtp-config"],
+    dependencies=[Depends(require_section_access("notifications"))],
 )
 
 
@@ -49,7 +51,7 @@ def set_smtp_config(
             .first()
         )
         
-        config_data = config_in.dict(exclude_unset=True)
+        config_data = config_in.model_dump(exclude_unset=True)
         
         if config:
             # Update existing config

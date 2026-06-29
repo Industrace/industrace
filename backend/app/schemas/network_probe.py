@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import uuid
@@ -87,15 +87,13 @@ class NetworkProbeRead(NetworkProbeBase):
     updated_at: Optional[datetime] = None
     last_config_update: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NetworkProbeCreateResponse(NetworkProbeRead):
     api_key: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProbeHeartbeatBase(BaseModel):

@@ -8,6 +8,7 @@ from app.models import User
 from app.schemas.area import AreaCreate, AreaUpdate, AreaRead, AreaList
 from app.crud import areas as crud_areas
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.services.audit_decorator import audit_log_action
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -15,6 +16,7 @@ from app.errors.error_codes import ErrorCode
 router = APIRouter(
     prefix="/areas",
     tags=["areas"],
+    dependencies=[Depends(require_section_access("areas"))],
 )
 
 

@@ -56,7 +56,7 @@ def list_audit_logs(
             db, log.entity, log.entity_id, current_user.tenant_id
         )
         result.append(
-            AuditLogSchema.from_orm(log).dict() | {"entity_name": entity_name}
+            AuditLogSchema.model_validate(log).model_dump() | {"entity_name": entity_name}
         )
 
     return result

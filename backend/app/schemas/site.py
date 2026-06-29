@@ -1,6 +1,6 @@
 # backend/schemas/site.py
 from __future__ import annotations
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 import uuid
@@ -30,5 +30,4 @@ class Site(SiteCreate):
     review_interval_months: Optional[int] = None
     children: list[Site] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

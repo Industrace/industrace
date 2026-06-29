@@ -1,6 +1,6 @@
 # backend/app/schemas/asset_dependency.py
 from typing import Optional, List
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ConfigDict
 import uuid
 from datetime import datetime
 
@@ -70,8 +70,7 @@ class AssetDependencyRead(AssetDependencyBase):
     updated_at: datetime
     created_by: Optional[uuid.UUID] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AssetDependencyWithAssets(AssetDependencyRead):
@@ -79,8 +78,7 @@ class AssetDependencyWithAssets(AssetDependencyRead):
     dependent_asset: Optional[dict] = None  # AssetSummary will be loaded separately
     dependency_asset: Optional[dict] = None  # AssetSummary will be loaded separately
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DependencyChainItem(BaseModel):

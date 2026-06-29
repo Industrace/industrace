@@ -174,7 +174,7 @@ def get_asset_by_ip(
 def create_asset(db: Session, asset_in: AssetCreate, tenant_id: uuid.UUID) -> Asset:
     """Create a new asset"""
     data = sanitize_text_fields(
-        asset_in.dict(
+        asset_in.model_dump(
             exclude={
                 "interfaces",
                 "asset_type",
@@ -198,7 +198,7 @@ def create_asset(db: Session, asset_in: AssetCreate, tenant_id: uuid.UUID) -> As
         for iface_data in asset_in.interfaces:
             # If iface_data is a Pydantic object, convert it to dict
             if hasattr(iface_data, "dict"):
-                iface_data = iface_data.dict(exclude_unset=True)
+                iface_data = iface_data.model_dump(exclude_unset=True)
             iface_data["asset_id"] = db_asset.id
             iface_data["tenant_id"] = db_asset.tenant_id
             create_interface(db, AssetInterfaceCreate(**iface_data))
@@ -223,7 +223,7 @@ def update_asset(
         "photos",
     }
     update_data = sanitize_text_fields(
-        asset_in.dict(exclude_unset=True, exclude={"interfaces", *RELATIONSHIP_FIELDS}),
+        asset_in.model_dump(exclude_unset=True, exclude={"interfaces", *RELATIONSHIP_FIELDS}),
         ["description", "notes"],
     )
     for field, value in update_data.items():
@@ -248,10 +248,10 @@ def update_asset(
                 update_interface(
                     db,
                     iface_data.id,
-                    AssetInterfaceUpdate(**iface_data.dict(exclude_unset=True)),
+                    AssetInterfaceUpdate(**iface_data.model_dump(exclude_unset=True)),
                 )
             else:
-                data = iface_data.dict(exclude_unset=True)
+                data = iface_data.model_dump(exclude_unset=True)
                 data["asset_id"] = db_asset.id
                 data["tenant_id"] = db_asset.tenant_id
                 create_interface(db, AssetInterfaceCreate(**data))

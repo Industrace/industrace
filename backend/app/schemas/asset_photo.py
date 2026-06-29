@@ -1,5 +1,5 @@
 # backend/schemas/asset_photo.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 import uuid
@@ -19,5 +19,4 @@ class AssetPhoto(AssetPhotoBase):
     tenant_id: uuid.UUID
     uploaded_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

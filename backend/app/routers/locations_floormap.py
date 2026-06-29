@@ -12,6 +12,7 @@ from app.database import get_db
 from app.models import User, LocationFloorplan, Location
 from app.schemas import LocationFloorplanCreate, LocationFloorplanRead
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.services.audit_decorator import audit_log_action
@@ -19,6 +20,7 @@ from app.services.audit_decorator import audit_log_action
 router = APIRouter(
     prefix="/locations/{location_id}/floorplan",
     tags=["locations_floorplan"],
+    dependencies=[Depends(require_section_access("locations_floormap"))],
 )
 UPLOAD_DIR = Path("uploads")
 

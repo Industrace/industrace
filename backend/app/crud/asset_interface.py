@@ -6,7 +6,7 @@ from app.models.asset_connection import AssetConnection
 
 
 def create_interface(db: Session, interface_in: AssetInterfaceCreate):
-    db_interface = AssetInterface(**interface_in.dict())
+    db_interface = AssetInterface(**interface_in.model_dump())
     db.add(db_interface)
     db.commit()
     db.refresh(db_interface)
@@ -27,7 +27,7 @@ def update_interface(
     db_interface = get_interface(db, interface_id)
     if not db_interface:
         return None
-    for field, value in interface_in.dict(exclude_unset=True).items():
+    for field, value in interface_in.model_dump(exclude_unset=True).items():
         setattr(db_interface, field, value)
     db.commit()
     db.refresh(db_interface)
@@ -56,7 +56,7 @@ def delete_interface(db: Session, interface_id: UUID):
 
 
 def create_interfaces_bulk(db: Session, interfaces_in: list[AssetInterfaceCreate]):
-    db_interfaces = [AssetInterface(**interface.dict()) for interface in interfaces_in]
+    db_interfaces = [AssetInterface(**interface.model_dump()) for interface in interfaces_in]
     db.add_all(db_interfaces)
     db.commit()
     for db_interface in db_interfaces:

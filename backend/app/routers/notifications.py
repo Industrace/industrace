@@ -5,7 +5,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Body
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.database import get_db
 from app.models import User, NotificationPreference, NotificationQueue, NotificationLog, NotificationTemplate
@@ -29,8 +29,7 @@ class NotificationPreferenceResponse(BaseModel):
     severity_min: Optional[int] = None
     filters: Optional[dict] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NotificationPreferenceUpdate(BaseModel):
@@ -65,8 +64,7 @@ class NotificationQueueResponse(BaseModel):
     sent_at: Optional[datetime] = None
     error_message: Optional[str] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NotificationLogResponse(BaseModel):
@@ -78,8 +76,7 @@ class NotificationLogResponse(BaseModel):
     error_message: Optional[str] = None
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TestNotificationRequest(BaseModel):
@@ -454,7 +451,7 @@ def list_notification_preferences(
         .all()
     )
     
-    return [NotificationPreferenceResponse.from_orm(p) for p in preferences]
+    return [NotificationPreferenceResponse.model_validate(p) for p in preferences]
 
 
 @router.post("/preferences", response_model=NotificationPreferenceResponse, status_code=201)
@@ -485,14 +482,14 @@ def create_notification_preference(
     preference = NotificationPreference(
         user_id=current_user.id,
         tenant_id=current_user.tenant_id,
-        **preference_data.dict()
+        **preference_data.model_dump()
     )
     
     db.add(preference)
     db.commit()
     db.refresh(preference)
     
-    return NotificationPreferenceResponse.from_orm(preference)
+    return NotificationPreferenceResponse.model_validate(preference)
 
 
 @router.put("/preferences/{preference_id}", response_model=NotificationPreferenceResponse)
@@ -517,14 +514,14 @@ def update_notification_preference(
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
     # Update fields
-    update_data = preference_data.dict(exclude_unset=True)
+    update_data = preference_data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(preference, key, value)
     
     db.commit()
     db.refresh(preference)
     
-    return NotificationPreferenceResponse.from_orm(preference)
+    return NotificationPreferenceResponse.model_validate(preference)
 
 
 @router.delete("/preferences/{preference_id}")
@@ -577,7 +574,7 @@ def list_notification_queue(
     
     queue_entries = query.order_by(NotificationQueue.created_at.desc()).limit(limit).all()
     
-    return [NotificationQueueResponse.from_orm(entry) for entry in queue_entries]
+    return [NotificationQueueResponse.model_validate(entry) for entry in queue_entries]
 
 
 @router.post("/queue/{queue_id}/retry", response_model=NotificationQueueResponse)
@@ -617,7 +614,7 @@ def retry_notification(
     # Process immediately
     EmailQueueProcessor.process_queue(db, batch_size=1)
     
-    return NotificationQueueResponse.from_orm(queue_entry)
+    return NotificationQueueResponse.model_validate(queue_entry)
 
 
 @router.delete("/queue/{queue_id}", status_code=204)
@@ -684,7 +681,7 @@ def list_notification_logs(
     
     logs = query.order_by(NotificationLog.created_at.desc()).limit(limit).all()
     
-    return [NotificationLogResponse.from_orm(log) for log in logs]
+    return [NotificationLogResponse.model_validate(log) for log in logs]
 
 
 @router.post("/test", status_code=200)

@@ -10,7 +10,7 @@ def create_supplier_document(
     db: Session, doc_in: SupplierDocumentCreate, supplier_id: uuid.UUID
 ) -> SupplierDocument:
     """Create a new supplier document"""
-    doc = SupplierDocument(**doc_in.dict(), supplier_id=supplier_id)
+    doc = SupplierDocument(**doc_in.model_dump(), supplier_id=supplier_id)
     db.add(doc)
     db.commit()
     db.refresh(doc)

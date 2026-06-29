@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models import User
 from app.schemas.api_key import ApiKeyCreate, ApiKeyRead, ApiKeyUpdate, ApiKeyResponse
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.services.audit_decorator import audit_log_action
 from app.crud import api_keys as crud_api_keys
 from app.errors.exceptions import ErrorCodeException
@@ -16,6 +17,7 @@ import json
 router = APIRouter(
     prefix="/api-keys",
     tags=["api-keys"],
+    dependencies=[Depends(require_section_access("api_keys"))],
 )
 
 

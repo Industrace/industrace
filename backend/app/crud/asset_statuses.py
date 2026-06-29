@@ -9,7 +9,7 @@ def create_asset_status(
     db: Session, status_in: AssetStatusCreate, tenant_id: uuid.UUID
 ) -> AssetStatus:
     """Create a new asset status"""
-    status = AssetStatus(**status_in.dict(), tenant_id=tenant_id)
+    status = AssetStatus(**status_in.model_dump(), tenant_id=tenant_id)
     db.add(status)
     db.commit()
     db.refresh(status)
@@ -44,7 +44,7 @@ def update_asset_status(
     db: Session, status: AssetStatus, update_data: AssetStatusUpdate
 ) -> AssetStatus:
     """Update an existing asset status"""
-    for key, value in update_data.dict(exclude_unset=True).items():
+    for key, value in update_data.model_dump(exclude_unset=True).items():
         setattr(status, key, value)
     db.commit()
     db.refresh(status)

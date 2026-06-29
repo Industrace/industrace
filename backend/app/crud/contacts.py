@@ -10,7 +10,7 @@ def create_contact(
     db: Session, contact_in: ContactCreate, tenant_id: uuid.UUID
 ) -> Contact:
     """Create a new contact"""
-    data = sanitize_text_fields(contact_in.dict(), ["notes"])
+    data = sanitize_text_fields(contact_in.model_dump(), ["notes"])
     contact = Contact(**data, tenant_id=tenant_id)
     db.add(contact)
     db.commit()
@@ -58,7 +58,7 @@ def update_contact(
     contact = get_contact(db, contact_id, tenant_id)
     if contact:
         update_data = sanitize_text_fields(
-            contact_update.dict(exclude_unset=True), ["notes"]
+            contact_update.model_dump(exclude_unset=True), ["notes"]
         )
         for key, value in update_data.items():
             setattr(contact, key, value)

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.services.pcap_parser import extract_assets_and_communications_from_pcap, normalize_protocol
@@ -16,6 +17,7 @@ import app.models
 router = APIRouter(
     prefix="/pcap",
     tags=["pcap"],
+    dependencies=[Depends(require_section_access("utility"))],
 )
 
 

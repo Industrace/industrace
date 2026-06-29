@@ -1589,7 +1589,7 @@ def get_gap_analysis(
 @router.get("/zone/{zone_id}/audit-export")
 def export_zone_audit(
     zone_id: uuid.UUID,
-    format: str = Query("json", regex="^(json|csv)$"),
+    format: str = Query("json", pattern="^(json|csv)$"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     perm=Depends(require_permission("compliance", 1)),

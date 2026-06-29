@@ -19,6 +19,7 @@ from app.schemas import (
     ManufacturerUpdate,
 )
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.crud import manufacturers as crud_manufacturers
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -27,6 +28,7 @@ from app.services.audit_decorator import audit_log_action
 router = APIRouter(
     prefix="/manufacturers",
     tags=["manufacturers"],
+    dependencies=[Depends(require_section_access("manufacturers"))],
 )
 
 

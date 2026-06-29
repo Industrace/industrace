@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.database import get_db
 from app.models import User, Conduit, SecurityZone
@@ -16,11 +16,15 @@ from app.services.isa62443_compliance_engine import ISA62443ComplianceEngine
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.services.feature_guard import require_iec62443_enabled
+from app.services.rbac import require_section_access
 
 router = APIRouter(
     prefix="/conduits",
     tags=["Conduits"],
-    dependencies=[Depends(require_iec62443_enabled)],
+    dependencies=[
+        Depends(require_iec62443_enabled),
+        Depends(require_section_access("compliance")),
+    ],
 )
 
 
@@ -76,13 +80,12 @@ class ConduitResponse(ConduitBase):
     from_zone_name: Optional[str] = None
     to_zone_name: Optional[str] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 def _conduit_response(db: Session, conduit: Conduit) -> ConduitResponse:
     meta = ISA62443ComplianceEngine.get_conduit_sl_metadata(db, conduit)
-    response = ConduitResponse.from_orm(conduit)
+    response = ConduitResponse.model_validate(conduit)
     response.sl_achieved_source = meta["sl_achieved_source"]
     if conduit.from_zone:
         response.from_zone_name = conduit.from_zone.name
@@ -185,7 +188,7 @@ def create_conduit(
     
     conduit = Conduit(
         tenant_id=current_user.tenant_id,
-        **conduit_data.dict()
+        **conduit_data.model_dump()
     )
     
     db.add(conduit)
@@ -218,7 +221,7 @@ def update_conduit(
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
     # Update fields
-    update_data = conduit_data.dict(exclude_unset=True)
+    update_data = conduit_data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(conduit, key, value)
     

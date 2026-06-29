@@ -20,11 +20,16 @@ from uuid import UUID
 from typing import List
 from app.schemas.audit_log import AuditLog as AuditLogSchema
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.services.audit_log import get_entity_name_by_id
 from app.services.audit_decorator import audit_log_action
 from app.models import User
 
-router = APIRouter(prefix="/asset-interfaces", tags=["Asset Interfaces"])
+router = APIRouter(
+    prefix="/asset-interfaces",
+    tags=["Asset Interfaces"],
+    dependencies=[Depends(require_section_access("assets"))],
+)
 
 
 @router.post("/", response_model=AssetInterface)
@@ -35,7 +40,7 @@ def create_asset_interface(
     current_user: User = Depends(get_current_user),
 ):
     # Set tenant_id if missing
-    data = interface_in.dict()
+    data = interface_in.model_dump()
     if not data.get("tenant_id"):
         data["tenant_id"] = current_user.tenant_id
     return create_interface(db, AssetInterfaceCreate(**data))
@@ -51,7 +56,7 @@ def create_asset_interfaces_bulk(
     # Set tenant_id if missing on each interface
     interfaces = []
     for interface in interfaces_in:
-        data = interface.dict()
+        data = interface.model_dump()
         if not data.get("tenant_id"):
             data["tenant_id"] = current_user.tenant_id
         interfaces.append(AssetInterfaceCreate(**data))

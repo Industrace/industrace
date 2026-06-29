@@ -332,7 +332,7 @@ def create_vulnerability(
     vulnerability: VulnerabilityCreate
 ) -> Vulnerability:
     """Create a new vulnerability"""
-    db_vulnerability = Vulnerability(**vulnerability.dict())
+    db_vulnerability = Vulnerability(**vulnerability.model_dump())
     db.add(db_vulnerability)
     db.commit()
     db.refresh(db_vulnerability)
@@ -349,7 +349,7 @@ def update_vulnerability(
     if not db_vulnerability:
         return None
     
-    update_data = vulnerability_update.dict(exclude_unset=True)
+    update_data = vulnerability_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_vulnerability, field, value)
     
@@ -422,7 +422,7 @@ def create_asset_vulnerability(
         raise ValueError("Asset vulnerability already exists")
     
     db_asset_vuln = AssetVulnerability(
-        **asset_vulnerability.dict(),
+        **asset_vulnerability.model_dump(),
         asset_id=asset_id,
         tenant_id=tenant_id
     )
@@ -447,7 +447,7 @@ def update_asset_vulnerability(
     if not db_asset_vuln:
         return None
     
-    update_data = asset_vulnerability_update.dict(exclude_unset=True)
+    update_data = asset_vulnerability_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_asset_vuln, field, value)
     
@@ -541,7 +541,7 @@ def create_vulnerability_feed_source(
     feed_source: VulnerabilityFeedSourceCreate
 ) -> VulnerabilityFeedSource:
     """Create a new vulnerability feed source"""
-    db_feed = VulnerabilityFeedSource(**feed_source.dict())
+    db_feed = VulnerabilityFeedSource(**feed_source.model_dump())
     db.add(db_feed)
     db.commit()
     db.refresh(db_feed)
@@ -563,7 +563,7 @@ def update_vulnerability_feed_source(
     if not db_feed:
         return None
     
-    update_data = feed_source_update.dict(exclude_unset=True)
+    update_data = feed_source_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_feed, field, value)
     

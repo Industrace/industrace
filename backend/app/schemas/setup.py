@@ -1,6 +1,6 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr
 from typing import Optional
-from app.schemas.validators import *
+from app.schemas.schema_mixins import SetupFieldsMixin
 
 
 class SetupStatus(BaseModel):
@@ -13,7 +13,7 @@ class SetupStatus(BaseModel):
     error: Optional[str] = None
 
 
-class SetupRequest(BaseModel):
+class SetupRequest(SetupFieldsMixin, BaseModel):
     """Dati per l'inizializzazione del sistema"""
     tenant_name: str
     tenant_slug: str
@@ -22,10 +22,6 @@ class SetupRequest(BaseModel):
     admin_password: str
     language: str = "en"
     iec62443_enabled: bool = True
-    
-    # Validators
-    _validate_tenant_slug = validator('tenant_slug', allow_reuse=True)(validate_tenant_slug)
-    _validate_admin_password = validator('admin_password', allow_reuse=True)(validate_password)
 
 
 class SetupResponse(BaseModel):
@@ -33,4 +29,4 @@ class SetupResponse(BaseModel):
     success: bool
     message: str
     tenant_id: str
-    admin_user_id: str 
+    admin_user_id: str

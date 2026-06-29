@@ -1,5 +1,5 @@
 # backend/app/schemas/sr_assessment_evidence.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
@@ -26,8 +26,7 @@ class SRAssessmentEvidenceRead(SRAssessmentEvidenceBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SRAssessmentEvidenceWithDetails(SRAssessmentEvidenceRead):

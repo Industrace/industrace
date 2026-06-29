@@ -22,6 +22,7 @@ from app.schemas import (
 )
 from app.services.auth import get_current_user
 from app.services.feature_guard import require_iec62443_enabled
+from app.services.rbac import require_section_access
 from app.services.audit_log import create_audit_log, resolve_audit_language
 from app.crud import assets as crud_assets
 from app.errors.exceptions import ErrorCodeException
@@ -43,6 +44,7 @@ from app.schemas.supplier import Supplier as SupplierSchema
 router = APIRouter(
     prefix="/assets",
     tags=["assets"],
+    dependencies=[Depends(require_section_access("assets"))],
 )
 
 
@@ -56,7 +58,7 @@ def create_asset(
     db: Session = Depends(get_db),
 ):
     # Inserisco tenant_id nel body
-    data = asset_in.dict()
+    data = asset_in.model_dump()
     data["tenant_id"] = current_user.tenant_id
     result = crud_assets.create_asset(db, AssetCreate(**data), current_user.tenant_id)
     
@@ -189,7 +191,7 @@ def list_assets(
         
         result = []
         for asset in assets:
-            asset_dict = AssetRead.from_orm(asset).dict()
+            asset_dict = AssetRead.model_validate(asset).model_dump()
             # Area is already loaded via selectinload, no additional query needed
             if asset.area:
                 asset_dict["area_name"] = asset.area.name
@@ -200,7 +202,7 @@ def list_assets(
                 from app.schemas.asset_interface import AssetInterface
                 # Serialize interfaces manually if not already present
                 if not asset_dict.get("interfaces") or len(asset_dict.get("interfaces", [])) == 0:
-                    asset_dict["interfaces"] = [AssetInterface.from_orm(iface).dict() for iface in asset.interfaces]
+                    asset_dict["interfaces"] = [AssetInterface.model_validate(iface).model_dump() for iface in asset.interfaces]
             
             # Calcola rischio totale (base + dipendenze) usando i valori batch
             base_risk = asset.risk_score or 0.0
@@ -1227,7 +1229,7 @@ def update_asset(
         'business_criticality', 'physical_access_ease', 'remote_access', 
         'remote_access_type', 'purdue_level'
     }
-    update_dict = asset_update.dict(exclude_unset=True)
+    update_dict = asset_update.model_dump(exclude_unset=True)
     risk_fields_changed = any(field in update_dict for field in risk_affecting_fields)
     
     result = crud_assets.update_asset(db, asset_id, asset_update, current_user.tenant_id)
@@ -1575,7 +1577,7 @@ def list_asset_contacts(
     
     contacts_with_roles = crud_assets.get_asset_contacts_with_roles(db, asset_id)
     return [
-        AssetContact(contact=ContactSchema.from_orm(item["contact"]), role=item["role"])
+        AssetContact(contact=ContactSchema.model_validate(item["contact"]), role=item["role"])
         for item in contacts_with_roles
     ]
 
@@ -1596,7 +1598,7 @@ def list_asset_owners(
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
     owners = crud_assets.get_asset_contacts_by_role(db, asset_id, "owner")
-    return [ContactSchema.from_orm(c) for c in owners]
+    return [ContactSchema.model_validate(c) for c in owners]
 
 
 @router.get("/{asset_id}/contacts/points-of-contact", response_model=List[ContactSchema])
@@ -1615,7 +1617,7 @@ def list_asset_points_of_contact(
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
     points_of_contact = crud_assets.get_asset_contacts_by_role(db, asset_id, "point_of_contact")
-    return [ContactSchema.from_orm(c) for c in points_of_contact]
+    return [ContactSchema.model_validate(c) for c in points_of_contact]
 
 
 @router.put("/{asset_id}/contacts", response_model=List[AssetContact])
@@ -1665,7 +1667,7 @@ def update_asset_contacts(
     # Return updated contacts with roles
     contacts_with_roles = crud_assets.get_asset_contacts_with_roles(db, asset_id)
     return [
-        AssetContact(contact=ContactSchema.from_orm(item["contact"]), role=item["role"])
+        AssetContact(contact=ContactSchema.model_validate(item["contact"]), role=item["role"])
         for item in contacts_with_roles
     ]
 
@@ -1711,7 +1713,7 @@ def add_asset_contact(
     )
     
     return AssetContact(
-        contact=ContactSchema.from_orm(db_contact),
+        contact=ContactSchema.model_validate(db_contact),
         role=contact.role
     )
 

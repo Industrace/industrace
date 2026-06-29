@@ -1,10 +1,10 @@
 # backend/schemas/asset.py
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
 import uuid
-from app.schemas.validators import *
+from app.schemas.schema_mixins import AssetRiskFieldsMixin
 
 from .site import Site
 from .asset_type import AssetType
@@ -22,8 +22,7 @@ class AssetContact(BaseModel):
     contact: Contact
     role: str = Field(..., description="Contact role: owner, point_of_contact, other, technical, administrative")
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AssetContactCreate(BaseModel):
@@ -31,8 +30,7 @@ class AssetContactCreate(BaseModel):
     contact_id: uuid.UUID
     role: str = Field(..., description="Contact role: owner, point_of_contact, other, technical, administrative")
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AssetCustomFieldUpdate(BaseModel):
@@ -43,11 +41,10 @@ class AssetSummary(BaseModel):
     id: uuid.UUID
     name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
-class AssetBase(BaseModel):
+class AssetBase(AssetRiskFieldsMixin, BaseModel):
     id: Optional[uuid.UUID]
     tenant_id: Optional[uuid.UUID]
     site_id: Optional[uuid.UUID]
@@ -87,14 +84,6 @@ class AssetBase(BaseModel):
     update_status: Optional[str] = Field(None, max_length=50, description="Update status")
     risk_score: Optional[float] = 0.0
 
-    # Validators
-    _validate_impact_value = validator('impact_value', allow_reuse=True)(validate_impact_value)
-    _validate_purdue_level = validator('purdue_level', allow_reuse=True)(validate_purdue_level)
-    _validate_risk_score = validator('risk_score', allow_reuse=True)(validate_risk_score)
-    _validate_business_criticality = validator('business_criticality', allow_reuse=True)(validate_business_criticality)
-    _validate_remote_access_type = validator('remote_access_type', allow_reuse=True)(validate_remote_access_type)
-    _validate_physical_access_ease = validator('physical_access_ease', allow_reuse=True)(validate_physical_access_ease)
-
     last_risk_assessment: Optional[datetime] = None
     remote_access: Optional[bool] = False
     remote_access_type: Optional[str] = Field(None, max_length=20, description="Remote access type")
@@ -112,11 +101,10 @@ class AssetBase(BaseModel):
     photos: List[AssetPhoto] = []
     contacts: List[Contact] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
-class AssetUpdate(BaseModel):
+class AssetUpdate(AssetRiskFieldsMixin, BaseModel):
     name: Optional[str] = Field(None, max_length=255, description="Asset name")
     tag: Optional[str] = Field(None, max_length=100, description="Asset tag")
     serial_number: Optional[str] = Field(None, max_length=100, description="Serial number")
@@ -153,16 +141,8 @@ class AssetUpdate(BaseModel):
     # Asset review fields
     review_interval_months: Optional[int] = None
 
-    # Validators
-    _validate_impact_value = validator('impact_value', allow_reuse=True)(validate_impact_value)
-    _validate_purdue_level = validator('purdue_level', allow_reuse=True)(validate_purdue_level)
-    _validate_risk_score = validator('risk_score', allow_reuse=True)(validate_risk_score)
-    _validate_business_criticality = validator('business_criticality', allow_reuse=True)(validate_business_criticality)
-    _validate_remote_access_type = validator('remote_access_type', allow_reuse=True)(validate_remote_access_type)
-    _validate_physical_access_ease = validator('physical_access_ease', allow_reuse=True)(validate_physical_access_ease)
 
-
-class AssetCreate(BaseModel):
+class AssetCreate(AssetRiskFieldsMixin, BaseModel):
     name: str = Field(..., max_length=255, description="Asset name")
     tag: Optional[str] = Field(None, max_length=100, description="Asset tag")
     serial_number: Optional[str] = Field(None, max_length=100, description="Serial number")
@@ -195,22 +175,13 @@ class AssetCreate(BaseModel):
     update_status: Optional[str] = Field(None, max_length=50, description="Update status")
     risk_score: Optional[float] = 0.0
 
-    # Validators
-    _validate_impact_value = validator('impact_value', allow_reuse=True)(validate_impact_value)
-    _validate_purdue_level = validator('purdue_level', allow_reuse=True)(validate_purdue_level)
-    _validate_risk_score = validator('risk_score', allow_reuse=True)(validate_risk_score)
-    _validate_business_criticality = validator('business_criticality', allow_reuse=True)(validate_business_criticality)
-    _validate_remote_access_type = validator('remote_access_type', allow_reuse=True)(validate_remote_access_type)
-    _validate_physical_access_ease = validator('physical_access_ease', allow_reuse=True)(validate_physical_access_ease)
-
 
 class AssetRead(AssetBase):
     location_id: Optional[uuid.UUID]
     contacts: List[Contact] = []
     protocols: Optional[List[str]] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AssetBulkUpdateRequest(BaseModel):

@@ -6,7 +6,7 @@ from app.models import Tenant
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.database import get_db
 from app.models import User, Asset
@@ -32,8 +32,7 @@ class AssetReviewStatusResponse(BaseModel):
     days_until_review: Optional[int] = None
     days_overdue: Optional[int] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AssetReviewRequest(BaseModel):
@@ -94,7 +93,7 @@ def update_tenant_review_settings(
     tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
     if not tenant:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND, detail="Tenant not found")
-    update_data = settings.dict(exclude_unset=True)
+    update_data = settings.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(tenant, field, value)
     db.commit()
@@ -187,7 +186,7 @@ def mark_asset_as_reviewed(
         review_data.next_review_override
     )
     
-    return AssetSchema.from_orm(updated_asset)
+    return AssetSchema.model_validate(updated_asset)
 
 
 @router.post("/{asset_id}/review/skip", response_model=AssetSchema)
@@ -216,7 +215,7 @@ def skip_asset_review(
         skip_data.next_review_date
     )
     
-    return AssetSchema.from_orm(updated_asset)
+    return AssetSchema.model_validate(updated_asset)
 
 
 @router.get("/review/due", response_model=List[AssetSchema])
@@ -234,7 +233,7 @@ def get_assets_due_for_review(
         days_ahead
     )
     
-    return [AssetSchema.from_orm(asset) for asset in assets]
+    return [AssetSchema.model_validate(asset) for asset in assets]
 
 
 @router.get("/review/overdue", response_model=List[AssetSchema])
@@ -249,7 +248,7 @@ def get_overdue_assets(
         current_user.tenant_id
     )
     
-    return [AssetSchema.from_orm(asset) for asset in assets]
+    return [AssetSchema.model_validate(asset) for asset in assets]
 
 
 @router.get("/review/upcoming", response_model=List[AssetSchema])
@@ -327,7 +326,7 @@ def get_upcoming_reviews(
         db.commit()
     
     logger.info(f"Returning {len(upcoming)} upcoming assets")
-    return [AssetSchema.from_orm(asset) for asset in upcoming]
+    return [AssetSchema.model_validate(asset) for asset in upcoming]
 
 
 @router.post("/review/bulk", response_model=List[AssetSchema])
@@ -363,7 +362,7 @@ def bulk_mark_as_reviewed(
         bulk_data.notes
     )
     
-    return [AssetSchema.from_orm(asset) for asset in reviewed_assets]
+    return [AssetSchema.model_validate(asset) for asset in reviewed_assets]
 
 
 @router.post("/review/recalculate-all")

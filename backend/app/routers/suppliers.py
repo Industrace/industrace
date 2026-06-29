@@ -26,6 +26,7 @@ from app.schemas.validators import (
     validate_website,
 )
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.crud import suppliers as crud_suppliers
 from app.crud import supplier_documents as crud_documents
 from app.errors.exceptions import ErrorCodeException
@@ -36,6 +37,7 @@ from app.schemas.contact import Contact as ContactSchema, ContactCreate
 router = APIRouter(
     prefix="/suppliers",
     tags=["suppliers"],
+    dependencies=[Depends(require_section_access("suppliers"))],
 )
 
 
@@ -432,7 +434,7 @@ def list_supplier_contacts(
         raise ErrorCodeException(
             status_code=404, error_code=ErrorCode.SUPPLIER_NOT_FOUND
         )
-    return [ContactSchema.from_orm(c) for c in supplier.contacts]
+    return [ContactSchema.model_validate(c) for c in supplier.contacts]
 
 
 @router.put("/{supplier_id}/contacts", response_model=List[ContactSchema])
@@ -449,7 +451,7 @@ def update_supplier_contacts(
         raise ErrorCodeException(
             status_code=404, error_code=ErrorCode.SUPPLIER_NOT_FOUND
         )
-    return [ContactSchema.from_orm(c) for c in supplier.contacts]
+    return [ContactSchema.model_validate(c) for c in supplier.contacts]
 
 
 @router.delete(

@@ -137,7 +137,7 @@ def create_asset_dependency(
         raise ValueError("Dependency already exists")
     
     db_dependency = AssetDependency(
-        **dependency.dict(),
+        **dependency.model_dump(),
         tenant_id=tenant_id,
         created_by=created_by
     )
@@ -158,7 +158,7 @@ def update_asset_dependency(
     if not db_dependency:
         return None
     
-    update_data = dependency_update.dict(exclude_unset=True)
+    update_data = dependency_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_dependency, field, value)
     

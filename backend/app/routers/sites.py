@@ -13,12 +13,14 @@ from app.database import get_db
 from app.models import User, Site
 from app.schemas import Site as SiteSchema, SiteCreate, SiteUpdate
 from app.services.auth import get_current_user
+from app.services.rbac import require_section_access
 from app.schemas.contact import Contact as ContactSchema
 from app.crud import sites as crud_sites
 
 router = APIRouter(
     prefix="/sites",
     tags=["sites"],
+    dependencies=[Depends(require_section_access("sites"))],
 )
 
 
@@ -30,7 +32,7 @@ def create_site(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    db_site = Site(tenant_id=current_user.tenant_id, **site.dict())
+    db_site = Site(tenant_id=current_user.tenant_id, **site.model_dump())
     db.add(db_site)
     db.commit()
     db.refresh(db_site)
@@ -126,7 +128,7 @@ def update_site(
     if not db_site:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.SITE_NOT_FOUND)
 
-    site_data = site.dict(exclude_unset=True)  # aggiorna solo campi forniti
+    site_data = site.model_dump(exclude_unset=True)  # aggiorna solo campi forniti
     for key, value in site_data.items():
         setattr(db_site, key, value)
 
@@ -194,7 +196,7 @@ def update_site_contacts(
     )
     if not site:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.SITE_NOT_FOUND)
-    return [ContactSchema.from_orm(c) for c in site.contacts]
+    return [ContactSchema.model_validate(c) for c in site.contacts]
 
 
 @router.get("/{site_id}/contacts", response_model=List[ContactSchema])
@@ -210,7 +212,7 @@ def list_site_contacts(
     )
     if not site:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.SITE_NOT_FOUND)
-    return [ContactSchema.from_orm(c) for c in site.contacts]
+    return [ContactSchema.model_validate(c) for c in site.contacts]
 
 
 @router.patch("/{site_id}/restore")

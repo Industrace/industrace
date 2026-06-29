@@ -99,7 +99,7 @@ def create_sr_assessment(
     """Create a new SRAssessment"""
     db_assessment = SRAssessment(
         tenant_id=tenant_id,
-        **assessment_in.dict()
+        **assessment_in.model_dump()
     )
     db.add(db_assessment)
     db.commit()
@@ -118,7 +118,7 @@ def update_sr_assessment(
     if not db_assessment:
         return None
     
-    update_data = assessment_in.dict(exclude_unset=True)
+    update_data = assessment_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_assessment, field, value)
     

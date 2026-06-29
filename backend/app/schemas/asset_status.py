@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 import uuid
 
@@ -23,5 +23,4 @@ class AssetStatus(AssetStatusBase):
     id: uuid.UUID
     tenant_id: Optional[uuid.UUID] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

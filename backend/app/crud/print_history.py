@@ -57,7 +57,7 @@ def get_print_history_list(
 
 def create_print_history(db: Session, history: PrintHistoryCreate) -> PrintHistory:
     """Create a new print history entry"""
-    db_history = PrintHistory(**history.dict())
+    db_history = PrintHistory(**history.model_dump())
     db.add(db_history)
     db.commit()
     db.refresh(db_history)

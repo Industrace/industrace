@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from app.services.feature_guard import require_iec62443_enabled
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.database import get_db
 from app.models import User, SecurityZone, Asset, Location
@@ -71,8 +71,7 @@ class SecurityZoneResponse(SecurityZoneBase):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SecurityZoneDetailResponse(SecurityZoneResponse):
@@ -102,7 +101,7 @@ def list_security_zones(
     
     zones = query.order_by(SecurityZone.name).all()
     
-    return [SecurityZoneResponse.from_orm(zone) for zone in zones]
+    return [SecurityZoneResponse.model_validate(zone) for zone in zones]
 
 
 @router.get("/{zone_id}", response_model=SecurityZoneDetailResponse)
@@ -155,7 +154,7 @@ def get_security_zone(
     # Calculate risk
     risk_data = ZoneRiskCalculator.calculate_zone_risk(db, zone)
     
-    response = SecurityZoneDetailResponse.from_orm(zone)
+    response = SecurityZoneDetailResponse.model_validate(zone)
     response.asset_count = asset_count
     response.conduit_count = conduit_count
     response.risk_score = risk_data.get('zone_risk_score')
@@ -174,14 +173,14 @@ def create_security_zone(
     """Create a new security zone"""
     zone = SecurityZone(
         tenant_id=current_user.tenant_id,
-        **zone_data.dict()
+        **zone_data.model_dump()
     )
     
     db.add(zone)
     db.commit()
     db.refresh(zone)
     
-    return SecurityZoneResponse.from_orm(zone)
+    return SecurityZoneResponse.model_validate(zone)
 
 
 @router.put("/{zone_id}", response_model=SecurityZoneResponse)
@@ -208,14 +207,14 @@ def update_security_zone(
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
     # Update fields
-    update_data = zone_data.dict(exclude_unset=True)
+    update_data = zone_data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(zone, key, value)
     
     db.commit()
     db.refresh(zone)
     
-    return SecurityZoneResponse.from_orm(zone)
+    return SecurityZoneResponse.model_validate(zone)
 
 
 @router.delete("/{zone_id}", status_code=204)
@@ -390,7 +389,7 @@ def calculate_zone_security_level(
     
     updated_zone = ISA62443ComplianceEngine.update_zone_security_levels(db, str(zone_id))
     
-    return SecurityZoneResponse.from_orm(updated_zone)
+    return SecurityZoneResponse.model_validate(updated_zone)
 
 
 @router.post("/{zone_id}/recalculate-sla", response_model=SecurityZoneResponse)
@@ -478,7 +477,7 @@ def create_asset_zone_membership(
         )
     
     # Create membership data with zone_id from URL parameter
-    membership_dict = membership_data.dict(exclude_unset=True)
+    membership_dict = membership_data.model_dump(exclude_unset=True)
     # Ensure security_zone_id is set from URL parameter (overrides any value from body)
     membership_dict['security_zone_id'] = zone_id
     membership_create = AssetZoneMembershipCreate(**membership_dict)
@@ -541,7 +540,7 @@ def list_zone_memberships(
         db, current_user.tenant_id, security_zone_id=zone_id, role=role
     )
     
-    return [AssetZoneMembershipRead.from_orm(m) for m in memberships]
+    return [AssetZoneMembershipRead.model_validate(m) for m in memberships]
 
 
 @router.put("/{zone_id}/memberships/{membership_id}", response_model=AssetZoneMembershipRead)
@@ -575,7 +574,7 @@ def update_asset_zone_membership(
     if not membership:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
-    return AssetZoneMembershipRead.from_orm(membership)
+    return AssetZoneMembershipRead.model_validate(membership)
 
 
 @router.delete("/{zone_id}/memberships/{membership_id}", status_code=204)

@@ -69,7 +69,7 @@ def create_asset_capability(
     """Create a new AssetCapability"""
     db_capability = AssetCapability(
         tenant_id=tenant_id,
-        **capability_in.dict()
+        **capability_in.model_dump()
     )
     db.add(db_capability)
     db.commit()
@@ -88,7 +88,7 @@ def update_asset_capability(
     if not db_capability:
         return None
     
-    update_data = capability_in.dict(exclude_unset=True)
+    update_data = capability_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_capability, field, value)
     

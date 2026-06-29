@@ -15,7 +15,7 @@ def create_manufacturer(
 ) -> Manufacturer:
     """Create a new manufacturer"""
     data = sanitize_text_fields(
-        manufacturer_in.dict(exclude={"tenant_id"}), ["description", "notes"]
+        manufacturer_in.model_dump(exclude={"tenant_id"}), ["description", "notes"]
     )
     data["tenant_id"] = tenant_id
     manufacturer = Manufacturer(**data)
@@ -55,7 +55,7 @@ def update_manufacturer(
 ) -> Manufacturer:
     """Update an existing manufacturer"""
     update_data_dict = sanitize_text_fields(
-        update_data.dict(exclude_unset=True), ["description", "notes"]
+        update_data.model_dump(exclude_unset=True), ["description", "notes"]
     )
     for key, value in update_data_dict.items():
         setattr(manufacturer, key, value)

@@ -10,7 +10,7 @@ from app.models import User
 from app.schemas.user import UserCreate, UserUpdate, UserRead, PasswordChange
 from app.services.auth import get_current_user, get_password_hash
 from app.services.audit_decorator import audit_log_action
-from app.services.rbac import require_permission
+from app.services.rbac import require_permission, require_section_access
 from app.crud import users as crud_users
 from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
@@ -20,6 +20,14 @@ import secrets
 router = APIRouter(
     prefix="/users",
     tags=["users"],
+    dependencies=[
+        Depends(
+            require_section_access(
+                "users",
+                skip_path_contains=("/users/me", "/users/reset-password"),
+            )
+        )
+    ],
 )
 
 

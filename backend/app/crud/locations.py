@@ -40,7 +40,7 @@ def create_location(
     db: Session, location: LocationCreate, tenant_id: uuid.UUID
 ) -> Location:
     """Create a new location"""
-    data = sanitize_text_fields(location.dict(), ["description", "notes"])
+    data = sanitize_text_fields(location.model_dump(), ["description", "notes"])
     data["tenant_id"] = tenant_id
     db_location = Location(**data)
     db.add(db_location)
@@ -63,7 +63,7 @@ def update_location(
     )
     if db_location:
         update_data = sanitize_text_fields(
-            location_update.dict(exclude_unset=True), ["description", "notes"]
+            location_update.model_dump(exclude_unset=True), ["description", "notes"]
         )
         for key, value in update_data.items():
             setattr(db_location, key, value)

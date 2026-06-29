@@ -61,7 +61,7 @@ def create_asset_type(
 ) -> AssetType:
     """Create a new asset type"""
     db_asset_type = AssetType(
-        tenant_id=tenant_id, **asset_type.dict(exclude_unset=True)
+        tenant_id=tenant_id, **asset_type.model_dump(exclude_unset=True)
     )
     db.add(db_asset_type)
     db.commit()
@@ -75,7 +75,7 @@ def update_asset_type(
     """Update an existing asset type"""
     db_asset_type = db.query(AssetType).filter(AssetType.id == asset_type_id).first()
     if db_asset_type:
-        for key, value in asset_type_update.dict(exclude_unset=True).items():
+        for key, value in asset_type_update.model_dump(exclude_unset=True).items():
             setattr(db_asset_type, key, value)
         db.commit()
         db.refresh(db_asset_type)

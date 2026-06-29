@@ -65,7 +65,7 @@ def authenticate_user(db: Session, email: str, password: str, tenant_id: uuid.UU
 
 def update_user(db: Session, db_user: User, user_update: UserUpdate) -> Optional[User]:
     """Update an existing user"""
-    update_data = user_update.dict(exclude_unset=True)
+    update_data = user_update.model_dump(exclude_unset=True)
     if "password" in update_data:
         update_data["password_hash"] = pwd_context.hash(update_data.pop("password"))
     for key, value in update_data.items():

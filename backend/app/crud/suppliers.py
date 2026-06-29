@@ -14,7 +14,7 @@ def create_supplier(
 ) -> Supplier:
     """Create a new supplier"""
     data = sanitize_text_fields(
-        supplier_in.dict(exclude={"tenant_id"}), ["description", "notes"]
+        supplier_in.model_dump(exclude={"tenant_id"}), ["description", "notes"]
     )
     data["tenant_id"] = tenant_id
     supplier = Supplier(**data)
@@ -45,7 +45,7 @@ def update_supplier(
 ) -> Supplier:
     """Update an existing supplier"""
     update_data_dict = sanitize_text_fields(
-        update_data.dict(exclude_unset=True), ["description", "notes"]
+        update_data.model_dump(exclude_unset=True), ["description", "notes"]
     )
     for key, value in update_data_dict.items():
         setattr(supplier, key, value)

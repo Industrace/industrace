@@ -96,7 +96,7 @@ def create_role(
             )
 
     # Add tenant_id to role data
-    role_data = role_in.dict()
+    role_data = role_in.model_dump()
     role_data["tenant_id"] = current_user.tenant_id
     return crud_roles.create_role(db, role_data)
 

@@ -30,7 +30,7 @@ def create_sso_config(
         raise ValueError("SSO configuration already exists for this tenant")
     
     # Encrypt client secret
-    config_data = sso_config.dict()
+    config_data = sso_config.model_dump()
     client_secret = config_data.pop("client_secret")
     config_data["client_secret_encrypted"] = encrypt_secret(client_secret)
     
@@ -55,7 +55,7 @@ def update_sso_config(
     if not db_sso_config:
         return None
     
-    update_data = sso_config_update.dict(exclude_unset=True)
+    update_data = sso_config_update.model_dump(exclude_unset=True)
     
     # Encrypt client_secret if provided AND not empty
     # If client_secret is empty string, preserve existing secret (don't update it)
