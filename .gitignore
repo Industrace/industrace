@@ -93,3 +93,4 @@ probe/probe-*.conf
 
 # Local pytest vendor tree (not for version control)
 backend/.pytest_deps/
+backend/.coverage
