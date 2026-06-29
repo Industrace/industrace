@@ -259,12 +259,14 @@ app.include_router(tenant_features.router, tags=["tenant-features"])
 app.include_router(search.router, tags=["search"])
 app.include_router(print_router.router, tags=["print"])
 app.include_router(api_keys.router, tags=["api-keys"])
-app.include_router(external_api.router, tags=["external-api"])
+if settings.EXTERNAL_API_ENABLED:
+    app.include_router(external_api.router, tags=["external-api"])
 app.include_router(setup.router, tags=["setup"])
 
 # Performance testing router (solo in development)
-from app.routers import performance_test
-app.include_router(performance_test.router, tags=["performance"])
+if settings.ENVIRONMENT != "production":
+    from app.routers import performance_test
+    app.include_router(performance_test.router, tags=["performance"])
 
 
 @app.on_event("startup")

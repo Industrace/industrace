@@ -6,20 +6,6 @@ const api = axios.create({
   withCredentials: true 
 })
 
-// Request interceptor to add token from localStorage
-api.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('access_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  error => {
-    return Promise.reject(error)
-  }
-)
-
 api.interceptors.response.use(
   response => response,
   error => {
@@ -38,10 +24,6 @@ export default {
     formData.append('password', password)
     
     const response = await api.post('/login', formData)
-    // Save token if present in response
-    if (response.data.access_token) {
-      localStorage.setItem('access_token', response.data.access_token)
-    }
     return response.data
   },
   getCurrentUser() {
@@ -220,8 +202,13 @@ export default {
   getSetupStatus() {
     return api.get('/setup/status')
   },
-  initializeSetup(setupData) {
-    return api.post('/setup/initialize', setupData)
+  initializeSetup(setupData, setupToken = null) {
+    const headers = setupToken ? { 'X-Setup-Token': setupToken } : {}
+    return api.post('/setup/initialize', setupData, { headers })
+  },
+  testDatabaseConnection(setupToken = null) {
+    const headers = setupToken ? { 'X-Setup-Token': setupToken } : {}
+    return api.post('/setup/test-database', null, { headers })
   },
   getSupplier(id) {
     return api.get(`/suppliers/${id}`)

@@ -6,14 +6,15 @@ from sqlalchemy.orm import Session
 
 from app import schemas
 from app.database import get_db
-from app.services.auth import get_current_user
 from app.services.audit_decorator import audit_log_action
 from app.models import Tenant
 from app.crud import tenants as crud_tenants
+from app.services.rbac import require_section_access
 
 router = APIRouter(
     prefix="/tenants",
     tags=["tenants"],
+    dependencies=[Depends(require_section_access("roles"))],
 )
 
 

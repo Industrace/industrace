@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.database import get_db
 from app.models import Tenant, User, Role
 from app.schemas.setup import SetupStatus, SetupRequest, SetupResponse
@@ -12,49 +13,76 @@ from app.init_asset_types import setup_asset_types
 from app.init_data.init_notification_templates import init_notification_templates
 from app.init_data.init_security_requirements import init_security_requirements
 from app.services.tenant_features import set_iec62443_enabled
+from app.services.setup_auth import verify_setup_token
+from app.config import settings
 import uuid
 
 router = APIRouter(prefix="/setup", tags=["setup"])
+
+
+def _is_system_configured(db: Session) -> bool:
+    return (
+        db.query(Tenant).count() > 0
+        and db.query(User).count() > 0
+        and db.query(Role).count() > 0
+    )
 
 
 @router.get("/status", response_model=SetupStatus)
 def get_setup_status(db: Session = Depends(get_db)):
     """Verifica se il sistema è già configurato"""
     try:
-        # Controlla se esistono tenant
         tenant_count = db.query(Tenant).count()
         user_count = db.query(User).count()
         role_count = db.query(Role).count()
-        
         is_configured = tenant_count > 0 and user_count > 0 and role_count > 0
-        
+
+        if settings.ENVIRONMENT == "production" and is_configured:
+            return SetupStatus(
+                is_configured=True,
+                tenant_count=0,
+                user_count=0,
+                role_count=0,
+                database_connected=True,
+            )
+
         return SetupStatus(
             is_configured=is_configured,
             tenant_count=tenant_count,
             user_count=user_count,
             role_count=role_count,
-            database_connected=True
+            database_connected=True,
         )
     except Exception as e:
+        if settings.ENVIRONMENT == "production":
+            return SetupStatus(
+                is_configured=False,
+                tenant_count=0,
+                user_count=0,
+                role_count=0,
+                database_connected=False,
+            )
         return SetupStatus(
             is_configured=False,
             tenant_count=0,
             user_count=0,
             role_count=0,
             database_connected=False,
-            error=str(e)
+            error=str(e),
         )
 
 
 @router.post("/initialize", response_model=SetupResponse)
-def initialize_system(setup_data: SetupRequest, db: Session = Depends(get_db)):
+def initialize_system(
+    setup_data: SetupRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_setup_token),
+):
     """Inizializza il sistema con i dati forniti"""
     try:
-        # Verify that the system is not already configured
-        if db.query(Tenant).count() > 0:
+        if _is_system_configured(db):
             raise HTTPException(status_code=400, detail="System already configured")
-        
-        # 1. Crea il tenant
+
         tenant = Tenant(
             id=uuid.uuid4(),
             name=setup_data.tenant_name,
@@ -66,14 +94,10 @@ def initialize_system(setup_data: SetupRequest, db: Session = Depends(get_db)):
         )
         db.add(tenant)
         db.flush()
-        
-        # 2. Crea i ruoli default per il tenant
+
         init_tenant_roles(tenant.id, db)
-        
-        # 3. Ottieni l'ID del ruolo admin
         admin_role_id = get_default_admin_role_id(tenant.id, db)
-        
-        # 4. Crea l'utente admin
+
         admin_user = User(
             id=uuid.uuid4(),
             tenant_id=tenant.id,
@@ -81,38 +105,43 @@ def initialize_system(setup_data: SetupRequest, db: Session = Depends(get_db)):
             password_hash=get_password_hash(setup_data.admin_password),
             name=setup_data.admin_name,
             role_id=admin_role_id,
-            is_active=True
+            is_active=True,
         )
         db.add(admin_user)
-        
-        # 4. Inizializza i dati di base
+
         init_default_templates(tenant_id=tenant.id)
-        init_notification_templates(db)  # System-wide notification templates
-        init_security_requirements(db)  # ISA/IEC 62443 Security Requirements (system-wide)
+        init_notification_templates(db)
+        init_security_requirements(db)
         seed_manufacturers()
         setup_asset_statuses()
         setup_asset_types()
-        
+
         db.commit()
-        
+
         return SetupResponse(
             success=True,
             message="System initialized successfully",
             tenant_id=str(tenant.id),
-            admin_user_id=str(admin_user.id)
+            admin_user_id=str(admin_user.id),
         )
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Setup failed: {str(e)}")
 
 
 @router.post("/test-database")
-def test_database_connection(db: Session = Depends(get_db)):
+def test_database_connection(
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_setup_token),
+):
     """Testa la connessione al database"""
+    if _is_system_configured(db):
+        raise HTTPException(status_code=403, detail="System already configured")
     try:
-        # Prova una query semplice
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         return {"status": "connected", "message": "Database connection successful"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")

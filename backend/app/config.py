@@ -1,5 +1,5 @@
 import os
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -87,8 +87,13 @@ class Settings(BaseSettings):
         os.getenv("EXTERNAL_API_ENABLED", "true").lower() == "true"
     )
     EXTERNAL_API_DOCS_ENABLED: bool = (
-        os.getenv("EXTERNAL_API_DOCS_ENABLED", "true").lower() == "true"
+        os.getenv("EXTERNAL_API_DOCS_ENABLED", "").lower() == "true"
+        if os.getenv("EXTERNAL_API_DOCS_ENABLED") is not None
+        else os.getenv("ENVIRONMENT", "development") != "production"
     )
+
+    # Setup wizard protection (required in production)
+    SETUP_TOKEN: str = os.getenv("SETUP_TOKEN", "")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -111,9 +116,12 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "ENCRYPTION_KEY must be set in production (required for SSO client secret encryption)"
                 )
+            if not self.SETUP_TOKEN:
+                raise ValueError(
+                    "SETUP_TOKEN must be set in production (protects first-time setup endpoints)"
+                )
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env")
 
 
 # Global settings instance

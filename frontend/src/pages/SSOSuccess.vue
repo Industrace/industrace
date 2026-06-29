@@ -37,13 +37,7 @@ const error = ref(null)
 onMounted(async () => {
   try {
     // Session is established via httponly cookie from backend redirect.
-    // Bootstrap localStorage token from /refresh (cookie auth) for the API interceptor.
-    const refreshResponse = await api.refresh()
-    const token = refreshResponse.data?.access_token
-    if (token) {
-      localStorage.setItem('access_token', token)
-    }
-
+    await api.refresh()
     authStore.isAuthenticated = true
 
     try {
@@ -62,7 +56,6 @@ onMounted(async () => {
     console.error('SSO success error:', err)
     error.value = err.response?.data?.detail || err.message || t('sso.success.error')
     loading.value = false
-    localStorage.removeItem('access_token')
     authStore.isAuthenticated = false
     setTimeout(() => {
       router.push('/login')

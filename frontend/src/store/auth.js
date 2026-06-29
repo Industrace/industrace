@@ -93,11 +93,6 @@ async function logout() {
   isAuthenticated.value = false
   stopTokenRefresh()
   
-  // Remove token from localStorage (critical for logout to work properly)
-  // The persist plugin will handle clearing the store state automatically
-  // but we need to manually clear the token since it's not part of the store
-  localStorage.removeItem('access_token')
-  
   router.push('/login')
 }
   return { user, isAuthenticated, login, logout, fetchUser,startTokenRefresh,stopTokenRefresh }
