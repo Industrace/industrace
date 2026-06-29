@@ -5,19 +5,6 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: testdb
-        ports: [5432:5432]
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -28,7 +15,7 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
-      - name: Run tests
+      - name: Run tests with coverage
         env:
           DATABASE_URL: "sqlite:///:memory:"
           SECRET_KEY: test-secret-key
@@ -36,4 +23,4 @@ jobs:
           ENVIRONMENT: development
         run: |
           cd backend
-          pytest tests/ -q 
+          pytest tests/ --cov=app --cov-report=term-missing --cov-fail-under=0 -q

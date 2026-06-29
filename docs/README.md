@@ -41,6 +41,7 @@ flowchart TD
 |-------|-------------|
 | [QUICK_START.md](QUICK_START.md) | Run Industrace in ~5 minutes |
 | [INSTALLATION.md](INSTALLATION.md) | Full install: Docker, prod, dev, custom certs |
+| [PILOT_DEPLOYMENT_CHECKLIST.md](PILOT_DEPLOYMENT_CHECKLIST.md) | Hardening checklist for controlled production pilots |
 | [CONFIGURATION.md](CONFIGURATION.md) | Environment variables and optional modules |
 | [ADMINISTRATION.md](ADMINISTRATION.md) | RBAC, SSO (Azure AD), password policy |
 | [MIGRATION.md](MIGRATION.md) | v1 frozen / v2 fresh install, upgrade 2.x, backup |

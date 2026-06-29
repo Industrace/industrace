@@ -2,12 +2,18 @@
 
 ## Supported Versions
 
-We release patches for security vulnerabilities in the following versions:
+We release security patches for the following versions:
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+| Version | Supported          | Notes |
+| ------- | ------------------ | ----- |
+| 2.1.x   | :white_check_mark: | Current stable line |
+| 2.0.x   | :white_check_mark: | Security fixes only |
+| 1.x     | :x:                | Frozen — upgrade to 2.x |
+| < 1.0   | :x:                | |
+
+**Current release:** v2.1.0 (June 2026)
+
+For production deployments, see [Pilot Deployment Checklist](docs/PILOT_DEPLOYMENT_CHECKLIST.md) and [Configuration Guide](docs/CONFIGURATION.md).
 
 ## Reporting a Vulnerability
 
@@ -42,6 +48,9 @@ When reporting a vulnerability, please include:
 
 #### Production Deployment
 - **Always use HTTPS** in production environments
+- **Set `SETUP_TOKEN`** before exposing a fresh instance (required in production)
+- **Disable API docs** (`EXTERNAL_API_DOCS_ENABLED=false`) unless needed for internal debugging
+- **Configure `CORS_ORIGINS`** with your real domain(s) — never use `*` in production
 - **Enable SSL/TLS** with strong cipher suites
 - **Use strong, unique passwords** for all accounts
 - **Implement proper firewall rules** to restrict access
@@ -76,7 +85,9 @@ When reporting a vulnerability, please include:
 #### Authentication and Authorization
 - **Strong password policies** enforcement
 - **Secure session management** with proper tokens
-- **JWT token security** with appropriate expiration
+- **JWT authentication** via HttpOnly secure cookies (Bearer header supported for API clients)
+- **RBAC enforcement** on API endpoints by permission section and level
+- **Setup wizard protection** via `X-Setup-Token` header when `SETUP_TOKEN` is configured
 - **API authentication** using secure methods
 - **Permission checks** at every endpoint
 
@@ -166,6 +177,6 @@ We thank the security community for their responsible disclosure of vulnerabilit
 
 ---
 
-**Last Updated**: September 2025  
-**Version**: 1.0  
+**Last Updated**: June 2026  
+**Version**: 2.1  
 **License**: AGPL v3

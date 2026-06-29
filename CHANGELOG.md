@@ -8,7 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Future features and improvements
+- Router-level RBAC enforcement on core API endpoints (`require_section_access`)
+- Setup wizard protection via `SETUP_TOKEN` and `X-Setup-Token` header
+- Backend API RBAC and setup protection tests with `pytest-cov` in CI
+- [Pilot Deployment Checklist](docs/PILOT_DEPLOYMENT_CHECKLIST.md) for controlled production pilots
+
+### Changed
+- JWT authentication relies on HttpOnly cookies in the frontend (removed `localStorage` token storage)
+- `EXTERNAL_API_DOCS_ENABLED` defaults to `false` in production
+- Performance testing router disabled when `ENVIRONMENT=production`
+- `EXTERNAL_API_ENABLED` now controls mounting of the external API router
+- Updated `SECURITY.md`, `CONTRIBUTING.md`, and `CONFIGURATION.md` for v2.1.x
+
+### Security
+- Extended RBAC to assets, sites, users, suppliers, and other core routers
+- Tenant endpoints now require authenticated admin-level access
+- Production setup endpoints require `SETUP_TOKEN`
 
 ## [2.1.0] - 2026-06-17
 

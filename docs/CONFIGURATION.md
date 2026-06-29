@@ -98,10 +98,15 @@ ALLOWED_FILE_TYPES=image/*,application/pdf,text/plain
 ```bash
 # External API
 EXTERNAL_API_ENABLED=true
+# Disabled by default in production; enabled in development
 EXTERNAL_API_DOCS_ENABLED=true
 API_KEY_HEADER=X-API-Key
 API_KEY_LENGTH=32
 API_KEY_PREFIX=ind_
+
+# Setup wizard protection (required in production)
+# Generated automatically by 'make prod'
+SETUP_TOKEN=your-setup-token-here
 ```
 
 #### Rate Limiting
@@ -329,7 +334,7 @@ ALERT_MEMORY_THRESHOLD=85
 ```bash
 # Application branding
 APP_NAME=Industrace
-APP_VERSION=2.0.0
+APP_VERSION=2.1.0
 APP_DESCRIPTION=Configuration Management Database for Industrial Control Systems
 ```
 

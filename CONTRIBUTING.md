@@ -46,18 +46,20 @@ There are many ways to contribute to Industrace:
 
 2. **Start development environment**
    ```bash
-   make dev
+   docker compose -f docker-compose.dev.yml up -d
    ```
 
-3. **Initialize system with demo data**
+3. **Add demo data** (optional, on an initialized system)
    ```bash
-   make init
+   make demo
    ```
 
 4. **Access the application**
-   - Frontend: http://localhost:3000
+   - Frontend: http://localhost:5173
    - Backend API: http://localhost:8000
-   - Adminer (Database): http://localhost:8080
+   - Database: PostgreSQL on port 5432
+
+For a production-like local stack with HTTPS, use `make prod` instead.
 
 ### Tenant Management
 
@@ -75,13 +77,16 @@ make create-tenant TENANT_NAME="My Company" TENANT_SLUG="my-company" ADMIN_EMAIL
 ### Useful Make Commands
 
 ```bash
-make dev       # Start development environment
-make test      # Run tests
-make logs      # View logs
-make clean     # Clean system completely
-make shell     # Open backend shell
-make migrate   # Run database migrations
-make rebuild   # Rebuild containers
+docker compose -f docker-compose.dev.yml up -d   # Start development environment
+make prod          # Start production-like stack (HTTPS, Nginx)
+make test          # Run backend tests in Docker
+make demo          # Add demo data to running prod stack
+make logs          # View production logs
+make clean         # Clean system completely
+make shell         # Open backend shell
+make migrate       # Run database migrations
+make rebuild       # Rebuild containers
+make help          # Show all commands
 ```
 
 ## 📁 Project Structure
@@ -188,32 +193,29 @@ CREATE TABLE asset_types (
 ### Backend Testing
 
 ```bash
-# Run all tests
+# Run all tests with coverage (recommended — uses Docker)
 make test
 
-# Run specific tests
-cd backend
-pytest tests/test_auth.py -v
-
-# Run tests with coverage
-pytest --cov=app tests/
+# Run specific tests inside the backend container
+docker compose -f docker-compose.dev.yml run --rm --no-deps \
+  -e DATABASE_URL=sqlite:///:memory: \
+  -e SECRET_KEY=test-secret-key \
+  -e ENVIRONMENT=development \
+  backend pytest tests/test_rbac_section_access.py -v
 ```
 
 ### Frontend Testing
 
 ```bash
-# Run tests
 cd frontend
-npm run test
-
-# Run tests in watch mode
-npm run test:watch
+npm run test:unit
+npm run build
 ```
 
 ### Testing Guidelines
 
 - Write tests for all new features
-- Maintain code coverage > 80%
+- Backend coverage is reported in CI and via `make test` (progressive improvement target)
 - Use parameterized tests when appropriate
 - Test both success and error cases
 
