@@ -126,8 +126,10 @@ ssl_verify = true
 | Setting | Notes |
 |---------|-------|
 | `probe_id` | **Required UUID** in heartbeat/transmission payloads and config endpoint path; API key still authenticates the probe |
+| `max_packet_size` | Packets larger than this (bytes, full frame) are ignored before analysis |
+| `buffer_size` | Max total bytes for the local `data_buffer` when `payload_analysis = true` (not sent to backend) |
 | `sampling_rate` | `0.1` = 10% of packets; lowers CPU load |
-| `payload_analysis` | Off by default; enable only with legal authorization |
+| `payload_analysis` | Off by default; buffers compressed payloads **locally only** — not included in data transmission (metadata-only MVP) |
 | `data_transmission_interval` | 60–3600 seconds (enforced in UI and backend) |
 | `encryption_enabled` | **Legacy flag, ignored by client.** Transport security is TLS/HTTPS only |
 | `ssl_verify` | Set `true` in production |
@@ -318,6 +320,7 @@ Post-MVP improvements — not blocking release 2.1:
 
 | Item | Description |
 |------|-------------|
+| Payload buffer transmission | `data_buffer` (when `payload_analysis = true`) is kept on-probe for local diagnostics only; not included in HTTP data transmission |
 | Bulk ingest/upsert | Batch DB writes on data transmission to reduce roundtrips |
 | Discovered devices tests | Router tests for update status, assign, onboard |
 | Frontend smoke tests | `NetworkProbes.vue`, `DiscoveredDevices.vue` |
@@ -413,8 +416,8 @@ openssl s_client -connect your-server.com:443
 ### Low performance
 
 - Lower `sampling_rate` (e.g. `0.1`)
-- Set `payload_analysis = false`
-- Increase `buffer_size`
+- Set `payload_analysis = false` (local payload buffer is not transmitted; it only affects on-probe memory use)
+- Increase `buffer_size` when `payload_analysis = true`
 - Tighten BPF `capture_filter`
 
 ### Interface not found

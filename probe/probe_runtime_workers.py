@@ -219,6 +219,7 @@ class ProbeRuntimeWorkersMixin:
                 self._last_transmission_sent_ts = time.time()
                 with self.data_buffer_lock:
                     self.data_buffer.clear()
+                    self._payload_buffer_bytes = 0
                 with self.data_lock:
                     for mac in acknowledged_macs:
                         self._pending_device_macs.discard(mac)

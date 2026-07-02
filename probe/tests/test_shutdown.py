@@ -14,6 +14,7 @@ def test_stop_does_not_join_current_thread():
     probe.heartbeat_thread = None
     probe.transmission_thread = None
     probe.configuration_thread = threading.current_thread()
+    probe._save_state_to_disk = lambda best_effort=True: None
 
     NetworkProbe.stop(probe)
     assert probe.running is False
@@ -38,6 +39,7 @@ def test_stop_joins_other_alive_threads(monkeypatch):
     probe.heartbeat_thread = threading.current_thread()
     probe.transmission_thread = FakeThread("tx")
     probe.configuration_thread = FakeThread("cfg")
+    probe._save_state_to_disk = lambda best_effort=True: None
 
     NetworkProbe.stop(probe)
 
@@ -45,3 +47,20 @@ def test_stop_joins_other_alive_threads(monkeypatch):
     assert ("tx", 5) in joined
     assert ("cfg", 5) in joined
     assert not any(name == "heartbeat" for name, _ in joined)
+
+
+def test_stop_flushes_state_to_disk():
+    saved = []
+
+    probe = object.__new__(NetworkProbe)
+    probe.running = True
+    probe.sniffing_thread = None
+    probe.heartbeat_thread = None
+    probe.transmission_thread = None
+    probe.configuration_thread = None
+    probe._save_state_to_disk = lambda best_effort=True: saved.append(best_effort)
+
+    NetworkProbe.stop(probe)
+
+    assert probe.running is False
+    assert saved == [True]

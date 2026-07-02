@@ -25,6 +25,9 @@ class ProbePacketProcessingMixin:
     def _packet_handler(self, packet):
         """Handle each captured packet."""
         try:
+            if len(packet) > self.config.max_packet_size:
+                return
+
             self.health.record_packet_seen()
             if self.stats["packets_captured"] and self.stats["packets_captured"] % 10000 == 0:
                 logger.info(f"Processed packets: {self.stats['packets_captured']}")
@@ -234,29 +237,29 @@ class ProbePacketProcessingMixin:
                 conn.byte_count += len(packet[IP])
 
     def _process_payload(self, packet):
-        """Process and buffer payload when enabled."""
+        """Process and buffer payload locally when enabled (not transmitted to backend)."""
         try:
             if Raw in packet:
                 payload = bytes(packet[Raw])
                 compressed = gzip.compress(payload)
                 encoded = base64.b64encode(compressed).decode("utf-8")
-
-                payload_info = {
-                    "timestamp": datetime.now().isoformat(),
-                    "src_mac": packet[Ether].src if Ether in packet else None,
-                    "dst_mac": packet[Ether].dst if Ether in packet else None,
-                    "payload": encoded,
-                    "original_size": len(payload),
-                    "compressed_size": len(compressed),
-                }
+                entry_bytes = len(encoded)
 
                 with self.data_buffer_lock:
-                    if (
-                        self.data_buffer.maxlen is not None
-                        and len(self.data_buffer) >= self.data_buffer.maxlen
-                    ):
+                    if self._payload_buffer_bytes + entry_bytes > self.config.buffer_size:
                         self._payload_buffer_dropped_count += 1
                         self.health.record_warning()
+                        return
+
+                    payload_info = {
+                        "timestamp": datetime.now().isoformat(),
+                        "src_mac": packet[Ether].src if Ether in packet else None,
+                        "dst_mac": packet[Ether].dst if Ether in packet else None,
+                        "payload": encoded,
+                        "original_size": len(payload),
+                        "compressed_size": len(compressed),
+                    }
                     self.data_buffer.append(payload_info)
+                    self._payload_buffer_bytes += entry_bytes
         except Exception as e:
             logger.debug(f"Error processing payload: {e}")

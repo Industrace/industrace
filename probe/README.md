@@ -22,7 +22,7 @@ The goal is simple: each module does one thing well.
 - `probe_packet_processing.py`
   - Packet sampling pipeline
   - Device/connection updates
-  - Optional payload buffering
+  - Optional local payload buffering (`payload_analysis`; not transmitted to backend)
 - `probe_protocol_analyzer.py`
   - Protocol heuristics (ports + payload signatures)
 - `probe_transmission.py`

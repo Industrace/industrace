@@ -17,11 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Docker probe image** copies all `probe/*.py` modules (post-refactor packaging fix)
 - **Capture filters** (`set_subnet_filter`, `add_protocol_filter`) now mutate under `config_lock`
-- **Probe documentation**: `NETWORK_PROBE.md` and `probe/README.md` aligned to modular architecture
+- **Probe documentation**: `NETWORK_PROBE.md` and `probe/README.md` aligned to modular architecture; `data_buffer` documented as local-only (not transmitted)
 
 ### Fixed
 - **Probe shutdown**: `stop()` no longer joins the calling worker thread (avoids `RuntimeError` on auth-failure path)
+- **Probe shutdown state flush**: `stop()` persists pending discovery to disk (best-effort)
 - **Reliable delivery**: pending MACs acknowledged only after successful HTTP transmission; restored from disk after restart
+- **Capture limits**: `max_packet_size` skips oversized frames; `buffer_size` caps local payload buffer bytes
 - **Protocol heuristics**: OPC UA `HELO` framing and IEC 104 APDU length validation
 
 ## [2.1.1] - 2026-06-29

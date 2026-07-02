@@ -96,8 +96,9 @@ class NetworkProbe(ProbeRuntimeWorkersMixin, ProbePacketProcessingMixin):
         self._pending_device_macs = set()
         self._pending_new_connections = 0
         
-        # Data transmission buffer
-        self.data_buffer = deque(maxlen=1000)
+        # Data transmission buffer (local only; not sent to backend — see NETWORK_PROBE.md)
+        self.data_buffer = deque()
+        self._payload_buffer_bytes = 0
         self._payload_buffer_dropped_count = 0
         
         # Threading
@@ -208,6 +209,9 @@ class NetworkProbe(ProbeRuntimeWorkersMixin, ProbePacketProcessingMixin):
         for thread in managed_threads:
             if thread and thread is not current_thread and thread.is_alive():
                 thread.join(timeout=5)
+
+        # Best-effort flush so pending discovery survives abrupt restarts.
+        self._save_state_to_disk(best_effort=True)
         
         logger.info("Probe stopped")
 
