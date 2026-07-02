@@ -28,11 +28,22 @@ Distributed passive network discovery for **Industrace 2.1+**. Probes observe in
 
 | File | Purpose |
 |------|---------|
-| `network_probe_client.py` | Probe client |
+| `network_probe_client.py` | Runtime orchestrator (`NetworkProbe`) |
+| `probe_cli.py` | Config parsing/generation and CLI entrypoint |
+| `probe_runtime_workers.py` | Heartbeat, transmission, remote config workers |
+| `probe_packet_processing.py` | Packet sampling and discovery state updates |
+| `probe_protocol_analyzer.py` | Industrial protocol heuristics |
+| `probe_transmission.py` | Discovery snapshot and payload builders |
+| `probe_state_store.py` | Local state persistence (devices, pending delivery) |
+| `probe_health.py` / `probe_metrics.py` | Health counters and host metrics |
+| `probe_logging.py` | Rotating file + stdout logging setup |
+| `retry_policy.py` | Exponential backoff for worker retries |
+| `README.md` | Module map and contributor guide |
 | `probe.conf` / `probe.conf.example` | Configuration |
-| `Dockerfile.probe` | Container image |
+| `Dockerfile.probe` | Container image (copies all `*.py` modules) |
 | `docker-compose.probes.yml` | Multi-probe compose example |
 | `requirements.probe.txt` | Python dependencies |
+| `tests/` | Client unit tests (`pytest`) |
 
 ---
 
@@ -85,7 +96,7 @@ python3 network_probe_client.py -c probe.conf
 
 ```ini
 [main]
-probe_id = probe_001
+probe_id = 11111111-1111-1111-1111-111111111111
 api_key = your_api_key_here
 server_url = https://your-industrace.example.com
 
@@ -114,7 +125,7 @@ ssl_verify = true
 
 | Setting | Notes |
 |---------|-------|
-| `probe_id` | Informational in payloads; server identifies the probe by **API key** |
+| `probe_id` | **Required UUID** in heartbeat/transmission payloads and config endpoint path; API key still authenticates the probe |
 | `sampling_rate` | `0.1` = 10% of packets; lowers CPU load |
 | `payload_analysis` | Off by default; enable only with legal authorization |
 | `data_transmission_interval` | 60–3600 seconds (enforced in UI and backend) |
@@ -162,10 +173,16 @@ See also [CONFIGURATION.md](../docs/CONFIGURATION.md) and `.env.example`.
 └───────────────────────────────┬───────────────────────────────────┘
                                 │ HTTPS + X-API-Key
 ┌───────────────────────────────▼───────────────────────────────────┐
-│                   network_probe_client.py                          │
-│  Sniffing (Scapy) → ProtocolAnalyzer → Heartbeat / Transmission   │
-└───────────────────────────────────────────────────────────────────┘
+│                     network_probe_client.py                        │
+│              Orchestrator: threads, locks, HTTP session            │
+├───────────────────────────────┬───────────────────────────────────┤
+│ probe_packet_processing.py    │ probe_runtime_workers.py          │
+│ probe_protocol_analyzer.py    │ probe_transmission.py             │
+│ probe_state_store.py          │ probe_remote_config.py            │
+└───────────────────────────────┴───────────────────────────────────┘
 ```
+
+See [`README.md`](README.md) for the full module map and extension points.
 
 ### Backend components
 
@@ -182,9 +199,13 @@ See also [CONFIGURATION.md](../docs/CONFIGURATION.md) and `.env.example`.
 
 | Component | Role |
 |-----------|------|
-| `NetworkProbe` class | Main lifecycle, threads for sniff / heartbeat / transmission |
-| `ProtocolAnalyzer` | Industrial protocol detection by port/heuristics |
-| `NetworkDevice` / `NetworkConnection` | In-memory discovery state |
+| `NetworkProbe` (`network_probe_client.py`) | Lifecycle coordinator; sniff / heartbeat / transmission / config threads |
+| `ProbePacketProcessingMixin` | Sampling, device/connection updates, optional payload buffer |
+| `ProbeRuntimeWorkersMixin` | Heartbeat, data transmission, remote configuration sync |
+| `ProtocolAnalyzer` | Industrial protocol detection by port and payload heuristics |
+| `probe_state_store` | Best-effort persistence of devices, connections, and pending delivery sets |
+| `probe_logging` | Rotating log files (`network_probe.log`, 10 MB × 5 backups) |
+| `NetworkDevice` / `NetworkConnection` | In-memory discovery state (`probe_models.py`) |
 
 ### Workflows
 
@@ -371,6 +392,7 @@ Modbus (502), IEC 60870-5-104 / IEC 104 (2404), OPC-UA (4840), EtherNet/IP (4481
 - Probe status must be `active` with recent `last_data_received`
 - Default transmission interval is 300s — wait for next cycle
 - `data_transmission_interval` must be between 60 and 3600 seconds
+- `probe_id` must be a valid UUID string
 - Check server logs for HTTP 429 (rate limiting)
 
 ### Permission denied on interface

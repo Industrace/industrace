@@ -25,8 +25,8 @@ COPY requirements.probe.txt .
 # Installa dipendenze Python
 RUN pip install --no-cache-dir -r requirements.probe.txt
 
-# Copia codice della sonda
-COPY network_probe_client.py .
+# Copia tutti i moduli Python della sonda (post-refactor modulare)
+COPY *.py ./
 COPY probe.conf.example .
 
 # Cambia proprietario

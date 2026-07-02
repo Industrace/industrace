@@ -1,0 +1,42 @@
+# Esempio per test locale (macOS/Linux).
+# Copia in probe.conf e compila probe_id + api_key dalla UI Industrace.
+#
+#   cp probe.conf.local.example probe.conf
+#
+# Avvio (serve root per cattura pacchetti):
+#   cd probe
+#   python3 -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.probe.txt
+#   sudo .venv/bin/python network_probe_client.py -c probe.conf --interface lo0
+#
+# Traffico di test (altro terminale):
+#   sudo .venv/bin/python scripts/generate_test_traffic.py --interface lo0 --loop
+
+[main]
+probe_id = REPLACE_WITH_UUID_FROM_UI
+api_key = REPLACE_WITH_API_KEY_FROM_UI
+server_url = http://localhost:8000
+
+[network]
+# lo0 = loopback (ideale per test isolati); en0 = Wi‑Fi su macOS
+interface_name = lo0
+promiscuous_mode = true
+capture_filter =
+max_packet_size = 1518
+buffer_size = 65536
+
+[analysis]
+enabled_protocols = Modbus,IEC 104,OPC-UA,EtherNet/IP
+sampling_rate = 1.0
+metadata_extraction = true
+payload_analysis = false
+
+[telecontrol]
+heartbeat_interval = 15
+# Intervallo breve per vedere subito i device in UI (min remoto: 60)
+data_transmission_interval = 60
+max_retry_attempts = 3
+
+[security]
+encryption_enabled = false
+ssl_verify = false

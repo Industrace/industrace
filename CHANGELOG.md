@@ -8,10 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Probe client modular refactor**: split monolithic client into focused modules (`probe_runtime_workers`, `probe_packet_processing`, `probe_state_store`, `probe_transmission`, etc.) with orchestrator in `network_probe_client.py`
+- **Probe client unit tests** (`probe/tests/`): parser heuristics, transmission snapshots, retry backoff, state persistence, shutdown safety, config UUID validation
+- **Pending delivery persistence**: `pending_device_macs` and `pending_new_connections` saved in state file v2; v1 files re-queue all known devices on load
+- **Payload buffer observability**: drop counter when `data_buffer` watermark is reached; exported via heartbeat `last_error_message`
+- **Rotating probe logs** via `probe_logging.py` (`RotatingFileHandler`, 10 MB × 5)
+
+### Changed
+- **Docker probe image** copies all `probe/*.py` modules (post-refactor packaging fix)
+- **Capture filters** (`set_subnet_filter`, `add_protocol_filter`) now mutate under `config_lock`
+- **Probe documentation**: `NETWORK_PROBE.md` and `probe/README.md` aligned to modular architecture
+
+### Fixed
+- **Probe shutdown**: `stop()` no longer joins the calling worker thread (avoids `RuntimeError` on auth-failure path)
+- **Reliable delivery**: pending MACs acknowledged only after successful HTTP transmission; restored from disk after restart
+- **Protocol heuristics**: OPC UA `HELO` framing and IEC 104 APDU length validation
+
+## [2.1.1] - 2026-06-29
+
+### Added
 - Router-level RBAC enforcement on core API endpoints (`require_section_access`)
 - Setup wizard protection via `SETUP_TOKEN` and `X-Setup-Token` header
 - Backend API RBAC and setup protection tests with `pytest-cov` in CI
 - [Pilot Deployment Checklist](docs/PILOT_DEPLOYMENT_CHECKLIST.md) for controlled production pilots
+- [IEC 62443 scope and limits guide](docs/IEC62443.md) — module coverage, boundaries, and certification disclaimer
 
 ### Changed
 - JWT authentication relies on HttpOnly cookies in the frontend (removed `localStorage` token storage)

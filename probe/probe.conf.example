@@ -1,6 +1,7 @@
 [main]
 # Identificazione della sonda
-probe_id = probe_001
+# Required: UUID format expected by backend API contract
+probe_id = 11111111-1111-1111-1111-111111111111
 api_key = your_api_key_here
 server_url = https://your-industrace-server.com
 
@@ -22,6 +23,7 @@ payload_analysis = false
 [telecontrol]
 # Configurazione telecontrollo
 heartbeat_interval = 30
+# Range aligned with backend schema: 60-3600
 data_transmission_interval = 300
 max_retry_attempts = 3
 

@@ -1,33 +1,36 @@
 # Industrace - Industrial Asset Management System
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://opensource.org/licenses/AGPL-3.0)
+[![Release](https://img.shields.io/badge/Release-v2.1.1-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.1.1)
+[![Status](https://img.shields.io/badge/Status-Pilot%20recommended-orange.svg)](#release-status)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3.0-green.svg)](https://vuejs.org/)
 
-**Industrace** is a comprehensive Industrial Asset Management System designed for managing and monitoring industrial equipment, networks, and infrastructure. Built with FastAPI backend and Vue.js frontend, it provides a modern, scalable solution for industrial environments.
+**Industrace** is an open-source Industrial Asset Management System for documenting, mapping, and assessing industrial equipment and networks. Built with FastAPI and Vue.js, it targets ICS environments — Purdue model mapping, ICS-specific risk parameters, and structured operational documentation.
 
-It was born from a simple observation: most asset management tools are designed for IT, while the industrial world requires different logic — mapping systems against the Purdue model, assessing risk with ICS-specific parameters, and documenting operational infrastructure in a structured way.
+Most asset management tools are designed for IT. Industrace was born from the observation that industrial operations need different logic. It is meant as a practical starting point: easy to deploy, preloaded with demo data, and open to real-world feedback and contributions.
 
-👉 Industrace is meant to be a starting point: easy to deploy, preloaded with demo data, and most importantly open to contributions and real-world use cases.
-We don’t claim to cover everything from day one, but we believe many organizations — large and small — face similar needs.
+## Release status
 
-## 🤖 Built with Human Expertise + AI Support
+Industrace **2.1.1** ships a large set of new capabilities introduced across the 2.x line — ISA/IEC 62443 compliance, vulnerability intelligence, SSO, Network Probes, extended RBAC, and recent security hardening. The codebase grew substantially between v1.x and v2.x; not every path is exercised in automated tests yet (CI runs ~40 backend tests via `make test` against a much wider API surface).
 
-Industrace was developed combining hands-on expertise in cybersecurity with the support of AI tools throughout the development process.
+We recommend a **controlled pilot** — internal network, limited users, non-critical ICS data — before relying on v2 in production OT environments. See the [Pilot Deployment Checklist](docs/PILOT_DEPLOYMENT_CHECKLIST.md). Your feedback via [GitHub Issues](https://github.com/industrace/industrace/issues) and real-world testing is how the project matures.
 
-This means two things:
+Industrace is **free to use** under AGPL-3.0. There is no paywall; community validation and contributions are what move it forward.
 
-🛠️ The project was built faster and with broader perspectives, leveraging AI to explore solutions and speed up coding.
+### Version lines
 
-🌍 The code and documentation are designed to be clear, structured, and accessible — a direct result of the “AI-assisted” approach.
+| Line | Status | For whom |
+|------|--------|----------|
+| **2.1.x** | Current — active development, new features | Teams that need IEC 62443, probes, SSO, vulnerabilities |
+| **1.x** | **Frozen** — no new features (latest: [v1.1.0](https://github.com/Industrace/industrace/releases/tag/v1.1.0)) | Teams that prefer a smaller, stable base |
 
-We like to think of Industrace as an experiment in human + AI co-creation, where the open source community can now take the lead to validate, extend, and adapt it to real-world industrial environments.
+Moving from 1.x to 2.x is a **new installation**, not an in-place upgrade. See [MIGRATION.md](docs/MIGRATION.md).
 
-Last thing..
-Born in Italy, Industrace combines European attention to industrial processes with a global open-source mindset.
+## Built with human expertise and AI support
 
-[![Release](https://img.shields.io/badge/Release-v2.1.0-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.1.0)
+Industrace combines hands-on cybersecurity expertise with AI-assisted development. AI tools helped explore solutions and speed up coding and documentation; **human validation** — pilots, code review, issues, and contributions — is the next step. Born in Italy, the project pairs European attention to industrial processes with a global open-source mindset.
 
 ## 🌟 Key Features
 
@@ -47,6 +50,9 @@ Born in Italy, Industrace combines European attention to industrial processes wi
 - **Audit Trail**: Complete activity logging and change tracking
 - **API-First Design**: RESTful API for integration with other systems
 - **Modern UI**: Responsive Vue.js frontend with intuitive interface
+- **Network Probes** *(v2, MVP)*: Passive discovery and device onboarding — see [probe docs](probe/NETWORK_PROBE.md)
+
+Features marked *(v2)* are not available in the frozen 1.x line. Network Probes and some deployment modes (`make prod-cloud`, custom certs) are documented as **MVP/BETA** — validate in a lab before production OT networks.
 
 ## 📸 Screenshots & Demo
 
@@ -205,6 +211,7 @@ Full index: **[docs/README.md](docs/README.md)**.
 | [Quick Start](docs/QUICK_START.md) | ~5 minutes to first login |
 | [Installation](docs/INSTALLATION.md) | Docker prod/dev, custom certificates |
 | [Configuration](docs/CONFIGURATION.md) | Environment and optional modules |
+| [Pilot checklist](docs/PILOT_DEPLOYMENT_CHECKLIST.md) | Hardening before a controlled v2.1.x pilot |
 | [Migration](docs/MIGRATION.md) | **v1 frozen** — v2 is a new install; upgrade within 2.x |
 | [Administration](docs/ADMINISTRATION.md) | RBAC, SSO, password policy |
 | [API](docs/API.md) | REST and external API |
@@ -260,6 +267,13 @@ make config     # Show configuration options
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
+Especially valuable for v2.1.x right now:
+
+- **Bug reports** — regressions, security concerns, unexpected behaviour in pilot deployments
+- **Pilot feedback** — what worked and what did not (even anonymised summaries via issues help)
+- **Tests and docs** — PRs that extend `make test` coverage or clarify deployment guides
+- **Translations** — IT/EN strings and documentation improvements
+
 ## 📄 License
 
 This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. This means you are free to use, modify, and distribute the software, but any modifications must also be released under the same license.
@@ -269,14 +283,29 @@ See the [LICENSE](LICENSE) file for details.
 ## 🆘 Support
 
 - **Documentation**: [docs/](docs/)
-- **Issues**: [GitHub Issues](https://github.com/industrace/industrace/issues)
+- **Issues**: [GitHub Issues](https://github.com/industrace/industrace/issues) — preferred channel for bugs and pilot feedback
+- **Email**: industrace@besafe.it
 
 ## 📋 Changelog
 
 See **[CHANGELOG.md](CHANGELOG.md)** and **[Release Notes](docs/release-notes.md)** for full version history.
 
+### [v2.1.1] - June 29, 2026
+- **Security hardening**: RBAC on core APIs, `SETUP_TOKEN` for production setup wizard, HttpOnly cookie auth (no `localStorage` JWT)
+- **Documentation**: [IEC 62443 scope and limits](docs/IEC62443.md), [Pilot Deployment Checklist](docs/PILOT_DEPLOYMENT_CHECKLIST.md)
+- **Production**: External API docs off by default; performance test router disabled in production
+- Treat as **pilot-ready**, not certification-ready — see [Release status](#release-status)
+- See [CHANGELOG.md](CHANGELOG.md) for full details
+
+### [v2.1.0] - June 17, 2026
+- **Network Probes**: Distributed passive discovery, discovered devices, onboard as asset — [probe docs](probe/README.md)
+- **Syslog**: Per-tenant external audit log forwarding
+- **IEC 62443**: RE-level assessments (RE 1–4), audit export CSV/JSON; optional module per tenant in Setup
+- **SSO**: Login via HttpOnly cookie only (no JWT in URL); compliance dashboard aligned with SL-A engine
+- See [CHANGELOG.md](CHANGELOG.md) and [release notes](docs/release-notes.md)
+
 ### [v2.0.0] - February 2026
-- **ISA/IEC 62443**: Security zones, conduits, compliance engine, evidence
+- **ISA/IEC 62443**: Security zones, conduits, compliance engine, evidence — see [scope & limits](docs/IEC62443.md)
 - **Vulnerability Intelligence**: CVE management, feeds, asset matching, risk integration
 - **Asset Dependencies & Review**: Dependency graph, risk propagation, review scheduling
 - **Notifications**: Templates, queue, logs, user preferences
@@ -298,6 +327,6 @@ See our [Roadmap](docs/roadmap.md) for planned features and improvements.
 ## Author and Support
 
 - **Author**: Maurizio Bertaboni
-- **Patronage**: The project is supported by BeSafe S.r.l., focusing on the Pro edition and enterprise services
+- **Patronage**: The project is supported by BeSafe S.r.l.
 - **Industrace Site**: https://besafe.it/industrace
 - **Contact**: industrace@besafe.it
