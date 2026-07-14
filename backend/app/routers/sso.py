@@ -31,40 +31,11 @@ from app.services.sso_auth import SSOAuthService
 from app.services.azure_ad_service import AzureADService
 from app.config import settings
 from app.services.audit_log import create_audit_log, resolve_audit_language
-from app.config import settings
+from app.services.sso_state_store import consume_sso_state, store_sso_state
 from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
-
-SSO_STATE_TTL_SECONDS = 600
-_SSO_STATE_STORE: dict[str, dict] = {}
-
-
-def _store_sso_state(state: str, code_verifier: str, tenant_id: uuid.UUID) -> None:
-    now = datetime.utcnow().timestamp()
-    # Cleanup expired entries opportunistically.
-    expired = [
-        key for key, value in _SSO_STATE_STORE.items() if value["expires_at"] <= now
-    ]
-    for key in expired:
-        _SSO_STATE_STORE.pop(key, None)
-
-    _SSO_STATE_STORE[state] = {
-        "code_verifier": code_verifier,
-        "tenant_id": str(tenant_id),
-        "expires_at": now + SSO_STATE_TTL_SECONDS,
-    }
-
-
-def _consume_sso_state(state: str) -> Optional[dict]:
-    now = datetime.utcnow().timestamp()
-    state_data = _SSO_STATE_STORE.pop(state, None)
-    if not state_data:
-        return None
-    if state_data["expires_at"] <= now:
-        return None
-    return state_data
 
 router = APIRouter(
     prefix="/auth/sso",
@@ -215,10 +186,8 @@ async def sso_connect_start(
     state = SSOAuthService.generate_state()
     code_verifier, code_challenge = SSOAuthService.generate_pkce()
     
-    # Store state and code_verifier (in production, use Redis or session)
-    # For now, we'll include in state (not ideal, but works)
-    # In production: store in Redis with expiry
-    
+    store_sso_state(state, code_verifier, current_user.tenant_id, db)
+
     redirect_uri = connect_start.redirect_uri or settings.SSO_REDIRECT_URI
     
     # Get authorization URL
@@ -282,8 +251,7 @@ async def sso_authorize(
     state = SSOAuthService.generate_state()
     code_verifier, code_challenge = SSOAuthService.generate_pkce()
     
-    # Store state + PKCE verifier server-side with TTL.
-    _store_sso_state(state, code_verifier, tenant_id)
+    store_sso_state(state, code_verifier, tenant_id, db)
     
     redirect_uri = redirect_uri or sso_config.redirect_uri or settings.SSO_REDIRECT_URI
     
@@ -316,7 +284,7 @@ async def sso_callback(
         return RedirectResponse(url=redirect_url)
     
     # Resolve state from server-side store (single use).
-    state_payload = _consume_sso_state(state)
+    state_payload = consume_sso_state(state, db)
     if not state_payload:
         logger.error("Missing or expired SSO state")
         frontend_url = settings.SSO_REDIRECT_URI.replace("/auth/sso/callback", "")
