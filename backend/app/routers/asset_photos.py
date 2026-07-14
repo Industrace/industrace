@@ -11,7 +11,7 @@ from app.services.audit_decorator import audit_log_action
 from app.services.file_validation import validate_image_file, validate_file_size
 from app.config import settings
 from app.database import get_db
-from app.models import User, AssetPhoto
+from app.models import User, AssetPhoto, Asset
 from app.schemas import AssetPhotoCreate, AssetPhoto as AssetPhotoSchema
 from app.services.auth import get_current_user
 from app.services.rbac import require_section_access
@@ -32,6 +32,16 @@ def upload_photo(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not asset:
+        raise ErrorCodeException(
+            status_code=404, error_code=ErrorCode.UNAUTHORIZED_ASSET_ACCESS
+        )
+
     # Validate file size first (before processing)
     if not validate_file_size(file):
         raise ErrorCodeException(

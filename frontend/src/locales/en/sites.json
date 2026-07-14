@@ -22,7 +22,8 @@
         "fetchLocationsError": "Error loading locations",
         "locationCreated": "Location created successfully",
         "locationUpdated": "Location updated successfully",
-        "updateLocationError": "Error updating location"
+        "updateLocationError": "Error updating location",
+        "importNotImplemented": "Import functionality is not available yet"
     },
     "fields": {
         "parent": "Parent site",

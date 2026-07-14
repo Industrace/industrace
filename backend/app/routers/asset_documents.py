@@ -7,7 +7,7 @@ from pathlib import Path
 import os
 
 from app.database import get_db
-from app.models import User, AssetDocument
+from app.models import User, AssetDocument, Asset
 from app.schemas import AssetDocumentCreate, AssetDocument as AssetDocumentSchema
 from app.services.auth import get_current_user
 from app.services.rbac import require_section_access
@@ -34,6 +34,16 @@ def upload_document(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not asset:
+        raise ErrorCodeException(
+            status_code=404, error_code=ErrorCode.UNAUTHORIZED_ASSET_ACCESS
+        )
+
     # Validate file size first (before processing)
     if not validate_file_size(file):
         raise ErrorCodeException(

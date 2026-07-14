@@ -1480,15 +1480,28 @@ def get_asset_zone_memberships(
 
 
 @router.get("/{asset_id}/communications")
-def get_asset_communications(asset_id: uuid.UUID, db: Session = Depends(get_db)):
+def get_asset_communications(
+    asset_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # Check if asset exists
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
     if not asset:
         raise ErrorCodeException(status_code=404, error_code="ASSET_NOT_FOUND")
 
     # Find all interfaces of this asset
     interfaces = (
-        db.query(AssetInterface).filter(AssetInterface.asset_id == asset_id).all()
+        db.query(AssetInterface)
+        .filter(
+            AssetInterface.asset_id == asset_id,
+            AssetInterface.tenant_id == current_user.tenant_id,
+        )
+        .all()
     )
     interface_ids = [i.id for i in interfaces]
     if not interface_ids:

@@ -565,7 +565,7 @@ async def custom_validation_exception_handler(
 # Root endpoint
 @app.get("/")
 def read_root():
-    return {"message": "Industrace API", "version": "1.0.0"}
+    return {"message": "Industrace API", "version": "2.1.1"}
 
 
 @app.get("/health")
@@ -575,7 +575,7 @@ def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "version": "1.0.0",
+        "version": "2.1.1",
         "environment": settings.ENVIRONMENT
     }
 
@@ -766,8 +766,21 @@ async def refresh_token(
     except JWTError:
         raise ErrorCodeException(status_code=401, error_code="INVALID_TOKEN")
 
+    user = (
+        db.query(User)
+        .filter(
+            User.id == user_id,
+            User.tenant_id == tenant_id,
+            User.deleted_at == None,
+            User.is_active == True,
+        )
+        .first()
+    )
+    if not user:
+        raise ErrorCodeException(status_code=401, error_code="INVALID_TOKEN")
+
     new_token = create_access_token(
-        data={"sub": user_id, "tenant_id": tenant_id},
+        data={"sub": str(user.id), "tenant_id": str(user.tenant_id)},
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 

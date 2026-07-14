@@ -22,7 +22,8 @@
         "fetchLocationsError": "Errore nel caricamento delle località",
         "locationCreated": "Località creata con successo",
         "locationUpdated": "Località aggiornata con successo",
-        "updateLocationError": "Errore nell'aggiornamento della località"
+        "updateLocationError": "Errore nell'aggiornamento della località",
+        "importNotImplemented": "La funzione di import non è ancora disponibile"
     },
     "fields": {
         "parent": "Sito padre",

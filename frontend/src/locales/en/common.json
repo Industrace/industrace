@@ -127,6 +127,7 @@
     "emptyTrashConfirm": "Are you sure you want to empty the trash?",
     "emptyTrashWarning": "This action cannot be undone",
     "trashEmptied": "Trash emptied successfully",
-    "emptyTrashError": "Error emptying trash"
+    "emptyTrashError": "Error emptying trash",
+    "importNotImplemented": "Import functionality is not available yet"
   }
 }

@@ -11,7 +11,7 @@
       <!-- Logo e titolo -->
       <div class="login-brand">
         <div class="logo-container">
-          <img src="/src/static/logo_black.png" alt="Industrace" class="login-logo" />
+          <img src="/favicon.ico" alt="Industrace" class="login-logo" />
           <div class="logo-glow"></div>
         </div>
         <h1 class="brand-title">{{ $t('login.title') }}</h1>

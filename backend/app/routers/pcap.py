@@ -11,7 +11,7 @@ from app.errors.exceptions import ErrorCodeException
 from app.errors.error_codes import ErrorCode
 from app.services.pcap_parser import extract_assets_and_communications_from_pcap, normalize_protocol
 from app.services.asset_sync import sync_assets, sync_communications
-from app.crud.sites import get_site
+from app.crud.sites import get_site_by_tenant
 import app.models
 
 router = APIRouter(
@@ -119,7 +119,7 @@ async def upload_pcap_files(
                 detail=f"File {file.filename} exceeds maximum size of 50MB (current size: {file_size / 1024 / 1024:.1f}MB)"
             )
 
-    site = get_site(db, site_id)
+    site = get_site_by_tenant(db, site_id, current_user.tenant_id)
     if not site:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.SITE_NOT_FOUND)
 
@@ -200,7 +200,7 @@ async def preview_pcap_files(
                 error_code=ErrorCode.FILE_TOO_LARGE,
                 detail=f"File {file.filename} exceeds maximum size of 50MB (current size: {file_size / 1024 / 1024:.1f}MB)"
             )
-    site = get_site(db, site_id)
+    site = get_site_by_tenant(db, site_id, current_user.tenant_id)
     if not site:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.SITE_NOT_FOUND)
 

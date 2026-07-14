@@ -125,6 +125,7 @@
     "emptyTrashConfirm": "Sei sicuro di voler svuotare il cestino ?",
     "emptyTrashWarning": "Questa azione non può essere annullata",
     "trashEmptied": "Cestino svuotato con successo",
-    "emptyTrashError": "Errore nell'svuotamento del cestino"
+    "emptyTrashError": "Errore nell'svuotamento del cestino",
+    "importNotImplemented": "La funzione di import non è ancora disponibile"
   }
 }

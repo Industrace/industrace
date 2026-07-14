@@ -7,9 +7,16 @@ from app.schemas.print_template import PrintTemplateCreate, PrintTemplateUpdate
 from app.utils import sanitize_text_fields
 
 
-def get_print_template(db: Session, template_id: int) -> Optional[PrintTemplate]:
-    """Retrieve a print template by ID"""
-    return db.query(PrintTemplate).filter(PrintTemplate.id == template_id).first()
+def get_print_template(
+    db: Session, template_id: int, tenant_id: Optional[UUID] = None
+) -> Optional[PrintTemplate]:
+    """Retrieve a print template by ID and tenant (or global)."""
+    query = db.query(PrintTemplate).filter(PrintTemplate.id == template_id)
+    if tenant_id:
+        query = query.filter(
+            (PrintTemplate.tenant_id == tenant_id) | (PrintTemplate.tenant_id == None)
+        )
+    return query.first()
 
 
 def get_print_template_by_key(
@@ -51,10 +58,13 @@ def create_print_template(
 
 
 def update_print_template(
-    db: Session, template_id: int, template: PrintTemplateUpdate
+    db: Session,
+    template_id: int,
+    template: PrintTemplateUpdate,
+    tenant_id: Optional[UUID] = None,
 ) -> Optional[PrintTemplate]:
     """Update a print template"""
-    db_template = get_print_template(db, template_id)
+    db_template = get_print_template(db, template_id, tenant_id=tenant_id)
     if not db_template:
         return None
     update_data = sanitize_text_fields(
@@ -67,9 +77,11 @@ def update_print_template(
     return db_template
 
 
-def delete_print_template(db: Session, template_id: int) -> bool:
+def delete_print_template(
+    db: Session, template_id: int, tenant_id: Optional[UUID] = None
+) -> bool:
     """Delete a print template"""
-    db_template = get_print_template(db, template_id)
+    db_template = get_print_template(db, template_id, tenant_id=tenant_id)
     if not db_template:
         return False
     db.delete(db_template)

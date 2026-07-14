@@ -118,5 +118,9 @@ async def get_current_user(
     # Check if user is deleted
     if user.deleted_at is not None:
         raise ErrorCodeException(status_code=401, error_code=ErrorCode.USER_NOT_FOUND)
+
+    # Deactivated users must not keep using active sessions.
+    if not user.is_active:
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.ACCESS_DENIED)
     
     return user

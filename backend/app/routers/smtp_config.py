@@ -22,6 +22,13 @@ router = APIRouter(
 )
 
 
+def _sanitize_smtp_config(config: TenantSMTPConfig) -> TenantSMTPConfigRead:
+    payload = TenantSMTPConfigRead.model_validate(config).model_dump()
+    if payload.get("password"):
+        payload["password"] = "********"
+    return TenantSMTPConfigRead(**payload)
+
+
 @router.get("", response_model=TenantSMTPConfigRead)
 def get_smtp_config(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
@@ -35,7 +42,7 @@ def get_smtp_config(
         raise ErrorCodeException(
             status_code=404, error_code=ErrorCode.SMTP_CONFIG_NOT_FOUND
         )
-    return config
+    return _sanitize_smtp_config(config)
 
 
 @router.post("", response_model=TenantSMTPConfigRead)
@@ -68,7 +75,7 @@ def set_smtp_config(
         
         db.commit()
         db.refresh(config)
-        return config
+        return _sanitize_smtp_config(config)
     except Exception as e:
         db.rollback()
         import logging

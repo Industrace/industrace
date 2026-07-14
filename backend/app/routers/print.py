@@ -83,9 +83,15 @@ def get_print_templates(
 
 
 @router.get("/templates/{template_id}", response_model=PrintTemplate)
-def get_print_template(template_id: int, db: Session = Depends(get_db)):
+def get_print_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Get a specific template"""
-    template = print_templates.get_print_template(db, template_id)
+    template = print_templates.get_print_template(
+        db, template_id, tenant_id=current_user.tenant_id
+    )
     if not template:
         raise ErrorCodeException(
             status_code=404, error_code=ErrorCode.PRINT_TEMPLATE_NOT_FOUND
@@ -112,7 +118,9 @@ def update_print_template(
     current_user: User = Depends(get_current_user),
 ):
     """Update an existing template"""
-    updated_template = print_templates.update_print_template(db, template_id, template)
+    updated_template = print_templates.update_print_template(
+        db, template_id, template, tenant_id=current_user.tenant_id
+    )
     if not updated_template:
         raise ErrorCodeException(
             status_code=404, error_code=ErrorCode.PRINT_TEMPLATE_NOT_FOUND
@@ -127,7 +135,9 @@ def delete_print_template(
     current_user: User = Depends(get_current_user),
 ):
     """Delete a template"""
-    success = print_templates.delete_print_template(db, template_id)
+    success = print_templates.delete_print_template(
+        db, template_id, tenant_id=current_user.tenant_id
+    )
     if not success:
         raise ErrorCodeException(
             status_code=404, error_code=ErrorCode.PRINT_TEMPLATE_NOT_FOUND
@@ -204,7 +214,11 @@ def generate_print(
     current_user: User = Depends(get_current_user),
 ):
     # Verify that the asset exists
-    asset = assets.get_asset(db, request.asset_id)
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == request.asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
     if not asset:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
 
@@ -216,7 +230,7 @@ def generate_print(
     try:
         template_id = int(request.template_id)
         # Search for the template in the database
-        template = get_print_template(db, template_id)
+        template = get_print_template(db, template_id, tenant_id=current_user.tenant_id)
 
     except (ValueError, TypeError):
         template = get_print_template_by_key(
@@ -262,7 +276,9 @@ def generate_print(
                 joinedload(Asset.security_zone),
                 joinedload(Asset.area),
             )
-            .filter(Asset.id == request.asset_id)
+            .filter(
+                Asset.id == request.asset_id, Asset.tenant_id == current_user.tenant_id
+            )
             .first()
         )
 
@@ -567,6 +583,13 @@ def download_print(
     history = print_history.get_print_history(db, print_id)
     if not history:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.PRINT_NOT_FOUND)
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == history.asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not asset:
+        raise ErrorCodeException(status_code=403, error_code=ErrorCode.ACCESS_DENIED)
 
     if not history.file_path or not os.path.exists(history.file_path):
         raise ErrorCodeException(
@@ -622,6 +645,13 @@ def get_print_history(
         skip=offset,
         limit=limit,
     )
+    allowed_asset_ids = {
+        asset_id
+        for (asset_id,) in db.query(Asset.id)
+        .filter(Asset.tenant_id == current_user.tenant_id)
+        .all()
+    }
+    history = [entry for entry in history if entry.asset_id in allowed_asset_ids]
 
     return history
 
@@ -652,7 +682,11 @@ def get_asset_print_data(
     current_user: User = Depends(get_current_user),
 ):
     """Get all the data necessary for the print of an asset"""
-    asset = assets.get_asset(db, asset_id)
+    asset = (
+        db.query(Asset)
+        .filter(Asset.id == asset_id, Asset.tenant_id == current_user.tenant_id)
+        .first()
+    )
     if not asset:
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
 

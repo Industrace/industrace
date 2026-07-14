@@ -64,6 +64,8 @@ logs/
 
 # Uploads (test data)
 uploads/
+backups/
+probe/probe_state.json
 
 # Test certificates
 test-certs/

@@ -37,6 +37,35 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+SSO_STATE_TTL_SECONDS = 600
+_SSO_STATE_STORE: dict[str, dict] = {}
+
+
+def _store_sso_state(state: str, code_verifier: str, tenant_id: uuid.UUID) -> None:
+    now = datetime.utcnow().timestamp()
+    # Cleanup expired entries opportunistically.
+    expired = [
+        key for key, value in _SSO_STATE_STORE.items() if value["expires_at"] <= now
+    ]
+    for key in expired:
+        _SSO_STATE_STORE.pop(key, None)
+
+    _SSO_STATE_STORE[state] = {
+        "code_verifier": code_verifier,
+        "tenant_id": str(tenant_id),
+        "expires_at": now + SSO_STATE_TTL_SECONDS,
+    }
+
+
+def _consume_sso_state(state: str) -> Optional[dict]:
+    now = datetime.utcnow().timestamp()
+    state_data = _SSO_STATE_STORE.pop(state, None)
+    if not state_data:
+        return None
+    if state_data["expires_at"] <= now:
+        return None
+    return state_data
+
 router = APIRouter(
     prefix="/auth/sso",
     tags=["sso"],
@@ -253,19 +282,15 @@ async def sso_authorize(
     state = SSOAuthService.generate_state()
     code_verifier, code_challenge = SSOAuthService.generate_pkce()
     
-    # Store state and code_verifier (in production, use Redis)
-    # For now, encode in state (not secure, but works for MVP)
-    # Format: base64(state|code_verifier|tenant_id)
-    import base64
-    state_data = f"{state}|{code_verifier}|{str(tenant_id)}"
-    encoded_state = base64.urlsafe_b64encode(state_data.encode()).decode()
+    # Store state + PKCE verifier server-side with TTL.
+    _store_sso_state(state, code_verifier, tenant_id)
     
     redirect_uri = redirect_uri or sso_config.redirect_uri or settings.SSO_REDIRECT_URI
     
     auth_url = SSOAuthService.get_authorization_url(
         sso_config,
         redirect_uri,
-        encoded_state,  # Use encoded state
+        state,
         code_challenge
     )
     
@@ -290,21 +315,16 @@ async def sso_callback(
         redirect_url = f"{frontend_url}/auth/sso/error?error={error}"
         return RedirectResponse(url=redirect_url)
     
-    # Decode state to get code_verifier and tenant_id
-    try:
-        import base64
-        state_data = base64.urlsafe_b64decode(state.encode()).decode()
-        state_parts = state_data.split("|")
-        if len(state_parts) != 3:
-            raise ValueError("Invalid state format")
-        original_state, code_verifier, tenant_id_str = state_parts
-        tenant_id = uuid.UUID(tenant_id_str)
-        logger.info(f"Decoded state successfully for tenant {tenant_id}")
-    except Exception as e:
-        logger.error(f"Failed to decode state: {e}")
+    # Resolve state from server-side store (single use).
+    state_payload = _consume_sso_state(state)
+    if not state_payload:
+        logger.error("Missing or expired SSO state")
         frontend_url = settings.SSO_REDIRECT_URI.replace("/auth/sso/callback", "")
         redirect_url = f"{frontend_url}/auth/sso/error?error=Invalid+state+parameter"
         return RedirectResponse(url=redirect_url)
+    code_verifier = state_payload["code_verifier"]
+    tenant_id = uuid.UUID(state_payload["tenant_id"])
+    logger.info(f"Resolved SSO state successfully for tenant {tenant_id}")
     
     sso_config = crud_sso.get_sso_config(db, tenant_id)
     if not sso_config or not sso_config.enabled:
