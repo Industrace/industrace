@@ -570,14 +570,11 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    """Health check endpoint"""
-    from datetime import datetime
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "version": "2.1.1",
-        "environment": settings.ENVIRONMENT
-    }
+    """Health check endpoint with database and Redis dependency probes."""
+    from app.services.health_check import build_health_payload
+
+    payload, status_code = build_health_payload()
+    return JSONResponse(content=payload, status_code=status_code)
 
 
 @app.post("/admin/seed-demo-data")

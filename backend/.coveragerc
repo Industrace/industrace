@@ -1,0 +1,14 @@
+[run]
+source = app
+
+[report]
+precision = 1
+show_missing = True
+fail_under = 40
+include =
+    app/services/auth.py
+    app/services/rbac_permissions.py
+    app/services/network_probe_service.py
+    app/services/sso_state_store.py
+    app/services/rate_limiter.py
+    app/services/health_check.py

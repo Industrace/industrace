@@ -12,6 +12,13 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql+psycopg2://cmdb_user:secure_password_123@localhost:5432/cmdb_ics"
 )
 
+_connect_args: dict = {}
+if DATABASE_URL.startswith("postgresql"):
+    _connect_args = {
+        "connect_timeout": 10,
+        "options": "-c statement_timeout=30000",
+    }
+
 # Configure engine with connection pool settings for better reliability
 # Increased pool size to handle initialization and concurrent requests
 engine = create_engine(
@@ -23,10 +30,7 @@ engine = create_engine(
     pool_recycle=3600,  # Recycle connections after 1 hour
     pool_timeout=60,  # Increased timeout to 60 seconds
     echo=False,
-    connect_args={
-        "connect_timeout": 10,
-        "options": "-c statement_timeout=30000"  # 30 seconds query timeout
-    }
+    connect_args=_connect_args,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

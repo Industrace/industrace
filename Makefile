@@ -125,12 +125,13 @@ prod:
 		else \
 			echo "ENCRYPTION_KEY=$$ENCRYPTION_KEY" >> .env.prod; \
 		fi; \
-		if ! grep -q "^SETUP_TOKEN=" .env.prod 2>/dev/null; then \
-			echo "SETUP_TOKEN=$$(openssl rand -hex 32)" >> .env.prod; \
-		fi; \
 		if ! grep -q "^EXTERNAL_API_DOCS_ENABLED=" .env.prod 2>/dev/null; then \
 			echo "EXTERNAL_API_DOCS_ENABLED=false" >> .env.prod; \
 		fi; \
+	fi
+	@if ! grep -q "^SETUP_TOKEN=" .env.prod 2>/dev/null; then \
+		echo "🔐 Generating SETUP_TOKEN for production setup wizard..."; \
+		echo "SETUP_TOKEN=$$(openssl rand -hex 32)" >> .env.prod; \
 	fi
 	docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d
 	@echo "⏳ Waiting for services to start..."
@@ -198,7 +199,7 @@ test:
 		-e DATABASE_URL=sqlite:///:memory: \
 		-e SECRET_KEY=test-secret-key \
 		-e ENVIRONMENT=development \
-		backend pytest tests/ --cov=app --cov-report=term-missing --cov-fail-under=0 -q
+		backend pytest tests/ --cov=app --cov-config=.coveragerc --cov-report=term-missing -q
 
 # Run tests in production container (legacy)
 test-prod:

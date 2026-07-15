@@ -32,6 +32,12 @@ services:
     expose:
       - "5432"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U industrace_user -d industrace"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   backend:
     build: ./backend
@@ -53,13 +59,27 @@ services:
       # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
       # Set in your .env file or environment variables
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - SETUP_TOKEN=${SETUP_TOKEN}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - industrace-network
     expose:
       - "8000"
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5); sys.exit(0 if r.status==200 else 1)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
     build: 
