@@ -13,6 +13,10 @@ from app.models.requirement_enhancement import RequirementEnhancement
 from app.models.sr_assessment import SRAssessment
 from app.models.network_probe import NetworkProbe, ProbeHeartbeat, ProbeDataTransmission
 from app.models.discovered_device import DiscoveredDevice
+from app.models.asset import Asset
+from app.models.asset_interface import AssetInterface
+from app.models.asset_type import AssetType
+from app.models.asset_status import AssetStatus
 
 
 def _sqlite_jsonb_compat(tables, url: str) -> None:
@@ -40,6 +44,10 @@ def db_session():
         ProbeHeartbeat.__table__,
         ProbeDataTransmission.__table__,
         DiscoveredDevice.__table__,
+        AssetType.__table__,
+        AssetStatus.__table__,
+        Asset.__table__,
+        AssetInterface.__table__,
     ]
     _sqlite_jsonb_compat(tables, url)
     Base.metadata.create_all(bind=engine, tables=tables)

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, false
+from sqlalchemy import and_, or_
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, timezone
@@ -23,8 +23,9 @@ from app.schemas.discovered_device import (
     DiscoveredDeviceUpdate,
     DiscoveredDeviceOnboardRequest,
     DiscoveredDeviceOnboardResponse,
-    DiscoveredDeviceMatchCandidate,
+    DiscoveredDeviceMatchesResponse,
 )
+from app.services.discovered_device_service import DiscoveredDeviceService
 from app.services.oui_lookup import lookup_vendor_by_mac
 from app.services.audit_decorator import audit_log_action
 
@@ -75,77 +76,14 @@ async def list_discovered_devices(
     tenant_id = current_user.tenant_id
     macs = {d.mac_address for d in devices if d.mac_address}
     ips = {ip for d in devices for ip in (d.ip_addresses or []) if ip}
-
-    candidate_interfaces_query = (
-        db.query(AssetInterface, Asset)
-        .join(
-            Asset,
-            and_(Asset.id == AssetInterface.asset_id, Asset.deleted_at.is_(None)),
-        )
-        .filter(Asset.tenant_id == tenant_id, AssetInterface.tenant_id == tenant_id)
+    mac_matches, ip_matches = DiscoveredDeviceService.build_candidate_maps(
+        db, tenant_id, macs, ips
     )
-    if macs or ips:
-        candidate_interfaces_query = candidate_interfaces_query.filter(
-            or_(
-                AssetInterface.mac_address.in_(list(macs)) if macs else false(),
-                AssetInterface.ip_address.in_(list(ips)) if ips else false(),
-            )
-        )
-    candidate_rows = candidate_interfaces_query.all()
-
-    mac_matches: dict = {}
-    ip_matches: dict = {}
-    for iface, asset in candidate_rows:
-        if iface.mac_address:
-            mac_key = iface.mac_address.lower()
-            mac_matches.setdefault(mac_key, []).append((iface, asset))
-        if iface.ip_address:
-            ip_matches.setdefault(iface.ip_address, []).append((iface, asset))
 
     response = []
     for device in devices:
-        unique_possible = []
-        seen = set()
-
-        if device.mac_address:
-            for iface, asset in mac_matches.get(device.mac_address.lower(), []):
-                key = (str(asset.id), "mac", None, iface.mac_address)
-                if key in seen:
-                    continue
-                seen.add(key)
-                unique_possible.append(
-                    DiscoveredDeviceMatchCandidate(
-                        asset_id=asset.id,
-                        asset_name=asset.name,
-                        match_type="mac",
-                        matched_mac=iface.mac_address,
-                        matched_ip=None,
-                    )
-                )
-
-        for ip in device.ip_addresses or []:
-            for iface, asset in ip_matches.get(ip, []):
-                key = (str(asset.id), "ip", ip, iface.mac_address)
-                if key in seen:
-                    continue
-                seen.add(key)
-                unique_possible.append(
-                    DiscoveredDeviceMatchCandidate(
-                        asset_id=asset.id,
-                        asset_name=asset.name,
-                        match_type="ip",
-                        matched_mac=None,
-                        matched_ip=ip,
-                    )
-                )
-
-        best_match = None
-        for candidate in unique_possible:
-            if candidate.match_type == "mac":
-                best_match = candidate
-                break
-        if not best_match and unique_possible:
-            best_match = unique_possible[0]
+        unique_possible = DiscoveredDeviceService.build_match_candidates(device, mac_matches, ip_matches)
+        best_match = DiscoveredDeviceService.select_best_match(unique_possible)
 
         payload = DiscoveredDeviceRead.model_validate(device).model_dump()
         payload["vendor"] = lookup_vendor_by_mac(device.mac_address, default=device.vendor or "Unknown Vendor")
@@ -172,6 +110,18 @@ async def get_discovered_device(
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dispositivo non trovato")
     return device
+
+
+@router.get("/{device_id}/matches", response_model=DiscoveredDeviceMatchesResponse)
+async def get_discovered_device_matches(
+    device_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    data = DiscoveredDeviceService.find_matches_for_device(db, current_user.tenant_id, device_id)
+    if not data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dispositivo non trovato")
+    return data
 
 
 @router.put("/{device_id}", response_model=DiscoveredDeviceRead)

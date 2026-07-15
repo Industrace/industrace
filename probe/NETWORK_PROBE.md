@@ -2,7 +2,7 @@
 
 Distributed passive network discovery for **Industrace 2.1+**. Probes observe industrial traffic on a network segment and report metadata (devices, protocols, connections) to the Industrace backend — without storing full packet payloads.
 
-**Status:** MVP shipped in v2.1.0. This document is the single reference for operations, architecture, API, security, and residual backlog.
+**Status:** Pilot-stable (v2.2). MVP shipped in v2.1.0; statistics/matches API and operational runbook completed for pilot deployments. See [RUNBOOK.md](RUNBOOK.md) for day-2 operations.
 
 ---
 
@@ -236,6 +236,7 @@ Base paths are mounted under `/api` by the FastAPI app. User endpoints require J
 | `PUT` | `/network-probes/{probe_id}` | Update probe configuration |
 | `DELETE` | `/network-probes/{probe_id}` | Delete probe |
 | `GET` | `/network-probes/{probe_id}/status` | Probe status summary |
+| `GET` | `/network-probes/{probe_id}/statistics` | Aggregated telemetry (`time_range`: `24h`, `7d`, `30d`) |
 | `POST` | `/network-probes/{probe_id}/deauthorize` | Invalidate API key |
 
 ### Probe client (X-API-Key)
@@ -252,10 +253,9 @@ Base paths are mounted under `/api` by the FastAPI app. User endpoints require J
 |--------|------|-------------|
 | `GET` | `/discovered-devices` | List with filters; enriches `possible_matches` / `best_match_*` |
 | `GET` | `/discovered-devices/{device_id}` | Device details |
+| `GET` | `/discovered-devices/{device_id}/matches` | Asset match candidates (MAC preferred over IP) |
 | `PUT` | `/discovered-devices/{device_id}` | Update status, notes, `matched_asset_id` (assign/ignore) |
 | `POST` | `/discovered-devices/{device_id}/onboard` | Create asset from discovery |
-
-**Not implemented** (do not rely on these): `GET /network-probes/{probe_id}/statistics`, `GET /discovered-devices/{device_id}/matches`.
 
 See [API.md](../docs/API.md) for general REST conventions.
 
@@ -290,7 +290,7 @@ sudo setcap cap_net_raw,cap_net_admin=eip $(which python3)
 
 ---
 
-## 7. Implementation status (MVP)
+## 7. Implementation status (pilot-stable)
 
 | Phase | Scope | Status |
 |-------|-------|--------|
@@ -298,7 +298,8 @@ sudo setcap cap_net_raw,cap_net_admin=eip $(which python3)
 | 1 | Backend routers, service, auth, MAC dedup, rate limits | Done |
 | 2 | Frontend `NetworkProbes.vue`, `DiscoveredDevices.vue`, i18n en/it | Done |
 | 3 | Client hardening (header auth, TLS-only, 429 backoff, 401 stop) | Done |
-| 4 | Tests (`test_probe_auth`, `test_network_probe_service`, …), docs, retention | Done |
+| 4 | Tests, docs, retention | Done |
+| 5 | Statistics + matches API, runbook, pilot-stable hardening | Done |
 
 ### Completed checklist (P0–P2)
 
@@ -310,7 +311,8 @@ sudo setcap cap_net_raw,cap_net_admin=eip $(which python3)
 - FE/BE alignment on `data_transmission_interval` (60–3600s)
 - Matching optimization (hash map MAC/IP in list endpoint)
 - Telemetry retention job
-- Backend probe tests (11 tests in `test_network_probe_service.py`)
+- Backend probe tests (`test_network_probe_service.py`, `test_probe_pilot_stable.py`)
+- Operational runbook: [RUNBOOK.md](RUNBOOK.md)
 
 ---
 
@@ -424,7 +426,7 @@ openssl s_client -connect your-server.com:443
 
 List interfaces with `ip link show` (Linux) or `ifconfig` (macOS). On macOS use patterns from `probe-test-macos.conf` in the repo.
 
-For general Industrace server issues see [troubleshooting.md](../docs/troubleshooting.md).
+For general Industrace server issues see [troubleshooting.md](../docs/troubleshooting.md). For day-2 operations and incident response see [RUNBOOK.md](RUNBOOK.md).
 
 ---
 

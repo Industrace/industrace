@@ -1054,6 +1054,9 @@ export default {
   getNetworkProbeStatus(probeId) {
     return api.get(`/network-probes/${probeId}/status`)
   },
+  getNetworkProbeStatistics(probeId, timeRange = '7d') {
+    return api.get(`/network-probes/${probeId}/statistics`, { params: { time_range: timeRange } })
+  },
   getNetworkProbeConfiguration(probeId, apiKey) {
     return api.get(`/network-probes/configuration/${probeId}`, {
       headers: { 'X-API-Key': apiKey }
@@ -1065,6 +1068,9 @@ export default {
   },
   getDiscoveredDevices(params = {}) {
     return api.get('/discovered-devices', { params })
+  },
+  getDiscoveredDeviceMatches(deviceId) {
+    return api.get(`/discovered-devices/${deviceId}/matches`)
   },
   updateDiscoveredDevice(deviceId, updateData) {
     return api.put(`/discovered-devices/${deviceId}`, updateData)

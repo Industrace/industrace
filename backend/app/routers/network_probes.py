@@ -24,6 +24,7 @@ from app.schemas.network_probe import (
     ProbeDataTransmissionCreate,
     ProbeStatusResponse,
     ProbeConfigurationResponse,
+    ProbeStatisticsResponse,
 )
 
 
@@ -208,6 +209,25 @@ async def get_probe_status(
     perm=Depends(require_permission("network_probes", 1)),
 ):
     data = NetworkProbeService.get_probe_status(db, probe_id, current_user.tenant_id)
+    if not data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sonda non trovata")
+    return data
+
+
+@router.get("/{probe_id}/statistics", response_model=ProbeStatisticsResponse)
+async def get_probe_statistics(
+    probe_id: UUID,
+    time_range: str = Query("7d", pattern=r"^\d+[hd]$"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    perm=Depends(require_permission("network_probes", 1)),
+):
+    data = NetworkProbeService.get_probe_statistics(
+        db,
+        probe_id,
+        current_user.tenant_id,
+        time_range=time_range,
+    )
     if not data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sonda non trovata")
     return data

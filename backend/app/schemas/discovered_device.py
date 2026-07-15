@@ -100,3 +100,11 @@ class DeviceMatchingResponse(BaseModel):
     matched_asset_id: Optional[uuid.UUID] = None
     match_confidence: int = 0
     match_reason: Optional[str] = None
+
+
+class DiscoveredDeviceMatchesResponse(BaseModel):
+    device_id: uuid.UUID
+    possible_matches: List[DiscoveredDeviceMatchCandidate] = Field(default_factory=list)
+    best_match_asset_id: Optional[uuid.UUID] = None
+    best_match_asset_name: Optional[str] = None
+    best_match_type: Optional[str] = None

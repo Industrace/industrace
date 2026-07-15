@@ -361,6 +361,103 @@ class NetworkProbeService:
         return max(0.0, score)
 
     @staticmethod
+    def _parse_probe_time_range(time_range: str) -> timedelta:
+        normalized = (time_range or "7d").strip().lower()
+        if normalized.endswith("h"):
+            return timedelta(hours=max(1, int(normalized[:-1])))
+        if normalized.endswith("d"):
+            return timedelta(days=max(1, int(normalized[:-1])))
+        return timedelta(days=7)
+
+    @staticmethod
+    def get_probe_statistics(
+        db: Session,
+        probe_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        time_range: str = "7d",
+    ) -> Optional[Dict[str, Any]]:
+        probe = NetworkProbeService.get_probe_by_id(db, probe_id, tenant_id)
+        if not probe:
+            return None
+
+        window = NetworkProbeService._parse_probe_time_range(time_range)
+        cutoff = datetime.now(timezone.utc) - window
+
+        heartbeats = (
+            db.query(ProbeHeartbeat)
+            .filter(ProbeHeartbeat.probe_id == probe_id, ProbeHeartbeat.timestamp >= cutoff)
+            .order_by(desc(ProbeHeartbeat.timestamp))
+            .all()
+        )
+        transmissions = (
+            db.query(ProbeDataTransmission)
+            .filter(ProbeDataTransmission.probe_id == probe_id, ProbeDataTransmission.timestamp >= cutoff)
+            .order_by(desc(ProbeDataTransmission.timestamp))
+            .all()
+        )
+
+        protocol_distribution: Dict[str, int] = {}
+        for tx in transmissions:
+            breakdown = tx.protocol_breakdown or {}
+            for proto, count in breakdown.items():
+                if isinstance(count, (int, float)):
+                    protocol_distribution[str(proto)] = protocol_distribution.get(str(proto), 0) + int(count)
+
+        if not protocol_distribution:
+            devices = (
+                db.query(DiscoveredDevice)
+                .filter(DiscoveredDevice.probe_id == probe_id, DiscoveredDevice.tenant_id == tenant_id)
+                .all()
+            )
+            for device in devices:
+                for proto in device.protocols or []:
+                    protocol_distribution[str(proto)] = protocol_distribution.get(str(proto), 0) + 1
+
+        traffic_volume: Dict[str, float] = {}
+        heartbeat_interval = probe.heartbeat_interval or 30
+        for hb in heartbeats:
+            if hb.bytes_per_second is None or not hb.timestamp:
+                continue
+            day_key = hb.timestamp.date().isoformat()
+            traffic_volume[day_key] = traffic_volume.get(day_key, 0.0) + float(hb.bytes_per_second * heartbeat_interval)
+
+        def _avg(values: List[Optional[float]]) -> float:
+            nums = [float(v) for v in values if v is not None]
+            return sum(nums) / len(nums) if nums else 0.0
+
+        performance_metrics = {
+            "cpu_usage_avg": round(_avg([hb.cpu_usage for hb in heartbeats]), 2),
+            "memory_usage_avg": round(_avg([hb.memory_usage for hb in heartbeats]), 2),
+            "disk_usage_avg": round(_avg([hb.disk_usage for hb in heartbeats]), 2),
+            "packets_per_second_avg": round(_avg([hb.packets_per_second for hb in heartbeats]), 2),
+            "bytes_per_second_avg": round(_avg([hb.bytes_per_second for hb in heartbeats]), 2),
+            "heartbeat_count": float(len(heartbeats)),
+            "transmission_count": float(len(transmissions)),
+        }
+
+        if heartbeats:
+            errors = sum(hb.error_count or 0 for hb in heartbeats)
+            error_rate = errors / len(heartbeats)
+        elif transmissions:
+            failed = len([tx for tx in transmissions if tx.status == "failed"])
+            error_rate = failed / len(transmissions)
+        else:
+            error_rate = 0.0
+
+        return {
+            "probe_id": probe.id,
+            "time_range": time_range,
+            "total_packets": int(probe.total_packets_captured or 0),
+            "total_bytes": int(probe.total_bytes_processed or 0),
+            "unique_devices": int(probe.unique_devices_seen or 0),
+            "active_connections": int(probe.active_connections or 0),
+            "protocol_distribution": protocol_distribution,
+            "traffic_volume": traffic_volume,
+            "error_rate": round(error_rate, 4),
+            "performance_metrics": performance_metrics,
+        }
+
+    @staticmethod
     def get_tenant_probes_overview(db: Session, tenant_id: uuid.UUID) -> Dict[str, Any]:
         probes = NetworkProbeService.get_probes_by_tenant(db, tenant_id)
 

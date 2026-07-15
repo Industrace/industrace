@@ -132,6 +132,7 @@ docker run -d --name network-probe --privileged --network host \
 | `Dockerfile.probe` | Container image |
 | `docker-compose.probes.yml` | Multi-probe compose example |
 | `tests/` | Client unit tests |
+| `RUNBOOK.md` | Operational runbook (pilot) |
 | `README.md` | Module map (this file) |
 | `NETWORK_PROBE.md` | Full operations guide |
 
