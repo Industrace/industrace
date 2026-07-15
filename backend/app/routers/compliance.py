@@ -333,8 +333,10 @@ def get_sr_involved_assets(
         raise ErrorCodeException(status_code=404, error_code=ErrorCode.ASSET_NOT_FOUND)
     
     # Get assets in the zone
+    from sqlalchemy.orm import joinedload
     zone_assets = (
         db.query(Asset)
+        .options(joinedload(Asset.asset_type))
         .join(AssetZoneMembership, Asset.id == AssetZoneMembership.asset_id)
         .filter(
             AssetZoneMembership.security_zone_id == zone_id,
@@ -344,8 +346,99 @@ def get_sr_involved_assets(
         )
         .all()
     )
-    
-    return [{'id': str(asset.id), 'name': asset.name} for asset in zone_assets]
+
+    sr = db.query(SecurityRequirement).filter(SecurityRequirement.id == sr_id).first()
+    sr_capabilities = []
+    if sr:
+        sr_capabilities = (
+            db.query(SRCapability)
+            .join(SecurityCapability, SRCapability.capability_id == SecurityCapability.id)
+            .filter(SRCapability.sr_id == sr_id)
+            .all()
+        )
+
+    required_caps = [
+        {
+            'capability_id': str(sc.capability_id),
+            'code': sc.capability.code,
+            'name': sc.capability.name,
+            'importance': sc.importance,
+            'applies_to_asset': sc.capability.applies_to_asset,
+            'applies_to_conduit': sc.capability.applies_to_conduit,
+            'typical_roles': sc.capability.typical_roles or [],
+        }
+        for sc in sr_capabilities
+    ]
+
+    asset_ids = [asset.id for asset in zone_assets]
+    asset_capabilities_map = {}
+    if asset_ids:
+        try:
+            asset_caps = (
+                db.query(AssetCapability)
+                .join(SecurityCapability, AssetCapability.capability_id == SecurityCapability.id)
+                .filter(
+                    AssetCapability.asset_id.in_(asset_ids),
+                    AssetCapability.tenant_id == current_user.tenant_id
+                )
+                .all()
+            )
+            for ac in asset_caps:
+                asset_capabilities_map.setdefault(ac.asset_id, []).append({
+                    'capability_id': str(ac.capability_id),
+                    'code': ac.capability.code,
+                    'name': ac.capability.name,
+                    'support_level': ac.support_level,
+                })
+        except Exception:
+            asset_capabilities_map = {}
+
+    def asset_type_matches(asset_type_name, typical_roles):
+        if not asset_type_name or not typical_roles:
+            return False
+        normalized = asset_type_name.lower().replace(' ', '').replace('-', '').replace('_', '')
+        for role in typical_roles:
+            role_normalized = role.lower().replace(' ', '').replace('-', '').replace('_', '')
+            if role_normalized in normalized or normalized in role_normalized:
+                return True
+        return False
+
+    def is_relevant(asset):
+        asset_type_name = asset.asset_type.name if asset.asset_type else None
+        asset_caps = asset_capabilities_map.get(asset.id, [])
+        for req_cap in required_caps:
+            if not req_cap.get('applies_to_asset'):
+                continue
+            if any(ac.get('capability_id') == req_cap.get('capability_id') for ac in asset_caps):
+                return True
+            if asset_type_name and asset_type_matches(asset_type_name, req_cap.get('typical_roles')):
+                return True
+        if not required_caps:
+            return True
+        fr_match = re.search(r'SR\s*(\d+)', sr.requirement_id or '', re.IGNORECASE) if sr else None
+        fr = int(fr_match.group(1)) if fr_match else None
+        asset_type = (asset_type_name or '').lower()
+        if fr == 1:
+            return asset.remote_access or any(k in asset_type for k in ('hmi', 'engineering', 'workstation', 'server', 'scada'))
+        if fr == 2:
+            return asset.remote_access or any(k in asset_type for k in ('hmi', 'plc', 'engineering', 'server', 'workstation'))
+        if fr == 5:
+            return any(k in asset_type for k in ('firewall', 'router', 'switch', 'gateway', 'diode', 'dmz'))
+        return False
+
+    relevant_assets = [asset for asset in zone_assets if is_relevant(asset)] if sr else zone_assets
+
+    return [{
+        'id': str(asset.id),
+        'name': asset.name,
+        'asset_type': asset.asset_type.name if asset.asset_type else None,
+        'remote_access': asset.remote_access,
+        'remote_access_type': asset.remote_access_type,
+        'business_criticality': asset.business_criticality,
+        'custom_fields': asset.custom_fields or {},
+        'firmware_version': asset.firmware_version,
+        'last_update_date': asset.last_update_date.isoformat() if asset.last_update_date else None,
+    } for asset in relevant_assets]
 
 
 @router.get("/zone/{zone_id}/sr/{sr_id}/conduits", response_model=List[dict])

@@ -294,6 +294,9 @@
     "sessionLockSupported": "Session lock supportato",
     "remoteAccess": "Accesso remoto",
     "remoteAccessType": "Tipo di accesso remoto",
+    "centralizedLogging": "Log centralizzati",
+    "redundancy": "Ridondanza",
+    "lastUpdate": "Ultimo aggiornamento",
     "errorLoadingSRDetails": "Errore nel caricamento dei dettagli del Security Requirement",
     "typicallyInvolves": "Tipicamente coinvolge",
     "fr1": {

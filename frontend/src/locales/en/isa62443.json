@@ -289,6 +289,9 @@
     "sessionLockSupported": "Session lock supported",
     "remoteAccess": "Remote access",
     "remoteAccessType": "Remote access type",
+    "centralizedLogging": "Centralized logging",
+    "redundancy": "Redundancy",
+    "lastUpdate": "Last update",
     "errorLoadingSRDetails": "Error loading Security Requirement details",
     "typicallyInvolves": "Typically involves",
     "fr1": {

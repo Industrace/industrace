@@ -578,17 +578,33 @@
                   <i class="pi pi-server mr-2"></i>
                   {{ t('isa62443.compliance.involvedAssets') }}
                 </h4>
-                <div v-if="selectedSRAssets.length === 0" class="text-muted">
+                <div v-if="displayedSRAssets.length === 0" class="text-muted">
                   {{ t('isa62443.compliance.noAssets') }}
                 </div>
                 <div v-else class="sr-assets-list">
                   <div 
-                    v-for="asset in selectedSRAssets" 
+                    v-for="asset in displayedSRAssets" 
                     :key="asset.id"
                     class="sr-asset-item"
                     @click="goToAsset(asset.id)"
                   >
-                    {{ asset.name }}
+                    <div class="font-semibold">{{ asset.name }}</div>
+                    <small v-if="asset.asset_type" class="text-muted">{{ asset.asset_type }}</small>
+                    <div
+                      v-if="Object.keys(getAssetTechnicalCharacteristics(asset)).length"
+                      class="sr-asset-technical-characteristics mt-2"
+                    >
+                      <div
+                        v-for="(value, label) in getAssetTechnicalCharacteristics(asset)"
+                        :key="label"
+                        class="sr-asset-characteristic-item"
+                      >
+                        <span class="sr-characteristic-label">{{ label }}:</span>
+                        <span class="sr-characteristic-value" :class="getCharacteristicValueClass(value)">
+                          {{ formatCharacteristicValue(value) }}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -654,6 +670,10 @@ import Tag from 'primevue/tag'
 import Divider from 'primevue/divider'
 import api from '@/api/api'
 import EvidenceList from './EvidenceList.vue'
+import {
+  getAssetTechnicalCharacteristics as buildAssetCharacteristics,
+  mergeSrAssetLists,
+} from '@/utils/srAssetRelevance'
 
 const props = defineProps({
   zone: {
@@ -743,6 +763,16 @@ const canSaveAssessment = computed(() => {
   return (
     assessmentStatus.value &&
     (assessmentStatus.value === 'compliant' || assessmentJustification.value.trim())
+  )
+})
+
+const displayedSRAssets = computed(() => {
+  if (!selectedSR.value) return []
+  return mergeSrAssetLists(
+    assessmentData.value?.available_evidence?.assets,
+    selectedSRAssets.value,
+    selectedSR.value,
+    assessmentData.value
   )
 })
 
@@ -1054,7 +1084,12 @@ async function selectSecurityRequirement(sr) {
         api.getSRInvolvedAssets(props.zone.id, sr.id),
         api.getSRInvolvedConduits(props.zone.id, sr.id)
       ])
-      selectedSRAssets.value = assetsRes.data || []
+      selectedSRAssets.value = mergeSrAssetLists(
+        assessmentData.value?.available_evidence?.assets,
+        assetsRes.data || [],
+        sr,
+        assessmentData.value
+      )
       selectedSRConduits.value = conduitsRes.data || []
     } catch (legacyError) {
       console.warn('Error loading legacy SR details:', legacyError)
@@ -1225,31 +1260,7 @@ function onApplicabilityChange() {
 
 // Ottiene le caratteristiche tecniche osservabili per un asset in base all'SR
 function getAssetTechnicalCharacteristics(asset) {
-  // TODO: Implementare logica specifica per SR
-  // Per ora, mostriamo caratteristiche generiche basate sui dati dell'asset
-  const characteristics = {}
-  
-  // Esempio per SR 2.5 (Session Lock) - da estendere con logica SR-specific
-  if (selectedSR.value?.requirement_id?.includes('2.5')) {
-    // Per SR 2.5, mostriamo caratteristiche relative a sessioni interattive
-    characteristics[t('isa62443.compliance.interactiveSessions')] = asset.remote_access ? 'YES' : 'NO'
-    characteristics[t('isa62443.compliance.sessionLockSupported')] = asset.custom_fields?.session_lock_supported ? 'YES' : 'NO'
-  } else {
-    // Caratteristiche generiche per altri SR
-    characteristics[t('isa62443.compliance.remoteAccess')] = asset.remote_access ? 'YES' : 'NO'
-    if (asset.remote_access) {
-      characteristics[t('isa62443.compliance.remoteAccessType')] = asset.remote_access_type || 'none'
-    }
-  }
-  
-  return characteristics
-}
-
-function isAssetRelevantForSR(asset) {
-  // TODO: Implementare logica per determinare se un asset è rilevante per l'SR
-  // Per ora, assumiamo che tutti gli asset siano rilevanti
-  const characteristics = getAssetTechnicalCharacteristics(asset)
-  return Object.keys(characteristics).length > 0
+  return buildAssetCharacteristics(asset, selectedSR.value, t)
 }
 
 function formatCharacteristicValue(value) {
