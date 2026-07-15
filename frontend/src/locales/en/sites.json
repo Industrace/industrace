@@ -30,6 +30,21 @@
         "reviewIntervalMonths": "Review interval (months)",
         "reviewIntervalMonthsHint": "Optional override of tenant default"
     },
+    "siteImport": {
+        "title": "Import Sites",
+        "downloadTemplate": "Download Template",
+        "importantInfo": "Important Information",
+        "nameRequired": "Name is required",
+        "codeRequired": "Code is required",
+        "tipText": "Use parent_code to link a site to an existing parent site by code.",
+        "toCreate": "To Create",
+        "toUpdate": "To Update",
+        "errors": "Errors",
+        "row": "Row",
+        "confirm": "Confirm",
+        "readError": "Error reading file",
+        "differences": "Differences"
+    },
     "strings": {
         "select": "Select",
         "info": "Information"

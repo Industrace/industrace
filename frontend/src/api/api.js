@@ -923,6 +923,57 @@ export default {
   exportManufacturersCsv() {
     return api.get('/manufacturers/export', { responseType: 'blob' });
   },
+  exportUsersCsv() {
+    return api.get('/users/export', { responseType: 'blob' });
+  },
+  previewUserImportXlsx(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/users/import/xlsx/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  confirmUserImportXlsx(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/users/import/xlsx/confirm', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  exportSitesCsv() {
+    return api.get('/sites/export', { responseType: 'blob' });
+  },
+  previewSiteImportXlsx(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/sites/import/xlsx/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  confirmSiteImportXlsx(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/sites/import/xlsx/confirm', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  exportLocationsCsv() {
+    return api.get('/locations/export', { responseType: 'blob' });
+  },
+  previewLocationImportXlsx(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/locations/import/xlsx/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  confirmLocationImportXlsx(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/locations/import/xlsx/confirm', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   previewManufacturerImportXlsx(file) {
     const formData = new FormData();
     formData.append('file', file);

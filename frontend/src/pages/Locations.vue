@@ -10,6 +10,20 @@
           severity="success"
           @click="openCreateDialog" 
         />
+        <Button 
+          v-if="!trashMode && canWrite('locations')"
+          :label="t('common.actions.import')" 
+          icon="pi pi-upload" 
+          severity="info"
+          @click="showImportDialog = true" 
+        />
+        <Button 
+          v-if="!trashMode"
+          :label="t('common.actions.exportCsv')" 
+          icon="pi pi-file-excel" 
+          severity="secondary"
+          @click="exportCsv" 
+        />
 
         <div class="w-px h-8 bg-gray-300 mx-2"></div>
 
@@ -189,7 +203,12 @@
       </div>
     </BaseDialog>
 
-    <!-- TODO: Implementare LocationImportDialog -->
+    <LocationImportDialog
+      :visible="showImportDialog"
+      @close="showImportDialog = false"
+      @imported="onLocationImport"
+    />
+
     <BaseDialog
       v-model:visible="showFloorplanDialog"
       :title="t('locations.fields.floorplan')"
@@ -299,6 +318,7 @@ import Dropdown from 'primevue/dropdown'
 import InputText from 'primevue/inputtext'
 import Image from 'primevue/image'
 import Tag from 'primevue/tag'
+import LocationImportDialog from '../components/dialogs/LocationImportDialog.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -350,6 +370,7 @@ const bulkData = ref({
 
 // Floorplan
 const showFloorplanDialog = ref(false)
+const showImportDialog = ref(false)
 const selectedFloorplan = ref(null)
 
 const columnOptions = computed(() => {
@@ -659,7 +680,7 @@ async function exportCsv() {
     link.remove();
     window.URL.revokeObjectURL(url);
   } catch (e) {
-    alert('Errore durante l\'esportazione CSV');
+    alert(t('common.messages.exportError'));
   }
 }
 

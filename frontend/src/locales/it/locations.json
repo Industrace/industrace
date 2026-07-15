@@ -25,6 +25,21 @@
         "area": "Area",
         "name": "Nome Posizione"
     },
+    "locationImport": {
+        "title": "Importa Posizioni",
+        "downloadTemplate": "Scarica Template",
+        "importantInfo": "Informazioni importanti",
+        "siteCodeRequired": "Il codice sito è obbligatorio",
+        "nameRequired": "Il nome è obbligatorio",
+        "tipText": "La colonna area deve corrispondere a un'area esistente nel sito.",
+        "toCreate": "Da creare",
+        "toUpdate": "Da aggiornare",
+        "errors": "Errori",
+        "row": "Riga",
+        "confirm": "Conferma",
+        "readError": "Errore nella lettura del file",
+        "differences": "Differenze"
+    },
     "strings": {
         "select": "Seleziona",
         "info": "Informazioni",

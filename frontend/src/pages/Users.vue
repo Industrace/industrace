@@ -16,9 +16,20 @@
           severity="success"
           @click="openCreateDialog" 
         />
-        <!-- RIMOSSO: Bottone Import -->
-        <!-- RIMOSSO: Bottone Export CSV -->
-        <!-- Separatore visivo -->
+        <Button 
+          v-if="!trashMode && canWrite('users')"
+          :label="t('common.actions.import')" 
+          icon="pi pi-upload" 
+          severity="info"
+          @click="showImportDialog = true" 
+        />
+        <Button 
+          v-if="!trashMode"
+          :label="t('common.actions.exportCsv')" 
+          icon="pi pi-file-excel" 
+          severity="secondary"
+          @click="exportCsv" 
+        />
         <div v-if="canWrite('users')" class="w-px h-8 bg-gray-300 mx-2"></div>
         <!-- Gestione cestino -->
         <Button 
@@ -143,16 +154,11 @@
       <!-- RIMOSSO: Form Bulk Edit Utenti -->
     </BaseDialog>
 
-    <!-- TODO: Implementare UserImportDialog -->
-    <BaseDialog
-      v-model:visible="showImportDialog"
-      :title="t('common.actions.import')"
+    <UserImportDialog
+      :visible="showImportDialog"
       @close="showImportDialog = false"
-    >
-      <div class="p-4">
-        <p>{{ t('common.messages.importNotImplemented') }}</p>
-      </div>
-    </BaseDialog>
+      @imported="onUserImport"
+    />
     
     <BaseConfirmDialog
       v-model:showConfirmDialog="showConfirmDialog"
@@ -187,6 +193,7 @@ import BaseDialog from '../components/base/BaseDialog.vue'
 import BaseConfirmDialog from '../components/base/BaseConfirmDialog.vue'
 import UserForm from '../components/forms/UserForm.vue'
 import PasswordResetDialog from '../components/dialogs/PasswordResetDialog.vue'
+import UserImportDialog from '../components/dialogs/UserImportDialog.vue'
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 import Tag from 'primevue/tag'
@@ -507,8 +514,21 @@ async function handleEmptyTrash() {
 }
 
 // Export CSV
-function exportCsv() {
-  // TODO: Implementare export CSV per utenti
+async function exportCsv() {
+  try {
+    const response = await api.exportUsersCsv()
+    const blob = new Blob([response.data], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'users.csv')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    alert(t('common.messages.exportError'))
+  }
 }
 
 // Import

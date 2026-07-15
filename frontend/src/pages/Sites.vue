@@ -16,6 +16,20 @@
           severity="success"
           @click="openCreateDialog" 
         />
+        <Button 
+          v-if="!trashMode && canWrite('sites')"
+          :label="t('common.actions.import')" 
+          icon="pi pi-upload" 
+          severity="info"
+          @click="showImportDialog = true" 
+        />
+        <Button 
+          v-if="!trashMode"
+          :label="t('common.actions.exportCsv')" 
+          icon="pi pi-file-excel" 
+          severity="secondary"
+          @click="exportCsv" 
+        />
         <div class="w-px h-8 bg-gray-300 mx-2"></div>
         <Button 
           icon="pi pi-trash" 
@@ -163,16 +177,11 @@
       </div>
     </BaseDialog>
 
-    <!-- TODO: Implementare SiteImportDialog -->
-    <BaseDialog
-      v-model:visible="showImportDialog"
-      :title="t('common.actions.import')"
+    <SiteImportDialog
+      :visible="showImportDialog"
       @close="showImportDialog = false"
-    >
-      <div class="p-4">
-        <p>{{ t('sites.messages.importNotImplemented') }}</p>
-      </div>
-    </BaseDialog>
+      @imported="onSiteImport"
+    />
     
     <BaseConfirmDialog
       v-model:showConfirmDialog="showConfirmDialog"
@@ -203,6 +212,7 @@ import Tree from 'primevue/tree'
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 import InputText from 'primevue/inputtext'
+import SiteImportDialog from '../components/dialogs/SiteImportDialog.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -456,8 +466,21 @@ async function handleEmptyTrash() {
 }
 
 // Export CSV
-function exportCsv() {
-  // TODO: Implementare export CSV per siti
+async function exportCsv() {
+  try {
+    const response = await api.exportSitesCsv()
+    const blob = new Blob([response.data], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'sites.csv')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    alert(t('common.messages.exportError'))
+  }
 }
 
 // Import

@@ -30,6 +30,21 @@
         "reviewIntervalMonths": "Intervallo review (mesi)",
         "reviewIntervalMonthsHint": "Override opzionale del default tenant"
     },
+    "siteImport": {
+        "title": "Importa Siti",
+        "downloadTemplate": "Scarica Template",
+        "importantInfo": "Informazioni importanti",
+        "nameRequired": "Il nome è obbligatorio",
+        "codeRequired": "Il codice è obbligatorio",
+        "tipText": "Usa parent_code per collegare un sito a un sito padre esistente tramite codice.",
+        "toCreate": "Da creare",
+        "toUpdate": "Da aggiornare",
+        "errors": "Errori",
+        "row": "Riga",
+        "confirm": "Conferma",
+        "readError": "Errore nella lettura del file",
+        "differences": "Differenze"
+    },
     "strings": {
         "select": "Seleziona",
         "info": "Informazioni"

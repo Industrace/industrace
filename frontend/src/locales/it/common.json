@@ -126,6 +126,7 @@
     "emptyTrashWarning": "Questa azione non può essere annullata",
     "trashEmptied": "Cestino svuotato con successo",
     "emptyTrashError": "Errore nell'svuotamento del cestino",
+    "exportError": "Errore durante l'esportazione CSV",
     "importNotImplemented": "La funzione di import non è ancora disponibile"
   }
 }

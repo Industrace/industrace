@@ -24,6 +24,21 @@
     "area": "Area",
     "name": "Location Name"
   },
+  "locationImport": {
+    "title": "Import Locations",
+    "downloadTemplate": "Download Template",
+    "importantInfo": "Important Information",
+    "siteCodeRequired": "Site code is required",
+    "nameRequired": "Name is required",
+    "tipText": "The area column must match an existing area name within the site.",
+    "toCreate": "To Create",
+    "toUpdate": "To Update",
+    "errors": "Errors",
+    "row": "Row",
+    "confirm": "Confirm",
+    "readError": "Error reading file",
+    "differences": "Differences"
+  },
   "strings": {
     "select": "Select",
     "info": "Information",

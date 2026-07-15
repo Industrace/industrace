@@ -1,12 +1,18 @@
 import uuid
 from typing import List
+import csv
+from io import StringIO
+import pandas as pd
+from fastapi import UploadFile, File
+from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import joinedload
 
 from fastapi import APIRouter, Depends, Request, Query, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User
+from app.models import User, Role
 from app.schemas.user import UserCreate, UserUpdate, UserRead, PasswordChange
 from app.services.auth import get_current_user, get_password_hash
 from app.services.audit_decorator import audit_log_action
@@ -138,6 +144,226 @@ def create_user(
             status_code=500,
             error_code=ErrorCode.INVALID_USER_CREATION,
         )
+
+
+@router.get("/export")
+def export_users_csv(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    users = (
+        db.query(User)
+        .options(joinedload(User.role))
+        .filter(
+            User.tenant_id == current_user.tenant_id,
+            User.deleted_at == None,
+        )
+        .all()
+    )
+
+    def iter_csv():
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["name", "email", "role", "is_active"])
+        for user in users:
+            writer.writerow(
+                [
+                    user.name or "",
+                    user.email or "",
+                    user.role.name if user.role else "",
+                    "true" if user.is_active else "false",
+                ]
+            )
+        output.seek(0)
+        yield output.read()
+
+    return StreamingResponse(
+        iter_csv(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=users.csv"},
+    )
+
+
+def _parse_bool(value):
+    if value is None:
+        return True
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("1", "true", "yes", "y", "si", "sì")
+
+
+def _resolve_user_import_row(row, db, tenant_id):
+    name = row.get("name")
+    email = row.get("email")
+    role_name = row.get("role")
+    missing = []
+    if name is None or str(name).strip() == "":
+        missing.append("name")
+    if email is None or str(email).strip() == "":
+        missing.append("email")
+    if role_name is None or str(role_name).strip() == "":
+        missing.append("role")
+    if missing:
+        return None, f"Missing required fields: {', '.join(missing)}"
+
+    role = (
+        db.query(Role)
+        .filter(
+            Role.tenant_id == tenant_id,
+            Role.name.ilike(str(role_name).strip()),
+            Role.is_active == True,
+        )
+        .first()
+    )
+    if not role:
+        return None, f"Role not found: {role_name}"
+
+    return {
+        "name": str(name).strip(),
+        "email": str(email).strip().lower(),
+        "role_id": role.id,
+        "role_name": role.name,
+        "is_active": _parse_bool(row.get("is_active")),
+        "password": row.get("password"),
+    }, None
+
+
+@router.post("/import/xlsx/preview")
+def import_users_xlsx_preview(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        if file.filename.endswith(".csv"):
+            df = pd.read_csv(file.file, dtype=str)
+            df = df.where(pd.notnull(df), None)
+        else:
+            df = pd.read_excel(file.file)
+    except Exception as e:
+        return {"error": f"Error reading file: {str(e)}"}
+
+    to_create, to_update, errors = [], [], []
+    for idx, row in df.iterrows():
+        payload, err = _resolve_user_import_row(row, db, current_user.tenant_id)
+        if err:
+            errors.append({"row": int(idx) + 2, "error": err})
+            continue
+
+        user = (
+            db.query(User)
+            .options(joinedload(User.role))
+            .filter(
+                User.tenant_id == current_user.tenant_id,
+                User.email == payload["email"],
+                User.deleted_at == None,
+            )
+            .first()
+        )
+        if user:
+            diff = {}
+            for field in ["name", "is_active"]:
+                new = payload[field]
+                old = getattr(user, field)
+                if str(old) != str(new):
+                    diff[field] = {"old": old, "new": new}
+            if user.role_id != payload["role_id"]:
+                diff["role"] = {
+                    "old": user.role.name if user.role else None,
+                    "new": payload["role_name"],
+                }
+            if diff:
+                to_update.append({"email": payload["email"], "diff": diff})
+        else:
+            to_create.append(
+                {
+                    "name": payload["name"],
+                    "email": payload["email"],
+                    "role": payload["role_name"],
+                    "is_active": payload["is_active"],
+                }
+            )
+    return {"to_create": to_create, "to_update": to_update, "errors": errors}
+
+
+@router.post("/import/xlsx/confirm")
+def import_users_xlsx_confirm(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.schemas.validators import validate_password_strength
+
+    try:
+        if file.filename.endswith(".csv"):
+            df = pd.read_csv(file.file, dtype=str)
+            df = df.where(pd.notnull(df), None)
+        else:
+            df = pd.read_excel(file.file)
+    except Exception as e:
+        return {"error": f"Error reading file: {str(e)}"}
+
+    created, updated, errors = [], [], []
+    for idx, row in df.iterrows():
+        payload, err = _resolve_user_import_row(row, db, current_user.tenant_id)
+        if err:
+            errors.append({"row": int(idx) + 2, "error": err})
+            continue
+
+        user = (
+            db.query(User)
+            .filter(
+                User.tenant_id == current_user.tenant_id,
+                User.email == payload["email"],
+            )
+            .first()
+        )
+        try:
+            if user and user.deleted_at is None:
+                user.name = payload["name"]
+                user.role_id = payload["role_id"]
+                user.is_active = payload["is_active"]
+                db.commit()
+                updated.append(payload["email"])
+            else:
+                password = payload["password"]
+                password_change_required = False
+                if password is None or str(password).strip() == "":
+                    password = secrets.token_urlsafe(12)
+                    password_change_required = True
+                else:
+                    password = str(password).strip()
+                validate_password_strength(password, allow_weak=password_change_required)
+
+                if user and user.deleted_at is not None:
+                    user.deleted_at = None
+                    user.name = payload["name"]
+                    user.role_id = payload["role_id"]
+                    user.is_active = payload["is_active"]
+                    user.password_hash = get_password_hash(password)
+                    user.password_change_required = password_change_required
+                    db.commit()
+                    updated.append(payload["email"])
+                else:
+                    db_user = User(
+                        tenant_id=current_user.tenant_id,
+                        email=payload["email"],
+                        password_hash=get_password_hash(password),
+                        name=payload["name"],
+                        role_id=payload["role_id"],
+                        is_active=payload["is_active"],
+                        password_change_required=password_change_required,
+                    )
+                    db.add(db_user)
+                    db.commit()
+                    created.append(payload["email"])
+        except IntegrityError:
+            db.rollback()
+            errors.append({"row": int(idx) + 2, "error": "User already exists or invalid data"})
+        except Exception as e:
+            db.rollback()
+            errors.append({"row": int(idx) + 2, "error": str(e)})
+
+    return {"created": created, "updated": updated, "errors": errors}
 
 
 @router.delete("/{user_id}")

@@ -19,5 +19,21 @@
     "strings": {
         "active": "Attivo",
         "inactive": "Inattivo"
+    },
+    "userImport": {
+        "title": "Importa Utenti",
+        "downloadTemplate": "Scarica Template",
+        "importantInfo": "Informazioni importanti",
+        "nameRequired": "Il nome è obbligatorio",
+        "emailRequired": "L'email è obbligatoria",
+        "roleRequired": "Il nome del ruolo è obbligatorio",
+        "tipText": "I nuovi utenti ricevono una password temporanea se non indicata nel file e devono cambiarla al primo accesso.",
+        "toCreate": "Da creare",
+        "toUpdate": "Da aggiornare",
+        "errors": "Errori",
+        "row": "Riga",
+        "confirm": "Conferma",
+        "readError": "Errore nella lettura del file",
+        "differences": "Differenze"
     }
 }

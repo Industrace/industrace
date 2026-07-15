@@ -128,6 +128,7 @@
     "emptyTrashWarning": "This action cannot be undone",
     "trashEmptied": "Trash emptied successfully",
     "emptyTrashError": "Error emptying trash",
+    "exportError": "Error during export",
     "importNotImplemented": "Import functionality is not available yet"
   }
 }

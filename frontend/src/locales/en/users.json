@@ -19,5 +19,21 @@
   "strings": {
     "active": "Active",
     "inactive": "Inactive"
+  },
+  "userImport": {
+    "title": "Import Users",
+    "downloadTemplate": "Download Template",
+    "importantInfo": "Important Information",
+    "nameRequired": "Name is required",
+    "emailRequired": "Email is required",
+    "roleRequired": "Role name is required",
+    "tipText": "New users receive a temporary password and must change it on first login if no password is provided in the file.",
+    "toCreate": "To Create",
+    "toUpdate": "To Update",
+    "errors": "Errors",
+    "row": "Row",
+    "confirm": "Confirm",
+    "readError": "Error reading file",
+    "differences": "Differences"
   }
 }

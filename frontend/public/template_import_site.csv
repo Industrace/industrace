@@ -1,0 +1,3 @@
+name,code,address,description,parent_code
+Headquarters,HQ,123 Main St,Main production site,
+Warehouse A,WH-A,456 Industrial Blvd,Secondary warehouse,HQ

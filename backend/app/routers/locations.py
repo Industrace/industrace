@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query, Request, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User, Location, Site
+from app.models import User, Location, Site, Area
 from app.schemas import Location as LocationSchema, LocationCreate, LocationRead
 from app.services.auth import get_current_user
 from app.services.rbac import require_section_access
@@ -275,6 +275,245 @@ def hard_delete_location(
         )
     db.delete(db_location)
     db.commit()
+
+
+@router.get("/export")
+def export_locations_csv(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    locations = (
+        db.query(Location)
+        .filter(
+            Location.tenant_id == current_user.tenant_id,
+            Location.deleted_at == None,
+        )
+        .all()
+    )
+    site_map = {
+        s.id: s.code
+        for s in db.query(Site)
+        .filter(Site.tenant_id == current_user.tenant_id, Site.deleted_at == None)
+        .all()
+    }
+    area_map = {
+        a.id: a.name
+        for a in db.query(Area)
+        .filter(Area.tenant_id == current_user.tenant_id, Area.deleted_at == None)
+        .all()
+    }
+
+    def iter_csv():
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            ["site_code", "name", "code", "description", "area", "notes"]
+        )
+        for loc in locations:
+            writer.writerow(
+                [
+                    site_map.get(loc.site_id, ""),
+                    loc.name or "",
+                    loc.code or "",
+                    loc.description or "",
+                    area_map.get(loc.area_id, "") if loc.area_id else "",
+                    loc.notes or "",
+                ]
+            )
+        output.seek(0)
+        yield output.read()
+
+    return StreamingResponse(
+        iter_csv(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=locations.csv"},
+    )
+
+
+def _resolve_location_import_row(row, db, tenant_id):
+    site_code = row.get("site_code")
+    name = row.get("name")
+    code = row.get("code")
+    missing = []
+    if site_code is None or str(site_code).strip() == "":
+        missing.append("site_code")
+    if name is None or str(name).strip() == "":
+        missing.append("name")
+    if missing:
+        return None, f"Missing required fields: {', '.join(missing)}"
+
+    site = (
+        db.query(Site)
+        .filter(
+            Site.tenant_id == tenant_id,
+            Site.code == str(site_code).strip(),
+            Site.deleted_at == None,
+        )
+        .first()
+    )
+    if not site:
+        return None, f"Site not found for code: {site_code}"
+
+    area_id = None
+    area_name = row.get("area")
+    if area_name is not None and str(area_name).strip() != "":
+        area = (
+            db.query(Area)
+            .filter(
+                Area.tenant_id == tenant_id,
+                Area.site_id == site.id,
+                Area.name == str(area_name).strip(),
+                Area.deleted_at == None,
+            )
+            .first()
+        )
+        if not area:
+            return None, f"Area not found: {area_name} (site {site_code})"
+        area_id = area.id
+
+    description = row.get("description")
+    if description is None or str(description).strip() == "":
+        description = ""
+
+    payload = {
+        "site_id": site.id,
+        "area_id": area_id,
+        "name": str(name).strip(),
+        "code": str(code).strip() if code is not None and str(code).strip() != "" else None,
+        "description": str(description),
+        "notes": row.get("notes"),
+    }
+    return payload, None
+
+
+@router.post("/import/xlsx/preview")
+def import_locations_xlsx_preview(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        if file.filename.endswith(".csv"):
+            df = pd.read_csv(file.file, dtype=str)
+            df = df.where(pd.notnull(df), None)
+        else:
+            df = pd.read_excel(file.file)
+    except Exception as e:
+        return {"error": f"Error reading file: {str(e)}"}
+
+    to_create, to_update, errors = [], [], []
+    for idx, row in df.iterrows():
+        payload, err = _resolve_location_import_row(row, db, current_user.tenant_id)
+        if err:
+            errors.append({"row": int(idx) + 2, "error": err})
+            continue
+
+        lookup = None
+        if payload["code"]:
+            lookup = (
+                db.query(Location)
+                .filter(
+                    Location.tenant_id == current_user.tenant_id,
+                    Location.code == payload["code"],
+                    Location.deleted_at == None,
+                )
+                .first()
+            )
+        if not lookup:
+            lookup = (
+                db.query(Location)
+                .filter(
+                    Location.tenant_id == current_user.tenant_id,
+                    Location.site_id == payload["site_id"],
+                    Location.name == payload["name"],
+                    Location.deleted_at == None,
+                )
+                .first()
+            )
+
+        if lookup:
+            diff = {}
+            for field in ["name", "code", "description", "notes", "area_id"]:
+                new = payload[field]
+                old = getattr(lookup, field)
+                if str(old or "") != str(new or ""):
+                    diff[field] = {"old": old, "new": new}
+            if diff:
+                to_update.append({"code": payload["code"] or lookup.code, "name": payload["name"], "diff": diff})
+        else:
+            to_create.append(
+                {
+                    "site_code": row.get("site_code"),
+                    "name": payload["name"],
+                    "code": payload["code"],
+                    "description": payload["description"],
+                    "area": row.get("area"),
+                    "notes": payload["notes"],
+                }
+            )
+    return {"to_create": to_create, "to_update": to_update, "errors": errors}
+
+
+@router.post("/import/xlsx/confirm")
+def import_locations_xlsx_confirm(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        if file.filename.endswith(".csv"):
+            df = pd.read_csv(file.file, dtype=str)
+            df = df.where(pd.notnull(df), None)
+        else:
+            df = pd.read_excel(file.file)
+    except Exception as e:
+        return {"error": f"Error reading file: {str(e)}"}
+
+    created, updated, errors = [], [], []
+    for idx, row in df.iterrows():
+        payload, err = _resolve_location_import_row(row, db, current_user.tenant_id)
+        if err:
+            errors.append({"row": int(idx) + 2, "error": err})
+            continue
+
+        lookup = None
+        if payload["code"]:
+            lookup = (
+                db.query(Location)
+                .filter(
+                    Location.tenant_id == current_user.tenant_id,
+                    Location.code == payload["code"],
+                    Location.deleted_at == None,
+                )
+                .first()
+            )
+        if not lookup:
+            lookup = (
+                db.query(Location)
+                .filter(
+                    Location.tenant_id == current_user.tenant_id,
+                    Location.site_id == payload["site_id"],
+                    Location.name == payload["name"],
+                    Location.deleted_at == None,
+                )
+                .first()
+            )
+
+        try:
+            if lookup:
+                for field in ["site_id", "area_id", "name", "code", "description", "notes"]:
+                    setattr(lookup, field, payload[field])
+                db.commit()
+                updated.append(payload["name"])
+            else:
+                loc = Location(tenant_id=current_user.tenant_id, **payload)
+                db.add(loc)
+                db.commit()
+                created.append(payload["name"])
+        except IntegrityError as e:
+            db.rollback()
+            errors.append({"row": int(idx) + 2, "error": str(e)})
+
+    return {"created": created, "updated": updated, "errors": errors}
 
 
 @router.get("/{location_id}", response_model=LocationRead)
