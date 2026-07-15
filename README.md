@@ -1,7 +1,7 @@
 # Industrace - Industrial Asset Management System
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://opensource.org/licenses/AGPL-3.0)
-[![Release](https://img.shields.io/badge/Release-v2.1.1-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.1.1)
+[![Release](https://img.shields.io/badge/Release-v2.2.0-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.2.0)
 [![Status](https://img.shields.io/badge/Status-Pilot%20recommended-orange.svg)](#release-status)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
@@ -13,7 +13,7 @@ Most asset management tools are designed for IT. Industrace was born from the ob
 
 ## Release status
 
-Industrace **2.1.1** ships a large set of new capabilities introduced across the 2.x line — ISA/IEC 62443 compliance, vulnerability intelligence, SSO, Network Probes, extended RBAC, and recent security hardening. The codebase grew substantially between v1.x and v2.x; not every path is exercised in automated tests yet (CI runs ~40 backend tests via `make test` against a much wider API surface).
+Industrace **2.2.0** ships pilot-stability improvements on the 2.x line — CSV bulk import, deep health checks, IEC 62443 compliance UI refinements, and Network Probes promoted to *pilot-stable* (statistics/matches API + operational runbook). The codebase grew substantially between v1.x and v2.x; not every path is exercised in automated tests yet (CI runs backend tests with a coverage gate on critical modules).
 
 We recommend a **controlled pilot** — internal network, limited users, non-critical ICS data — before relying on v2 in production OT environments. See the [Pilot Deployment Checklist](docs/PILOT_DEPLOYMENT_CHECKLIST.md). Your feedback via [GitHub Issues](https://github.com/industrace/industrace/issues) and real-world testing is how the project matures.
 
@@ -23,7 +23,8 @@ Industrace is **free to use** under AGPL-3.0. There is no paywall; community val
 
 | Line | Status | For whom |
 |------|--------|----------|
-| **2.1.x** | Current — active development, new features | Teams that need IEC 62443, probes, SSO, vulnerabilities |
+| **2.2.x** | Current — active development, pilot stability | Teams running controlled pilots on the 2.x line |
+| **2.1.x** | Maintained — security fixes as needed | Teams already deployed on 2.1.1 |
 | **1.x** | **Frozen** — no new features (latest: [v1.1.0](https://github.com/Industrace/industrace/releases/tag/v1.1.0)) | Teams that prefer a smaller, stable base |
 
 Moving from 1.x to 2.x is a **new installation**, not an in-place upgrade. See [MIGRATION.md](docs/MIGRATION.md).
@@ -289,6 +290,13 @@ See the [LICENSE](LICENSE) file for details.
 ## 📋 Changelog
 
 See **[CHANGELOG.md](CHANGELOG.md)** and **[Release Notes](docs/release-notes.md)** for full version history.
+
+### [v2.2.0] - July 15, 2026
+- **Pilot stability**: CSV import for users/sites/locations; deep health checks (DB + Redis); Docker healthchecks
+- **Network Probes**: statistics and matches API; operational [runbook](probe/RUNBOOK.md); docs at *pilot-stable*
+- **IEC 62443**: SR-relevant asset filtering and technical characteristics in zone compliance
+- **Assets**: real relation and critical vulnerability badge counts in asset detail
+- See [CHANGELOG.md](CHANGELOG.md) for full details
 
 ### [v2.1.1] - June 29, 2026
 - **Security hardening**: RBAC on core APIs, `SETUP_TOKEN` for production setup wizard, HttpOnly cookie auth (no `localStorage` JWT)

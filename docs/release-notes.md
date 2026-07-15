@@ -9,6 +9,44 @@
 
 ---
 
+## Version 2.2.0
+
+**Release Date**: July 15, 2026
+
+### Overview
+
+Industrace v2.2.0 focuses on **pilot stability**: completing v2 UI/backend gaps, operational observability, and Network Probes hardening. Recommended upgrade from v2.1.1 for teams running controlled pilots.
+
+### Key Features
+
+#### Bulk import (CSV)
+- Import users, sites, and locations from CSV templates in the UI
+- Complements existing export flows
+
+#### Operations & observability
+- Deep health check: database + Redis connectivity on `/health`
+- Docker Compose healthchecks for backend and PostgreSQL
+- CI coverage gate on critical backend modules
+
+#### Network Probes (pilot-stable)
+- `GET /network-probes/{id}/statistics` — aggregated telemetry (protocols, traffic, performance, error rate)
+- `GET /discovered-devices/{id}/matches` — dedicated asset match lookup
+- Operational runbook: [probe/RUNBOOK.md](../probe/RUNBOOK.md)
+
+#### IEC 62443 & assets
+- Zone compliance tab filters SR-relevant assets and shows technical characteristics
+- Asset detail: real relation and critical vulnerability badge counts
+
+### Upgrade notes (2.1.1 → 2.2.0)
+
+1. Pull latest `main` and rebuild containers: `docker compose up -d --build`
+2. No new migrations required for this release
+3. Probe operators: review [probe/RUNBOOK.md](../probe/RUNBOOK.md) for day-2 procedures
+
+See [CHANGELOG.md](../CHANGELOG.md) for full details.
+
+---
+
 ## Version 2.1.0
 
 **Release Date**: June 17, 2026

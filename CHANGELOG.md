@@ -7,24 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-07-15
+
 ### Added
-- **Probe client modular refactor**: split monolithic client into focused modules (`probe_runtime_workers`, `probe_packet_processing`, `probe_state_store`, `probe_transmission`, etc.) with orchestrator in `network_probe_client.py`
-- **Probe client unit tests** (`probe/tests/`): parser heuristics, transmission snapshots, retry backoff, state persistence, shutdown safety, config UUID validation
-- **Pending delivery persistence**: `pending_device_macs` and `pending_new_connections` saved in state file v2; v1 files re-queue all known devices on load
-- **Payload buffer observability**: drop counter when `data_buffer` watermark is reached; exported via heartbeat `last_error_message`
-- **Rotating probe logs** via `probe_logging.py` (`RotatingFileHandler`, 10 MB × 5)
+- **CSV import/export**: bulk import for users, sites, and locations (UI dialogs + templates)
+- **Deep health checks**: `/health` verifies database and Redis (SSO state); Docker healthchecks on backend and Postgres
+- **CI coverage gate**: progressive backend coverage threshold via `.coveragerc` (critical modules)
+- **Probe statistics API**: `GET /network-probes/{id}/statistics` with `time_range` (`24h`, `7d`, `30d`)
+- **Device matches API**: `GET /discovered-devices/{id}/matches` for asset match candidates
+- **Probe runbook**: [probe/RUNBOOK.md](probe/RUNBOOK.md) — daily checks, incident flow, pilot go-live checklist
+- **Probe tests**: `test_probe_pilot_stable.py` for statistics and matching
 
 ### Changed
-- **Docker probe image** copies all `probe/*.py` modules (post-refactor packaging fix)
-- **Capture filters** (`set_subnet_filter`, `add_protocol_filter`) now mutate under `config_lock`
-- **Probe documentation**: `NETWORK_PROBE.md` and `probe/README.md` aligned to modular architecture; `data_buffer` documented as local-only (not transmitted)
+- **IEC 62443 zone compliance**: filter SR-relevant assets; show technical characteristics in compliance UI
+- **Network Probes docs**: status upgraded to *pilot-stable* in [probe/NETWORK_PROBE.md](probe/NETWORK_PROBE.md)
+- **Discovered device matching**: shared `DiscoveredDeviceService` (list + matches endpoint)
 
 ### Fixed
-- **Probe shutdown**: `stop()` no longer joins the calling worker thread (avoids `RuntimeError` on auth-failure path)
-- **Probe shutdown state flush**: `stop()` persists pending discovery to disk (best-effort)
-- **Reliable delivery**: pending MACs acknowledged only after successful HTTP transmission; restored from disk after restart
-- **Capture limits**: `max_packet_size` skips oversized frames; `buffer_size` caps local payload buffer bytes
-- **Protocol heuristics**: OPC UA `HELO` framing and IEC 104 APDU length validation
+- **Asset detail**: real counts for relation badges and critical vulnerability indicators (no placeholder stubs)
 
 ## [2.1.1] - 2026-06-29
 
