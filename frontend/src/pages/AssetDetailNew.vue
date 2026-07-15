@@ -176,6 +176,8 @@ const noteDraft = ref('')
 const riskTabRef = ref(null)
 const activeTabIndex = ref(0)
 const assetReviewStatus = ref(null)
+const relationshipsCount = ref(0)
+const criticalVulnerabilitiesCount = ref(0)
 
 // Data
 const sites = ref([])
@@ -207,20 +209,37 @@ const alertSeverity = computed(() => {
   return 'success'
 })
 
-const relationshipsCount = computed(() => {
-  // TODO: Calcolare da dipendenze + connessioni + comunicazioni
-  return 0
-})
-
-const criticalVulnerabilitiesCount = computed(() => {
-  // TODO: Calcolare da vulnerabilità critiche
-  return 0
-})
-
 const reviewStatus = computed(() => {
   if (!assetReviewStatus.value) return null
   return assetReviewStatus.value.review_status || null
 })
+
+async function loadRelationAndVulnCounts() {
+  if (!route.params.id) return
+  try {
+    const assetId = route.params.id
+    const [depsRes, depsRevRes, connsRes, commsRes, vulnsRes] = await Promise.all([
+      api.getAssetDependencies(assetId),
+      api.getAssetDependents(assetId),
+      api.getAssetConnections(assetId),
+      api.getAssetCommunications(assetId),
+      api.getAssetVulnerabilities(assetId),
+    ])
+    const deps = depsRes.data?.length || 0
+    const dependents = depsRevRes.data?.length || 0
+    const connections = Array.isArray(connsRes.data) ? connsRes.data.length : 0
+    const communications = Array.isArray(commsRes.data) ? commsRes.data.length : 0
+    relationshipsCount.value = deps + dependents + connections + communications
+
+    const vulns = Array.isArray(vulnsRes.data) ? vulnsRes.data : []
+    criticalVulnerabilitiesCount.value = vulns.filter(
+      (entry) => entry.vulnerability?.severity === 'critical'
+    ).length
+  } catch (e) {
+    relationshipsCount.value = 0
+    criticalVulnerabilitiesCount.value = 0
+  }
+}
 
 async function loadAssetReviewStatus() {
   if (!canRead('asset_reviews') || !route.params.id) return
@@ -257,6 +276,7 @@ async function fetchAsset() {
       activeTabIndex.value = parseInt(lastTab)
     }
     await loadAssetReviewStatus()
+    await loadRelationAndVulnCounts()
   } catch (e) {
     toast.add({
       severity: 'error',
