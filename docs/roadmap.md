@@ -4,7 +4,7 @@
 
 This roadmap outlines the development path for Industrace, the Configuration Management Database for Industrial Control Systems. The focus is on stability, documentation, and community growth.
 
-**Current version:** v2.2.0 (July 2026) — **pilot recommended**; not validated for production OT environments without lab testing.
+**Current version:** v2.3.0 (July 2026) — **pilot recommended**; MFA/TOTP available for local users; not validated for production OT environments without lab testing.
 
 ## Delivered in v2.0 (June 2026)
 

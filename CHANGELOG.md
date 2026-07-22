@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-07-22
+
 ### Added
 - **MFA/TOTP**: two-factor authentication for local password users (RFC 6238), backup codes, tenant MFA policy (`optional` / `required_admins` / `required_all`), admin reset, Profile enrollment UI, and login verification step
+
+### Fixed
+- **Network Probes**: allow deleting probes that have discovered devices (cascade cleanup)
 
 ### Security
 - TOTP secrets encrypted at rest (Fernet); backup codes stored as bcrypt hashes; MFA lockout and rate limiting on `/login/mfa`

@@ -9,6 +9,37 @@
 
 ---
 
+## Version 2.3.0
+
+**Release Date**: July 22, 2026
+
+### Overview
+
+Industrace v2.3.0 delivers **MFA/TOTP** for local password users — a key requirement for controlled pilots with strict authentication policies. Also includes a Network Probe deletion fix.
+
+### Key Features
+
+#### MFA / TOTP
+- TOTP second step at login (`/login` → `/login/mfa`) with Google Authenticator–compatible apps
+- Self-service enrollment from **Profile** with QR code and one-time backup codes
+- Tenant MFA policy on **SSO Config**: `optional`, `required_admins`, `required_all` with grace period
+- Admin MFA reset from user detail; email notification when SMTP is configured
+- SSO users may rely on IdP MFA (e.g. Azure AD Conditional Access)
+
+#### Network Probes
+- Fix: delete probes that have discovered devices (proper cascade cleanup)
+
+### Upgrade notes (2.2.0 → 2.3.0)
+
+1. Pull latest `main` and rebuild containers: `docker compose -f docker-compose.prod.yml build && docker compose -f docker-compose.prod.yml up -d`
+2. Run migration: `docker compose -f docker-compose.prod.yml exec backend alembic upgrade heads`
+3. MFA is **opt-in** by default — no impact until users enable it or admin sets tenant policy
+4. Ensure `ENCRYPTION_KEY` is set in production (required for TOTP secret encryption)
+
+See [CHANGELOG.md](../CHANGELOG.md) and [ADMINISTRATION.md](ADMINISTRATION.md) for MFA administration.
+
+---
+
 ## Version 2.2.0
 
 **Release Date**: July 15, 2026

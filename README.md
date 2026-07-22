@@ -1,7 +1,7 @@
 # Industrace - Industrial Asset Management System
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://opensource.org/licenses/AGPL-3.0)
-[![Release](https://img.shields.io/badge/Release-v2.2.0-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.2.0)
+[![Release](https://img.shields.io/badge/Release-v2.3.0-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.3.0)
 [![Status](https://img.shields.io/badge/Status-Pilot%20recommended-orange.svg)](#release-status)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
@@ -13,7 +13,7 @@ Most asset management tools are designed for IT. Industrace was born from the ob
 
 ## Release status
 
-Industrace **2.2.0** ships pilot-stability improvements on the 2.x line — CSV bulk import, deep health checks, IEC 62443 compliance UI refinements, and Network Probes promoted to *pilot-stable* (statistics/matches API + operational runbook). The codebase grew substantially between v1.x and v2.x; not every path is exercised in automated tests yet (CI runs backend tests with a coverage gate on critical modules).
+Industrace **2.3.0** adds **MFA/TOTP** for local password users (backup codes, tenant policy, admin reset) and fixes Network Probe deletion when discovered devices exist. The 2.x line remains **pilot recommended** — CSV import, deep health checks, IEC 62443 compliance, and Network Probes at *pilot-stable*. The codebase grew substantially between v1.x and v2.x; not every path is exercised in automated tests yet (CI runs backend tests with a coverage gate on critical modules).
 
 We recommend a **controlled pilot** — internal network, limited users, non-critical ICS data — before relying on v2 in production OT environments. See the [Pilot Deployment Checklist](docs/PILOT_DEPLOYMENT_CHECKLIST.md). Your feedback via [GitHub Issues](https://github.com/industrace/industrace/issues) and real-world testing is how the project matures.
 
@@ -23,7 +23,8 @@ Industrace is **free to use** under AGPL-3.0. There is no paywall; community val
 
 | Line | Status | For whom |
 |------|--------|----------|
-| **2.2.x** | Current — active development, pilot stability | Teams running controlled pilots on the 2.x line |
+| **2.3.x** | Current — active development, MFA + pilot stability | Teams running controlled pilots on the 2.x line |
+| **2.2.x** | Maintained — security fixes as needed | Teams on v2.2.0 |
 | **2.1.x** | Maintained — security fixes as needed | Teams already deployed on 2.1.1 |
 | **1.x** | **Frozen** — no new features (latest: [v1.1.0](https://github.com/Industrace/industrace/releases/tag/v1.1.0)) | Teams that prefer a smaller, stable base |
 
@@ -290,6 +291,12 @@ See the [LICENSE](LICENSE) file for details.
 ## 📋 Changelog
 
 See **[CHANGELOG.md](CHANGELOG.md)** and **[Release Notes](docs/release-notes.md)** for full version history.
+
+### [v2.3.0] - July 22, 2026
+- **MFA/TOTP**: two-factor auth for local users, backup codes, tenant policy, admin reset
+- **Network Probes**: fix deleting probes with discovered devices
+- **Upgrade**: run `alembic upgrade heads` after deploy (new MFA migration)
+- See [CHANGELOG.md](CHANGELOG.md) for full details
 
 ### [v2.2.0] - July 15, 2026
 - **Pilot stability**: CSV import for users/sites/locations; deep health checks (DB + Redis); Docker healthchecks
