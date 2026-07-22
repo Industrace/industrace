@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Asset, AssetType, AssetCommunication
 from uuid import UUID
-from app.services.oui_lookup import load_oui_map
+from app.services.oui_lookup import get_cached_oui_map
 from app.models.asset_interface import AssetInterface
 from app.crud.asset_interface import create_interface
 from app.schemas.asset_interface import AssetInterfaceCreate
@@ -13,12 +13,10 @@ from app.crud.manufacturers import create_manufacturer
 from app.schemas.manufacturer import ManufacturerCreate
 from app.models.asset_status import AssetStatus
 
-OUI_MAP = load_oui_map()
-
 
 def get_vendor_from_mac(mac: str) -> str:
     prefix = mac.replace(":", "").replace("-", "")[:6].upper()
-    return OUI_MAP.get(prefix, "Unknown Vendor")
+    return get_cached_oui_map().get(prefix, "Unknown Vendor")
 
 
 def sync_assets(session: Session, devices: dict, tenant_id: UUID, site_id: UUID):
