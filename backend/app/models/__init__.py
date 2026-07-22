@@ -52,6 +52,7 @@ from .vulnerability import Vulnerability, AssetVulnerability, VulnerabilityFeedS
 # Enterprise Authentication
 from .tenant_sso_config import TenantSSOConfig
 from .sso_oauth_state import SsoOAuthState
+from .user_backup_code import UserBackupCode
 
 # Network Probes (devono essere importati prima di Asset se referenziano Asset via relationship string)
 from .network_probe import NetworkProbe, ProbeHeartbeat, ProbeDataTransmission

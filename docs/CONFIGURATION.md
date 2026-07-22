@@ -84,6 +84,16 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 # Cookie Settings
 SECURE_COOKIES=true
 SAME_SITE_COOKIES=strict
+
+# MFA / TOTP (optional; defaults shown)
+MFA_PENDING_TOKEN_EXPIRE_MINUTES=5
+MFA_MAX_ATTEMPTS=5
+MFA_LOCKOUT_MINUTES=15
+MFA_BACKUP_CODES_COUNT=10
+MFA_ISSUER_NAME=Industrace
+
+# Required in production for SSO secrets and MFA TOTP secret encryption
+ENCRYPTION_KEY=  # python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
 #### File Upload Settings

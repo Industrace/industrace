@@ -37,6 +37,17 @@ class User(Base):
     
     # Password change required flag
     password_change_required = Column(Boolean, default=False)  # Force password change on next login
+
+    # MFA / TOTP
+    totp_secret_encrypted = Column(String(500), nullable=True)
+    totp_enabled = Column(Boolean, default=False, nullable=False)
+    totp_verified_at = Column(DateTime, nullable=True)
+    totp_enrolled_at = Column(DateTime, nullable=True)
+    failed_mfa_attempts = Column(Integer, default=0)
+    mfa_locked_until = Column(DateTime, nullable=True)
     
     role = relationship("Role", back_populates="users", lazy="joined")
     tenant = relationship("Tenant", lazy="joined")
+    backup_codes = relationship(
+        "UserBackupCode", back_populates="user", cascade="all, delete-orphan"
+    )

@@ -61,6 +61,8 @@ import itVulnerabilities from './it/vulnerabilities.json'
 import enVulnerabilities from './en/vulnerabilities.json'
 import itSSO from './it/sso.json'
 import enSSO from './en/sso.json'
+import itMfa from './it/mfa.json'
+import enMfa from './en/mfa.json'
 import itNetworkProbes from './it/networkProbes.json'
 import enNetworkProbes from './en/networkProbes.json'
 import itDiscoveredDevices from './it/discoveredDevices.json'
@@ -137,6 +139,7 @@ const messages = {
     assetDependencies: itAssetDependencies,
     vulnerabilities: itVulnerabilities,
     sso: itSSO,
+    mfa: itMfa,
     networkProbes: itNetworkProbes,
     discoveredDevices: itDiscoveredDevices,
     core: itCore
@@ -171,6 +174,7 @@ const messages = {
     assetDependencies: enAssetDependencies,
     vulnerabilities: enVulnerabilities,
     sso: enSSO,
+    mfa: enMfa,
     networkProbes: enNetworkProbes,
     discoveredDevices: enDiscoveredDevices,
     core: enCore

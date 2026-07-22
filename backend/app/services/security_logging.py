@@ -179,3 +179,24 @@ def log_rate_limit_exceeded(
         },
         severity="WARNING"
     )
+
+
+def log_mfa_event(
+    event_type: str,
+    message: str,
+    request: Optional[Request] = None,
+    user_id: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    additional_data: Optional[Dict[str, Any]] = None,
+    severity: str = "INFO",
+):
+    """Log MFA-related security events (SUCCESS, FAILED, ENABLED, DISABLED, RESET)."""
+    log_security_event(
+        event_type=event_type,
+        message=message,
+        request=request,
+        user_id=user_id,
+        tenant_id=tenant_id,
+        additional_data=additional_data,
+        severity=severity,
+    )

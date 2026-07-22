@@ -175,6 +175,78 @@
           </template>
         </Card>
       </div>
+
+      <!-- MFA -->
+      <div class="col-12">
+        <Card>
+          <template #title>
+            <div class="flex align-items-center gap-2">
+              <i class="pi pi-shield"></i>
+              {{ t('mfa.title') }}
+            </div>
+          </template>
+          <template #content>
+            <div v-if="mfaStatusLoading" class="text-color-secondary">…</div>
+            <div v-else-if="showSetupWizard">
+              <MfaSetupWizard @done="onMfaDone" @cancel="showSetupWizard = false" />
+            </div>
+            <div v-else-if="showDisableForm" class="p-fluid">
+              <p class="mb-3">{{ t('mfa.disableConfirm') }}</p>
+              <div class="field">
+                <label>{{ t('mfa.password') }}</label>
+                <Password v-model="disableForm.password" :feedback="false" toggleMask class="w-full" />
+              </div>
+              <div class="field">
+                <label>{{ t('mfa.code') }}</label>
+                <InputText v-model="disableForm.code" maxlength="6" class="w-full" />
+              </div>
+              <div class="flex gap-2">
+                <Button :label="t('mfa.disable')" severity="danger" :loading="mfaLoading" @click="disableMfa" />
+                <Button :label="t('common.actions.cancel')" severity="secondary" @click="showDisableForm = false" />
+              </div>
+            </div>
+            <div v-else-if="mfaStatus">
+              <p class="mb-3">
+                {{ mfaStatus.totp_enabled ? t('mfa.statusEnabled') : t('mfa.statusDisabled') }}
+              </p>
+              <p v-if="mfaStatus.totp_enabled" class="text-color-secondary mb-3">
+                {{ t('mfa.remainingCodes', { count: mfaStatus.backup_codes_remaining }) }}
+              </p>
+              <div class="flex gap-2 flex-wrap">
+                <Button
+                  v-if="!mfaStatus.totp_enabled"
+                  :label="t('mfa.enable')"
+                  icon="pi pi-lock"
+                  @click="showSetupWizard = true"
+                />
+                <template v-else>
+                  <Button
+                    v-if="mfaStatus.can_self_disable"
+                    :label="t('mfa.disable')"
+                    icon="pi pi-unlock"
+                    severity="danger"
+                    outlined
+                    @click="showDisableForm = true"
+                  />
+                  <Button
+                    :label="t('mfa.regenerateBackupCodes')"
+                    icon="pi pi-refresh"
+                    severity="secondary"
+                    outlined
+                    @click="startRegenerate"
+                  />
+                </template>
+              </div>
+              <div v-if="showRegenForm" class="mt-3 p-fluid">
+                <label>{{ t('mfa.code') }}</label>
+                <InputText v-model="regenCode" maxlength="6" class="w-full mb-2" />
+                <Button :label="t('mfa.regenerateBackupCodes')" :loading="mfaLoading" @click="regenerateCodes" />
+                <BackupCodesDisplay v-if="regenCodes.length" class="mt-3" :codes="regenCodes" />
+              </div>
+            </div>
+          </template>
+        </Card>
+      </div>
     </div>
   </div>
 </template>
@@ -191,6 +263,9 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Password from 'primevue/password'
 import InputSwitch from 'primevue/inputswitch'
+import InputText from 'primevue/inputtext'
+import MfaSetupWizard from '@/components/mfa/MfaSetupWizard.vue'
+import BackupCodesDisplay from '@/components/mfa/BackupCodesDisplay.vue'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -200,6 +275,15 @@ const { loading, execute } = useApi()
 const user = ref({})
 const resetting = ref(false)
 const updatingNotifications = ref(false)
+const mfaStatus = ref(null)
+const mfaStatusLoading = ref(false)
+const showSetupWizard = ref(false)
+const showDisableForm = ref(false)
+const showRegenForm = ref(false)
+const mfaLoading = ref(false)
+const disableForm = ref({ password: '', code: '' })
+const regenCode = ref('')
+const regenCodes = ref([])
 
 // Password form
 const passwordForm = ref({
@@ -338,8 +422,75 @@ async function fetchUserProfile() {
   })
 }
 
-onMounted(() => {
-  fetchUserProfile()
+async function fetchMfaStatus() {
+  mfaStatusLoading.value = true
+  try {
+    const res = await api.getMfaStatus()
+    mfaStatus.value = res.data
+  } catch (e) {
+    mfaStatus.value = null
+  } finally {
+    mfaStatusLoading.value = false
+  }
+}
+
+async function onMfaDone() {
+  showSetupWizard.value = false
+  await fetchMfaStatus()
+}
+
+async function disableMfa() {
+  mfaLoading.value = true
+  try {
+    await api.mfaDisable(disableForm.value.password, disableForm.value.code)
+    showDisableForm.value = false
+    disableForm.value = { password: '', code: '' }
+    toast.add({
+      severity: 'success',
+      summary: t('common.messages.success'),
+      detail: t('mfa.disabledSuccess'),
+      life: 3000
+    })
+    await fetchMfaStatus()
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.messages.error'),
+      detail: error.response?.data?.detail || t('mfa.invalidCode'),
+      life: 4000
+    })
+  } finally {
+    mfaLoading.value = false
+  }
+}
+
+function startRegenerate() {
+  showRegenForm.value = true
+  regenCode.value = ''
+  regenCodes.value = []
+}
+
+async function regenerateCodes() {
+  mfaLoading.value = true
+  try {
+    const res = await api.mfaRegenerateBackupCodes(regenCode.value)
+    regenCodes.value = res.data.backup_codes || []
+    await fetchMfaStatus()
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.messages.error'),
+      detail: error.response?.data?.detail || t('mfa.invalidCode'),
+      life: 4000
+    })
+  } finally {
+    mfaLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  await fetchUserProfile()
+  await fetchMfaStatus()
 })
 </script>
 

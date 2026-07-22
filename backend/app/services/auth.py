@@ -54,6 +54,60 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 
+def create_mfa_pending_token(user_id: str, tenant_id: str) -> str:
+    """Short-lived token issued after password OK when MFA verification is still required."""
+    expire = datetime.utcnow() + timedelta(minutes=settings.MFA_PENDING_TOKEN_EXPIRE_MINUTES)
+    to_encode = {
+        "sub": str(user_id),
+        "tenant_id": str(tenant_id),
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+        "type": "mfa_pending",
+    }
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def create_mfa_setup_token(user_id: str, tenant_id: str) -> str:
+    """Short-lived token allowing MFA enrollment when policy forces setup before access."""
+    expire = datetime.utcnow() + timedelta(minutes=settings.MFA_PENDING_TOKEN_EXPIRE_MINUTES)
+    to_encode = {
+        "sub": str(user_id),
+        "tenant_id": str(tenant_id),
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+        "type": "mfa_setup",
+    }
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def decode_typed_token(token: str, expected_type: str) -> dict:
+    """Decode JWT and require a specific type claim."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER,
+        )
+    except ExpiredSignatureError:
+        raise ErrorCodeException(
+            status_code=401, error_code=ErrorCode.MFA_TOKEN_EXPIRED
+        )
+    except JWTError:
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.INVALID_TOKEN)
+
+    if payload.get("type") != expected_type:
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.INVALID_TOKEN)
+    if not payload.get("sub"):
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.INVALID_TOKEN)
+    return payload
+
+
 async def get_current_user(
     request: Request,
     authorization: str = Header(None),
@@ -123,4 +177,55 @@ async def get_current_user(
     if not user.is_active:
         raise ErrorCodeException(status_code=401, error_code=ErrorCode.ACCESS_DENIED)
     
+    return user
+
+
+async def get_current_user_or_mfa_setup(
+    request: Request,
+    authorization: str = Header(None),
+    access_token_cookie: str = Cookie(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Accept either a normal access token or a short-lived mfa_setup token.
+    Used for MFA enrollment endpoints when policy forces setup before full access.
+    """
+    token = None
+    if authorization:
+        scheme, _, param = authorization.partition(" ")
+        if scheme.lower() == "bearer":
+            token = param
+    if token is None and access_token_cookie:
+        token = access_token_cookie
+    if token is None:
+        log_unauthorized_access(request, reason="NO_TOKEN")
+        raise ErrorCodeException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            error_code=ErrorCode.INVALID_CREDENTIALS,
+        )
+
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER,
+        )
+    except ExpiredSignatureError:
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.MFA_TOKEN_EXPIRED)
+    except JWTError:
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.INVALID_TOKEN)
+
+    token_type = payload.get("type")
+    if token_type not in ("access", "mfa_setup"):
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.INVALID_TOKEN)
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.INVALID_TOKEN)
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None or user.deleted_at is not None or not user.is_active:
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.USER_NOT_FOUND)
     return user

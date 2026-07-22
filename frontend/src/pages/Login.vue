@@ -225,7 +225,21 @@ const handleSubmit = async () => {
 
   loading.value = true
   try {
-    await authStore.login(email.value, password.value)
+    const result = await authStore.login(email.value, password.value)
+    if (result?.mfaRequired) {
+      router.push('/mfa/verify')
+      return
+    }
+    if (result?.mfaSetupRequired) {
+      toast.add({
+        severity: 'warn',
+        summary: t('mfa.setupRequired'),
+        detail: t('mfa.setupRequired'),
+        life: 6000
+      })
+      router.push('/mfa/setup')
+      return
+    }
     toast.add({
       severity: 'success',
       summary: t('common.messages.success'),
@@ -249,6 +263,20 @@ const handleSubmit = async () => {
       })
       // Opzionalmente, potresti reindirizzare al login SSO qui
       // router.push('/auth/sso/azure_ad/authorize')
+      return
+    }
+
+    if (errorCode === 'MFA_SETUP_REQUIRED' || error.response?.data?.mfa_setup_required) {
+      if (error.response?.data?.mfa_setup_token) {
+        sessionStorage.setItem('mfa_setup_token', error.response.data.mfa_setup_token)
+      }
+      toast.add({
+        severity: 'warn',
+        summary: t('mfa.setupRequired'),
+        detail: t('mfa.setupRequired'),
+        life: 6000
+      })
+      router.push('/mfa/setup')
       return
     }
 

@@ -16,6 +16,7 @@ bcrypt==3.2.2
 python-multipart==0.0.6
 bleach==6.1.0
 cryptography==41.0.7  # For SSO client secret encryption
+pyotp>=2.9.0  # TOTP MFA
 
 # Data Processing
 pandas==2.1.4

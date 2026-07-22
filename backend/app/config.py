@@ -62,6 +62,15 @@ class Settings(BaseSettings):
     # Account Lockout
     MAX_LOGIN_ATTEMPTS: int = int(os.getenv("MAX_LOGIN_ATTEMPTS", "5"))
     LOCKOUT_DURATION_MINUTES: int = int(os.getenv("LOCKOUT_DURATION_MINUTES", "15"))
+
+    # MFA / TOTP
+    MFA_PENDING_TOKEN_EXPIRE_MINUTES: int = int(
+        os.getenv("MFA_PENDING_TOKEN_EXPIRE_MINUTES", "5")
+    )
+    MFA_MAX_ATTEMPTS: int = int(os.getenv("MFA_MAX_ATTEMPTS", "5"))
+    MFA_LOCKOUT_MINUTES: int = int(os.getenv("MFA_LOCKOUT_MINUTES", "15"))
+    MFA_BACKUP_CODES_COUNT: int = int(os.getenv("MFA_BACKUP_CODES_COUNT", "10"))
+    MFA_ISSUER_NAME: str = os.getenv("MFA_ISSUER_NAME", "Industrace")
     
     # SSO/Enterprise Auth
     SSO_REDIRECT_URI: str = os.getenv("SSO_REDIRECT_URI") or "http://localhost:5173/auth/sso/callback"

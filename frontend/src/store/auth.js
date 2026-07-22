@@ -51,17 +51,41 @@ function stopTokenRefresh() {
 
   const user = ref(null)
   const isAuthenticated = ref(false)
+  const mfaPending = ref(false)
 
 async function login(email, password) {
   try {
-    await api.login(email, password)
+    const data = await api.login(email, password)
+    if (data?.mfa_required && data?.mfa_token) {
+      mfaPending.value = true
+      sessionStorage.setItem('mfa_token', data.mfa_token)
+      return { mfaRequired: true }
+    }
+    if (data?.mfa_setup_required && data?.mfa_setup_token) {
+      sessionStorage.setItem('mfa_setup_token', data.mfa_setup_token)
+      return { mfaSetupRequired: true }
+    }
     await fetchUser()
     isAuthenticated.value = true
+    mfaPending.value = false
     startTokenRefresh()
-    router.push('/')
+    return { mfaRequired: false }
   } catch (error) {
+    const body = error.response?.data
+    if (body?.mfa_setup_required && body?.mfa_setup_token) {
+      sessionStorage.setItem('mfa_setup_token', body.mfa_setup_token)
+      return { mfaSetupRequired: true }
+    }
     throw error
   }
+}
+
+async function verifyMfa(mfaToken, code) {
+  await api.verifyMfa(mfaToken, code)
+  mfaPending.value = false
+  await fetchUser()
+  isAuthenticated.value = true
+  startTokenRefresh()
 }
 
   async function fetchUser(suppressLogout = false) {
@@ -91,11 +115,24 @@ async function logout() {
   // Clear all authentication data
   user.value = null
   isAuthenticated.value = false
+  mfaPending.value = false
+  sessionStorage.removeItem('mfa_token')
+  sessionStorage.removeItem('mfa_setup_token')
   stopTokenRefresh()
   
   router.push('/login')
 }
-  return { user, isAuthenticated, login, logout, fetchUser,startTokenRefresh,stopTokenRefresh }
+  return {
+    user,
+    isAuthenticated,
+    mfaPending,
+    login,
+    verifyMfa,
+    logout,
+    fetchUser,
+    startTokenRefresh,
+    stopTokenRefresh
+  }
 }, {
   persist: true   
 }

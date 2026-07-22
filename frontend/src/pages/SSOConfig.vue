@@ -4,6 +4,48 @@
       <h1>{{ t('sso.title') }}</h1>
     </div>
 
+    <!-- MFA Policy -->
+    <Card class="mb-3">
+      <template #title>
+        <div class="flex align-items-center gap-2">
+          <i class="pi pi-shield"></i>
+          {{ t('mfa.policyTitle') }}
+        </div>
+      </template>
+      <template #content>
+        <p class="mb-3 text-color-secondary">{{ t('mfa.policyDescription') }}</p>
+        <div class="p-fluid">
+          <div class="field">
+            <label>{{ t('mfa.policyTitle') }}</label>
+            <Dropdown
+              v-model="mfaPolicy.mfa_policy"
+              :options="mfaPolicyOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="w-full"
+            />
+          </div>
+          <div class="field">
+            <label>{{ t('mfa.enrollmentDeadline') }}</label>
+            <InputNumber
+              v-model="mfaPolicy.mfa_enrollment_deadline_days"
+              :min="0"
+              :max="365"
+              class="w-full"
+            />
+          </div>
+          <div class="flex justify-content-end">
+            <Button
+              :label="t('mfa.savePolicy')"
+              icon="pi pi-save"
+              :loading="mfaPolicySaving"
+              @click="saveMfaPolicy"
+            />
+          </div>
+        </div>
+      </template>
+    </Card>
+
         <!-- Setup Guide for Azure AD -->
         <Card v-if="formData.provider_type === 'azure_ad' || !formData.provider_type" class="mb-3">
       <template #title>
@@ -234,6 +276,7 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import InputSwitch from 'primevue/inputswitch'
 import Checkbox from 'primevue/checkbox'
+import InputNumber from 'primevue/inputnumber'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
 import DataTable from 'primevue/datatable'
@@ -269,6 +312,55 @@ const loadingUsers = ref(false)
 const importing = ref(false)
 const userFilter = ref('')
 const showSetupGuide = ref(false)
+
+const mfaPolicy = ref({
+  mfa_policy: 'optional',
+  mfa_enrollment_deadline_days: 7
+})
+const mfaPolicySaving = ref(false)
+const mfaPolicyOptions = computed(() => [
+  { label: t('mfa.policyOptional'), value: 'optional' },
+  { label: t('mfa.policyRequiredAdmins'), value: 'required_admins' },
+  { label: t('mfa.policyRequiredAll'), value: 'required_all' }
+])
+
+async function fetchMfaPolicy() {
+  try {
+    const res = await api.getMfaPolicy()
+    mfaPolicy.value = {
+      mfa_policy: res.data.mfa_policy || 'optional',
+      mfa_enrollment_deadline_days: res.data.mfa_enrollment_deadline_days ?? 7
+    }
+  } catch (e) {
+    // SSO section permission required — ignore if unavailable
+  }
+}
+
+async function saveMfaPolicy() {
+  mfaPolicySaving.value = true
+  try {
+    const res = await api.updateMfaPolicy(mfaPolicy.value)
+    mfaPolicy.value = {
+      mfa_policy: res.data.mfa_policy,
+      mfa_enrollment_deadline_days: res.data.mfa_enrollment_deadline_days
+    }
+    toast.add({
+      severity: 'success',
+      summary: t('common.messages.success'),
+      detail: t('mfa.policySaved'),
+      life: 3000
+    })
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.messages.error'),
+      detail: error.response?.data?.detail || t('mfa.messages.policyError'),
+      life: 4000
+    })
+  } finally {
+    mfaPolicySaving.value = false
+  }
+}
 
 // Provider SSO disponibili
 // Nota: Il backend supporta già Azure AD, Google Workspace, Okta e Generic OIDC
@@ -463,6 +555,7 @@ async function importUsers() {
 onMounted(async () => {
   await fetchConfig()
   await loadRoles()
+  await fetchMfaPolicy()
   // Try to load Azure AD users, but don't fail if it errors (e.g., decryption error)
   // User can still reconfigure SSO settings
   if (config.value && config.value.provider_type === 'azure_ad') {

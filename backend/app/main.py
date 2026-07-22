@@ -6,6 +6,7 @@ import math
 
 from datetime import datetime, timedelta
 from typing import Optional
+from uuid import UUID
 from jose import jwt, JWTError, ExpiredSignatureError
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,9 @@ from app.services.auth import (
     verify_password,
     get_password_hash,
     create_access_token,
+    create_mfa_pending_token,
+    create_mfa_setup_token,
+    decode_typed_token,
 )
 from app.services.audit_log import create_audit_log, resolve_audit_language
 from app.services.rate_limiter import check_rate_limit_strict, add_rate_limit_headers_strict
@@ -59,8 +63,11 @@ from app.services.security_logging import (
     log_failed_login,
     log_successful_login,
     log_unauthorized_access,
-    log_rate_limit_exceeded
+    log_rate_limit_exceeded,
+    log_mfa_event,
 )
+from app.services import mfa as mfa_service
+from pydantic import BaseModel
 from app.config import settings
 from app.logging_config import setup_logging
 
@@ -185,6 +192,7 @@ from app.routers import evidence
 from app.routers import network_probes
 from app.routers import discovered_devices
 from app.routers import tenant_features
+from app.routers import mfa
 from app.crud import sso as crud_sso
 from app.setup_system import setup_system
 from app.database import SessionLocal
@@ -236,6 +244,7 @@ app.include_router(vulnerabilities.router, tags=["vulnerabilities"])
 app.include_router(asset_capabilities.router, tags=["asset-capabilities"])
 app.include_router(evidence.router, tags=["evidence"])
 app.include_router(sso.router, tags=["sso"])
+app.include_router(mfa.router, tags=["mfa"])
 app.include_router(network_probes.router, tags=["network-probes"])
 app.include_router(discovered_devices.router, tags=["discovered-devices"])
 app.include_router(asset_photos.router, tags=["asset_photo"])
@@ -684,14 +693,55 @@ async def login(
             status_code=403,
             error_code="PASSWORD_CHANGE_REQUIRED"
         )
-    
+
+    # MFA policy / verification gate (before issuing access token)
+    tenant = user.tenant
+    if tenant is None:
+        from app.models.tenant import Tenant
+        tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+
+    if tenant:
+        enforcement = mfa_service.check_mfa_policy(user, tenant)
+        if enforcement.requires_enrollment and not user.totp_enabled and enforcement.past_grace:
+            mfa_setup_token = create_mfa_setup_token(str(user.id), str(user.tenant_id))
+            response = JSONResponse(
+                status_code=403,
+                content={
+                    "error_code": ErrorCode.MFA_SETUP_REQUIRED.value,
+                    "mfa_setup_required": True,
+                    "mfa_setup_token": mfa_setup_token,
+                    "expires_in": settings.MFA_PENDING_TOKEN_EXPIRE_MINUTES * 60,
+                    "detail": "MFA enrollment is required before access.",
+                },
+            )
+            add_rate_limit_headers_strict(response, request, settings.RATE_LIMIT_STRICT)
+            return response
+
+    if user.totp_enabled:
+        if mfa_service.is_mfa_locked(user):
+            raise ErrorCodeException(
+                status_code=403,
+                error_code=ErrorCode.MFA_LOCKED,
+                detail=f"MFA locked until {user.mfa_locked_until.isoformat()}.",
+            )
+        mfa_token = create_mfa_pending_token(str(user.id), str(user.tenant_id))
+        response = JSONResponse(
+            content={
+                "mfa_required": True,
+                "mfa_token": mfa_token,
+                "expires_in": settings.MFA_PENDING_TOKEN_EXPIRE_MINUTES * 60,
+            }
+        )
+        add_rate_limit_headers_strict(response, request, settings.RATE_LIMIT_STRICT)
+        return response
+
     # Reset failed attempts and lockout on successful login
     user.failed_login_attempts = 0
     user.locked_until = None
     user.last_login = datetime.utcnow()
     db.commit()
     db.refresh(user)
-    
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id), "tenant_id": str(user.tenant_id)},
@@ -721,6 +771,134 @@ async def login(
     # Add rate limit headers with strict limit for login
     add_rate_limit_headers_strict(response, request, settings.RATE_LIMIT_STRICT)
     # Secure cookie for frontend
+    response.set_cookie(
+        key="access_token_cookie",
+        value=access_token,
+        httponly=True,
+        secure=settings.SECURE_COOKIES,
+        samesite=settings.SAME_SITE_COOKIES,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    return response
+
+
+class MfaLoginBody(BaseModel):
+    mfa_token: str
+    code: str
+
+
+@app.post("/login/mfa")
+async def login_mfa(
+    body: MfaLoginBody,
+    db: Session = Depends(get_db),
+    request: Request = None,
+):
+    """Complete login after TOTP or backup-code verification."""
+    if not check_rate_limit_strict(request, settings.RATE_LIMIT_STRICT):
+        log_rate_limit_exceeded(
+            f"ip:{request.client.host if request.client else 'unknown'}",
+            settings.RATE_LIMIT_STRICT,
+            request,
+        )
+        raise ErrorCodeException(
+            status_code=429,
+            error_code="RATE_LIMIT_EXCEEDED",
+            detail="Troppi tentativi. Riprova più tardi.",
+        )
+
+    payload = decode_typed_token(body.mfa_token, "mfa_pending")
+    try:
+        user_uuid = UUID(str(payload.get("sub")))
+    except (TypeError, ValueError):
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.INVALID_TOKEN)
+
+    user = db.query(User).filter(User.id == user_uuid).first()
+    if (
+        not user
+        or user.deleted_at is not None
+        or not user.is_active
+        or not user.totp_enabled
+    ):
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.INVALID_CREDENTIALS)
+
+    if mfa_service.is_mfa_locked(user):
+        log_mfa_event(
+            "MFA_FAILED",
+            f"MFA locked for user {user.email}",
+            request=request,
+            user_id=str(user.id),
+            tenant_id=str(user.tenant_id),
+            severity="WARNING",
+        )
+        raise ErrorCodeException(
+            status_code=403,
+            error_code=ErrorCode.MFA_LOCKED,
+            detail=f"MFA locked until {user.mfa_locked_until.isoformat()}.",
+        )
+
+    if not mfa_service.verify_mfa_code(db, user, body.code):
+        mfa_service.register_mfa_failure(user)
+        db.commit()
+        log_mfa_event(
+            "MFA_FAILED",
+            f"Invalid MFA code for user {user.email}",
+            request=request,
+            user_id=str(user.id),
+            tenant_id=str(user.tenant_id),
+            severity="WARNING",
+        )
+        create_audit_log(
+            db=db,
+            user_id=user.id,
+            tenant_id=user.tenant_id,
+            action="mfa_failed",
+            entity="User",
+            entity_id=user.id,
+            ip_address=request.client.host if request and request.client else None,
+            commit=True,
+            language=resolve_audit_language(user, request),
+        )
+        if mfa_service.is_mfa_locked(user):
+            raise ErrorCodeException(status_code=403, error_code=ErrorCode.MFA_LOCKED)
+        raise ErrorCodeException(status_code=401, error_code=ErrorCode.MFA_INVALID_CODE)
+
+    mfa_service.reset_mfa_failures(user)
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    user.last_login = datetime.utcnow()
+    db.commit()
+    db.refresh(user)
+
+    access_token = create_access_token(
+        data={"sub": str(user.id), "tenant_id": str(user.tenant_id)},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    log_successful_login(str(user.id), str(user.tenant_id), user.email, request)
+    log_mfa_event(
+        "MFA_SUCCESS",
+        f"MFA verified for user {user.email}",
+        request=request,
+        user_id=str(user.id),
+        tenant_id=str(user.tenant_id),
+    )
+    create_audit_log(
+        db=db,
+        user_id=user.id,
+        tenant_id=user.tenant_id,
+        action="login_mfa",
+        entity="User",
+        entity_id=user.id,
+        ip_address=request.client.host if request and request.client else None,
+        commit=True,
+        language=resolve_audit_language(user, request),
+    )
+
+    response = JSONResponse(
+        content={"access_token": access_token, "token_type": "bearer"}
+    )
+    add_rate_limit_headers_strict(response, request, settings.RATE_LIMIT_STRICT)
     response.set_cookie(
         key="access_token_cookie",
         value=access_token,

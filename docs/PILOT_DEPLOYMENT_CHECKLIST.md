@@ -1,6 +1,6 @@
 # Pilot Deployment Checklist
 
-Use this checklist before deploying Industrace v2.1.x in a **controlled pilot** or **pre-production** environment (internal network, limited users, non-critical ICS data).
+Use this checklist before deploying Industrace v2.2.x in a **controlled pilot** or **pre-production** environment (internal network, limited users, non-critical ICS data).
 
 For full installation steps see [INSTALLATION.md](INSTALLATION.md). For all environment variables see [CONFIGURATION.md](CONFIGURATION.md).
 
@@ -82,10 +82,17 @@ Store `.env.prod` securely — **never commit it to version control**.
 - [ ] `/setup/initialize` rejects requests without valid `X-Setup-Token`
 - [ ] Audit log records login and critical operations
 - [ ] `make test` passes in Docker before go-live
+- [ ] **Deep health check** returns `200` with database connectivity verified:
+  ```bash
+  curl -sk https://your-host/api/health
+  ```
+  Response should report healthy database status (and Redis if SSO state store is configured)
+- [ ] Docker containers report healthy (`docker compose -f docker-compose.prod.yml ps` — backend and PostgreSQL healthchecks passing)
 
 ## 7. Operational monitoring
 
 - [ ] Monitor `logs/industrace.log` and `logs/security.log`
+- [ ] Poll `/api/health` from your monitoring stack (database + optional Redis checks)
 - [ ] Configure tenant syslog forwarding if SIEM integration is required (optional)
 - [ ] Plan image rebuild after `git pull` in production:
   ```bash
@@ -93,27 +100,37 @@ Store `.env.prod` securely — **never commit it to version control**.
   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
   ```
 
-## 8. Known limitations (pilot scope)
+## 8. Network Probes (optional pilot scope)
+
+If deploying Network Probes in the pilot:
+
+- [ ] Review [probe/NETWORK_PROBE.md](../probe/NETWORK_PROBE.md) — status **pilot-stable** since v2.2.0
+- [ ] Follow probe go-live steps in [probe/RUNBOOK.md](../probe/RUNBOOK.md)
+- [ ] Validate probe heartbeat and discovered-device flow in a **lab network** before OT segments
+- [ ] Confirm probe API key rotation and rate-limit behaviour under load
+
+## 9. Known limitations (pilot scope)
 
 | Item | Status |
 |------|--------|
-| MFA / TOTP | Not yet implemented (roadmap) |
+| MFA / TOTP | **Implemented** — enable in Profile; tenant policy on SSO Config. See [ADMINISTRATION.md](ADMINISTRATION.md) and [MFA_TOTP_IMPLEMENTATION.md](MFA_TOTP_IMPLEMENTATION.md). SSO users may rely on IdP MFA (e.g. Azure AD Conditional Access). |
 | High availability / Kubernetes | Not supported — Docker Compose only |
 | `make prod-cloud` | BETA — not recommended for pilot |
-| Network Probes | MVP in v2.1.0 — validate in lab before production OT networks |
-| Redis in prod compose | Not included — rate limiting is per-process |
+| Network Probes | **Pilot-stable** in v2.2.0 — validate in lab before production OT networks; see [probe/RUNBOOK.md](../probe/RUNBOOK.md) |
+| Redis in prod compose | Not included — rate limiting is per-process; `/health` reports Redis only when SSO state store is configured |
+| PWA (manifest / service worker) | Not yet implemented (planned v2.3.x) |
 
-## 9. Go / No-Go criteria
+## 10. Go / No-Go criteria
 
 **Go** for controlled pilot when all items in sections 1–6 are checked.
 
 **No-Go** (wait for next release or restrict to admin-only lab) if:
 
 - Instance must be exposed to the public internet without WAF/VPN
-- Strict compliance requires MFA before any user access
+- Strict compliance requires MFA before any user access **and** neither Industrace TOTP (local users) nor IdP MFA (SSO) is configured
 - Multi-tenant RBAC must be audited by a third party (run `make test` and internal pen test first)
 
 ---
 
 **Contact**: industrace@besafe.it  
-**Last updated**: June 2026 — Industrace v2.1.x
+**Last updated**: July 2026 — Industrace v2.3.x (MFA)

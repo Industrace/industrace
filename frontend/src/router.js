@@ -39,6 +39,8 @@ import { usePermissions } from './composables/usePermissions'
 
 const routes = [
   { path: '/login', name: 'Login', component: Login },
+  { path: '/mfa/verify', name: 'MfaVerify', component: () => import('./pages/MfaVerify.vue') },
+  { path: '/mfa/setup', name: 'MfaSetup', component: () => import('./pages/MfaSetup.vue') },
   { path: '/auth/sso/success', name: 'SSOSuccess', component: SSOSuccess },
   { path: '/auth/sso/error', name: 'SSOError', component: SSOError },
   { path: '/', name: 'Dashboard', component: Dashboard, meta: { requiresAuth: true } },
@@ -94,7 +96,7 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   // Allow SSO success/error pages without auth check
-  if (to.name === 'SSOSuccess' || to.name === 'SSOError') {
+  if (to.name === 'SSOSuccess' || to.name === 'SSOError' || to.name === 'MfaVerify' || to.name === 'MfaSetup') {
     next()
     return
   }

@@ -6,10 +6,26 @@ const api = axios.create({
   withCredentials: true 
 })
 
+api.interceptors.request.use((config) => {
+  const setupToken = sessionStorage.getItem('mfa_setup_token')
+  const url = config.url || ''
+  if (setupToken && url.includes('/users/me/mfa')) {
+    config.headers = config.headers || {}
+    config.headers.Authorization = `Bearer ${setupToken}`
+  }
+  return config
+})
+
 api.interceptors.response.use(
   response => response,
   error => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const url = error.config?.url || ''
+    const isAuthFlow =
+      url.includes('/login') ||
+      url.includes('/login/mfa') ||
+      url.includes('/auth/sso')
+    if (status === 401 && !isAuthFlow) {
       const auth = useAuthStore()
       auth.logout()
     }
@@ -25,6 +41,40 @@ export default {
     
     const response = await api.post('/login', formData)
     return response.data
+  },
+  async verifyMfa(mfaToken, code) {
+    const response = await api.post('/login/mfa', {
+      mfa_token: mfaToken,
+      code
+    })
+    return response.data
+  },
+  getMfaStatus() {
+    return api.get('/users/me/mfa/status')
+  },
+  mfaSetup() {
+    return api.post('/users/me/mfa/setup')
+  },
+  mfaVerifySetup(code) {
+    return api.post('/users/me/mfa/verify-setup', { code })
+  },
+  mfaDisable(password, code) {
+    return api.post('/users/me/mfa/disable', { password, code })
+  },
+  mfaRegenerateBackupCodes(code) {
+    return api.post('/users/me/mfa/backup-codes/regenerate', { code })
+  },
+  getMfaPolicy() {
+    return api.get('/tenants/mfa-policy')
+  },
+  updateMfaPolicy(data) {
+    return api.put('/tenants/mfa-policy', data)
+  },
+  getUserMfaStatus(userId) {
+    return api.get(`/users/${userId}/mfa/status`)
+  },
+  resetUserMfa(userId) {
+    return api.post(`/users/${userId}/mfa/reset`)
   },
   getCurrentUser() {
     return api.get('/users/me')

@@ -24,7 +24,21 @@
             </p>
             <p><strong>{{ t('common.fields.createdAt') }}:</strong> {{ formatDate(user.created_at) }}</p>
             <p><strong>{{ t('users.fields.lastLogin') }}:</strong> {{ user.last_login ? formatDate(user.last_login) : t('common.strings.na') }}</p>
+            <p v-if="mfaInfo">
+              <strong>{{ t('mfa.title') }}:</strong>
+              {{ mfaInfo.totp_enabled ? t('mfa.statusEnabled') : t('mfa.statusDisabled') }}
+            </p>
           </div>
+        </div>
+        <div class="mt-3" v-if="mfaInfo?.totp_enabled">
+          <Button
+            :label="t('mfa.resetAdmin')"
+            icon="pi pi-refresh"
+            severity="danger"
+            outlined
+            :loading="resettingMfa"
+            @click="resetMfa"
+          />
         </div>
       </template>
     </Card>
@@ -58,6 +72,8 @@ const toast = useToast()
 
 const user = ref(null)
 const loading = ref(false)
+const mfaInfo = ref(null)
+const resettingMfa = ref(false)
 const userId = route.params.id
 
 function goBack() {
@@ -73,6 +89,39 @@ function formatDate(dateString) {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+async function fetchMfa() {
+  try {
+    const res = await api.getUserMfaStatus(userId)
+    mfaInfo.value = res.data
+  } catch (e) {
+    mfaInfo.value = null
+  }
+}
+
+async function resetMfa() {
+  if (!confirm(t('mfa.resetAdminConfirm'))) return
+  resettingMfa.value = true
+  try {
+    await api.resetUserMfa(userId)
+    toast.add({
+      severity: 'success',
+      summary: t('common.messages.success'),
+      detail: t('mfa.resetSuccess'),
+      life: 3000
+    })
+    await fetchMfa()
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.messages.error'),
+      detail: error.response?.data?.detail || t('common.messages.error'),
+      life: 4000
+    })
+  } finally {
+    resettingMfa.value = false
+  }
 }
 
 async function fetchUser() {
@@ -93,8 +142,9 @@ async function fetchUser() {
   }
 }
 
-onMounted(() => {
-  fetchUser()
+onMounted(async () => {
+  await fetchUser()
+  await fetchMfa()
 })
 </script>
 

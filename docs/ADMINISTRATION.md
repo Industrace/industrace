@@ -552,6 +552,45 @@ Starting from this version, Industrace implements stricter security requirements
 
 ---
 
+## Multi-factor authentication (MFA / TOTP)
+
+**Available from the MFA feature set (v2.3.x).** Local password users can enable TOTP (Google Authenticator, Authy, 1Password, etc.) from **Profile**.
+
+### User enrollment
+
+1. Sign in with email/password
+2. Open **Profile** → **Two-factor authentication** → **Enable MFA**
+3. Scan the QR code (or enter the secret manually)
+4. Confirm with a 6-digit code
+5. Save the **recovery codes** shown once
+
+At the next login, after the password step, Industrace asks for the authenticator code (or a recovery code).
+
+### Tenant policy (SSO Config page)
+
+| Policy | Behaviour |
+|--------|-----------|
+| `optional` (default) | Users opt in; self-service disable allowed |
+| `required_admins` | Local admin users must enroll within the grace period |
+| `required_all` | All local password users must enroll within the grace period |
+
+Grace period defaults to **7 days** (`mfa_enrollment_deadline_days`). After the deadline, login returns `MFA_SETUP_REQUIRED` until enrollment completes.
+
+**SSO-only users** are not forced through Industrace TOTP — use IdP MFA (e.g. Azure AD Conditional Access). That satisfies pilot MFA requirements when configured.
+
+### Admin reset
+
+On **Users → user detail**, admins with `users` write permission can **Reset MFA**. If SMTP is configured for the tenant, the user receives a notification email.
+
+### Recovery
+
+- Use a one-time recovery code on the MFA verify screen
+- Or ask an admin to reset MFA, then re-enroll
+
+See also [MFA_TOTP_IMPLEMENTATION.md](MFA_TOTP_IMPLEMENTATION.md).
+
+---
+
 ## 📋 New Password Requirements
 
 All **new passwords** must meet the following requirements:

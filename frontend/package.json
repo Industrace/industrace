@@ -24,6 +24,7 @@
     "pinia-plugin-persistedstate": "^2.4.0",
     "primeicons": "^6.0.1",
     "primevue": "^3.38.1",
+    "qrcode": "^1.5.4",
     "vis-network": "^9.1.13",
     "vue": "^3.3.0",
     "vue-chartjs": "^5.2.0",

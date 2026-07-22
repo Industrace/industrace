@@ -69,6 +69,7 @@ Passive network discovery is documented under **[probe/](../probe/README.md)** â
 | Document | Description |
 |----------|-------------|
 | [roadmap.md](roadmap.md) | Planned features |
+| [MFA_TOTP_IMPLEMENTATION.md](MFA_TOTP_IMPLEMENTATION.md) | MFA/TOTP implementation plan (v2.3.0) |
 | [archive/](archive/) | Internal checklists and superseded dev notes |
 
 ---
