@@ -23,7 +23,12 @@ class DiscoveredDevice(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     site_id = Column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=False, index=True)
-    probe_id = Column(UUID(as_uuid=True), ForeignKey("network_probes.id"), nullable=False, index=True)
+    probe_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("network_probes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     mac_address = Column(String(17), nullable=False, index=True)
     ip_addresses = Column(JSONB, default=list)

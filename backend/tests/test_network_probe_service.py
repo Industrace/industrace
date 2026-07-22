@@ -165,6 +165,47 @@ def test_overview_counts(db_session, tenant, site):
 
 def test_delete_probe(db_session, tenant, site):
     probe = NetworkProbeService.create_probe(db_session, tenant.id, _probe_create(site.id))
-    ok = NetworkProbeService.delete_probe(db_session, probe.id, tenant.id)
+    probe_id = probe.id
+    ok = NetworkProbeService.delete_probe(db_session, probe_id, tenant.id)
     assert ok is True
-    assert NetworkProbeService.get_probe_by_id(db_session, probe.id, tenant.id) is None
+    assert NetworkProbeService.get_probe_by_id(db_session, probe_id, tenant.id) is None
+
+
+def test_delete_probe_with_related_data(db_session, tenant, site):
+    """Delete must succeed when heartbeats/transmissions/devices exist (FK NOT NULL)."""
+    from app.models.discovered_device import DiscoveredDevice
+    from app.models.network_probe import ProbeDataTransmission
+
+    probe = NetworkProbeService.create_probe(db_session, tenant.id, _probe_create(site.id))
+    probe_id = probe.id
+
+    NetworkProbeService.register_heartbeat(
+        db_session,
+        probe.api_key,
+        ProbeHeartbeatCreate(status="healthy", probe_id=probe_id),
+    )
+    NetworkProbeService.register_data_transmission(
+        db_session,
+        probe.api_key,
+        _transmission_payload(
+            probe_id,
+            [{"mac_address": "aa:bb:cc:dd:ee:99", "ip_addresses": ["10.0.0.9"]}],
+        ),
+    )
+    NetworkProbeService.upsert_discovered_devices(
+        db_session,
+        probe,
+        [{"mac_address": "aa:bb:cc:dd:ee:99", "ip_addresses": ["10.0.0.9"]}],
+    )
+    db_session.commit()
+
+    assert db_session.query(ProbeHeartbeat).filter_by(probe_id=probe_id).count() >= 1
+    assert db_session.query(ProbeDataTransmission).filter_by(probe_id=probe_id).count() >= 1
+    assert db_session.query(DiscoveredDevice).filter_by(probe_id=probe_id).count() >= 1
+
+    ok = NetworkProbeService.delete_probe(db_session, probe_id, tenant.id)
+    assert ok is True
+    assert NetworkProbeService.get_probe_by_id(db_session, probe_id, tenant.id) is None
+    assert db_session.query(ProbeHeartbeat).filter_by(probe_id=probe_id).count() == 0
+    assert db_session.query(ProbeDataTransmission).filter_by(probe_id=probe_id).count() == 0
+    assert db_session.query(DiscoveredDevice).filter_by(probe_id=probe_id).count() == 0

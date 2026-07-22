@@ -129,10 +129,36 @@ class NetworkProbeService:
 
     @staticmethod
     def delete_probe(db: Session, probe_id: uuid.UUID, tenant_id: uuid.UUID) -> bool:
-        probe = NetworkProbeService.get_probe_by_id(db, probe_id, tenant_id)
-        if not probe:
+        exists = (
+            db.query(NetworkProbe.id)
+            .filter(and_(NetworkProbe.id == probe_id, NetworkProbe.tenant_id == tenant_id))
+            .first()
+        )
+        if not exists:
             return False
-        db.delete(probe)
+
+        # Bulk delete: evita db.delete(probe) che farebbe UPDATE probe_id=NULL sui figli in sessione.
+        db.query(ProbeHeartbeat).filter(ProbeHeartbeat.probe_id == probe_id).delete(
+            synchronize_session=False
+        )
+        db.query(ProbeDataTransmission).filter(
+            ProbeDataTransmission.probe_id == probe_id
+        ).delete(synchronize_session=False)
+        db.query(DiscoveredDevice).filter(DiscoveredDevice.probe_id == probe_id).delete(
+            synchronize_session=False
+        )
+        deleted = (
+            db.query(NetworkProbe)
+            .filter(and_(NetworkProbe.id == probe_id, NetworkProbe.tenant_id == tenant_id))
+            .delete(synchronize_session=False)
+        )
+        if not deleted:
+            return False
+
+        # Bulk delete non rimuove oggetti dalla sessione: senza expunge, al commit
+        # l'ORM tenterebbe UPDATE probe_id=NULL sui discovered_devices ancora tracciati.
+        db.flush()
+        db.expunge_all()
         db.commit()
         return True
 

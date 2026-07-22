@@ -67,17 +67,36 @@ class NetworkProbe(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_config_update = Column(DateTime(timezone=True), nullable=True)
 
-    # Relazioni
+    # Relazioni (passive_deletes: il DB gestisce CASCADE, l'ORM non nullifica FK)
     tenant = relationship("Tenant", back_populates="network_probes")
     site = relationship("Site", back_populates="network_probes")
-    discovered_devices = relationship("DiscoveredDevice", back_populates="probe")
+    discovered_devices = relationship(
+        "DiscoveredDevice",
+        back_populates="probe",
+        passive_deletes=True,
+    )
+    heartbeats = relationship(
+        "ProbeHeartbeat",
+        back_populates="probe",
+        passive_deletes=True,
+    )
+    data_transmissions = relationship(
+        "ProbeDataTransmission",
+        back_populates="probe",
+        passive_deletes=True,
+    )
 
 
 class ProbeHeartbeat(Base):
     __tablename__ = "probe_heartbeats"
 
     id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
-    probe_id = Column(UUID(as_uuid=True), ForeignKey("network_probes.id"), nullable=False, index=True)
+    probe_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("network_probes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     status = Column(String(20), nullable=False)  # healthy, warning, error
@@ -95,14 +114,19 @@ class ProbeHeartbeat(Base):
     warning_count = Column(Integer, default=0)
     last_error_message = Column(Text, nullable=True)
 
-    probe = relationship("NetworkProbe")
+    probe = relationship("NetworkProbe", back_populates="heartbeats")
 
 
 class ProbeDataTransmission(Base):
     __tablename__ = "probe_data_transmissions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
-    probe_id = Column(UUID(as_uuid=True), ForeignKey("network_probes.id"), nullable=False, index=True)
+    probe_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("network_probes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     transmission_type = Column(String(50), nullable=False)  # metadata, statistics, alert
@@ -120,4 +144,4 @@ class ProbeDataTransmission(Base):
     error_message = Column(Text, nullable=True)
     retry_count = Column(Integer, default=0)
 
-    probe = relationship("NetworkProbe")
+    probe = relationship("NetworkProbe", back_populates="data_transmissions")
