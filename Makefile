@@ -3,6 +3,45 @@
 
 .PHONY: help clean clean-all demo prod prod-cloud logs logs-backend logs-frontend stop build rebuild rebuild-backend status shell migrate migration reset-db restart info config traefik create-tenant create-tenant-default custom-certs-setup custom-certs-start custom-certs-stop custom-certs-logs reset-admin-password list-tenants list-admins reset-security-requirements update-roles backup backup-full backup-list restore
 
+# Resolve compose file + env for the stack currently running (Traefik cloud vs Nginx prod).
+# Override with: INDUSTRACE_STACK=cloud|prod make status
+# Usage: $(COMPOSE) ps | logs | build …
+define resolve_compose
+	if [ "$$INDUSTRACE_STACK" = "cloud" ]; then \
+		if [ -f .env.prod-cloud ]; then \
+			echo "docker-compose -f docker-compose.yml --env-file .env.prod-cloud"; \
+		else \
+			echo "docker-compose -f docker-compose.yml"; \
+		fi; \
+	elif [ "$$INDUSTRACE_STACK" = "prod" ]; then \
+		if [ -f .env.prod ]; then \
+			echo "docker-compose -f docker-compose.prod.yml --env-file .env.prod"; \
+		else \
+			echo "docker-compose -f docker-compose.prod.yml"; \
+		fi; \
+	elif docker ps --format '{{.Names}}' 2>/dev/null | grep -qE '(^|-)traefik(-|$$)'; then \
+		if [ -f .env.prod-cloud ]; then \
+			echo "docker-compose -f docker-compose.yml --env-file .env.prod-cloud"; \
+		else \
+			echo "docker-compose -f docker-compose.yml"; \
+		fi; \
+	elif docker ps --format '{{.Names}}' 2>/dev/null | grep -qE '(^|-)nginx(-|$$)'; then \
+		if [ -f .env.prod ]; then \
+			echo "docker-compose -f docker-compose.prod.yml --env-file .env.prod"; \
+		else \
+			echo "docker-compose -f docker-compose.prod.yml"; \
+		fi; \
+	elif [ -f .env.prod-cloud ] && [ ! -f .env.prod ]; then \
+		echo "docker-compose -f docker-compose.yml --env-file .env.prod-cloud"; \
+	elif [ -f .env.prod ]; then \
+		echo "docker-compose -f docker-compose.prod.yml --env-file .env.prod"; \
+	elif [ -f .env.prod-cloud ]; then \
+		echo "docker-compose -f docker-compose.yml --env-file .env.prod-cloud"; \
+	else \
+		echo "docker-compose -f docker-compose.prod.yml"; \
+	fi
+endef
+
 # Default target
 help:
 	@echo "🏭 Industrace Development Commands"
@@ -209,44 +248,44 @@ test-prod:
 # Show logs
 logs:
 	@echo "📋 Showing logs..."
-	docker-compose -f docker-compose.prod.yml logs -f
+	@$$($(resolve_compose)) logs -f
 
 # Show backend logs only
 logs-backend:
 	@echo "📋 Showing backend logs..."
-	docker-compose -f docker-compose.prod.yml logs -f backend
+	@$$($(resolve_compose)) logs -f backend
 
 # Show frontend logs only
 logs-frontend:
 	@echo "📋 Showing frontend logs..."
-	docker-compose -f docker-compose.prod.yml logs -f frontend
+	@$$($(resolve_compose)) logs -f frontend
 
 # Stop all containers
 stop:
 	@echo "🛑 Stopping all containers..."
-	docker-compose -f docker-compose.prod.yml down
-	docker-compose down
+	@if [ -f .env.prod ]; then docker-compose -f docker-compose.prod.yml --env-file .env.prod down; else docker-compose -f docker-compose.prod.yml down; fi
+	@if [ -f .env.prod-cloud ]; then docker-compose -f docker-compose.yml --env-file .env.prod-cloud down; else docker-compose down; fi
 
 # Build images
 build:
 	@echo "🔨 Building images..."
-	docker-compose -f docker-compose.prod.yml build
+	@$$($(resolve_compose)) build
 
 # Rebuild images (no cache)
 rebuild:
 	@echo "🔨 Rebuilding images (no cache)..."
-	docker-compose -f docker-compose.prod.yml build --no-cache
+	@$$($(resolve_compose)) build --no-cache
 
 # Rebuild backend only (faster)
 rebuild-backend:
 	@echo "🔨 Rebuilding backend..."
-	docker-compose -f docker-compose.prod.yml build backend
-	@echo "✅ Backend rebuilt. Restart with: make stop && make prod"
+	@$$($(resolve_compose)) build backend
+	@echo "✅ Backend rebuilt. Restart with: make stop && make prod  (or make prod-cloud)"
 
 # Check system status
 status:
 	@echo "📊 System status:"
-	docker-compose -f docker-compose.prod.yml ps
+	@$$($(resolve_compose)) ps
 
 # Access backend shell
 shell:
@@ -356,7 +395,7 @@ traefik:
 		echo "🌐 Access dashboard at: http://localhost:8080"; \
 	else \
 		echo "❌ Traefik is not running"; \
-		echo "💡 Start with: make prod"; \
+		echo "💡 Start with: make prod-cloud"; \
 	fi
 
 # Create new tenant

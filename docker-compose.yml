@@ -2,13 +2,17 @@ version: '3.8'
 
 services:
   traefik:
-    image: traefik:v2.10
+    # v2.11.31+ negotiates Docker API version (required for Docker Engine 29+)
+    image: traefik:v2.11.31
     command:
       - "--api.insecure=true"
       - "--api.dashboard=true"
       - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.email=admin@industrace.local"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
@@ -74,8 +78,10 @@ services:
       - industrace-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`industrace.local`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.backend.entrypoints=web"
+      # No Host() filter: lab/NAT access is often by IP; app API uses relative /api
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls=true"
       - "traefik.http.routers.backend.priority=100"
       - "traefik.http.services.backend.loadbalancer.server.port=8000"
       - "traefik.http.middlewares.backend-strip.stripprefix.prefixes=/api"
@@ -103,8 +109,9 @@ services:
       - industrace-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`industrace.local`) && !PathPrefix(`/api`)"
-      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls=true"
       - "traefik.http.routers.frontend.priority=10"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
 

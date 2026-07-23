@@ -216,6 +216,28 @@ docker-compose restart frontend
 make rebuild
 ```
 
+#### Traefik 404 with Docker Engine 29+ (`make prod-cloud`)
+**Symptoms**: HTTPS answers with Traefik’s certificate but every path returns `404 Not Found`. Traefik logs show:
+
+```text
+Provider connection error ... client version 1.24 is too old. Minimum supported API version is 1.40
+providerName=docker
+```
+
+**Cause**: Older Traefik images hard-coded Docker API 1.24; Docker Engine 29 raised the minimum API version, so Traefik cannot discover containers/labels and never creates routes.
+
+**Solution**:
+1. Use Traefik **v2.11.31+** (pinned in `docker-compose.yml`).
+2. Recreate Traefik after pulling the new image:
+   ```bash
+   docker-compose -f docker-compose.yml --env-file .env.prod-cloud pull traefik
+   docker-compose -f docker-compose.yml --env-file .env.prod-cloud up -d traefik
+   ```
+3. Confirm the provider error is gone (`make logs` / Traefik logs) and that routers appear at http://localhost:8080/api/http/routers.
+4. Access the app (IP or https://industrace.local). Optional: `./scripts/diagnose-prod-cloud.sh`.
+
+Alternatively, temporarily downgrade the host Docker Engine to 28.x.
+
 #### API Calls Failing
 **Symptoms**: `API calls failing` or `CORS error`
 
