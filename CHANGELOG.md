@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **prod-cloud / Traefik**: bump to `traefik:v2.11.31` so the Docker provider works with Docker Engine 29+ (fixes blanket `404` when API 1.24 is rejected); route frontend/backend on `websecure` with TLS; HTTP→HTTPS redirect; drop strict `Host(industrace.local)` so lab/NAT access by IP works
 - **Makefile**: `status` / `logs` / `build` / `rebuild` detect Traefik (cloud) vs Nginx (prod) stack and load the matching `--env-file`
 - **Diagnostics**: `scripts/diagnose-prod-cloud.sh` for Traefik router / 404 checks
+- **Troubleshooting**: document `logs/` bind-mount permissions (backend `unhealthy` on `error.log`)
 
 ## [2.3.0] - 2026-07-22
 

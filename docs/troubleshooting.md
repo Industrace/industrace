@@ -107,13 +107,23 @@ sudo systemctl stop postgresql
 ```
 
 #### Insufficient Permissions
-**Symptoms**: `Permission denied` errors
+**Symptoms**: `Permission denied` on `/app/uploads/...` or `/app/logs/error.log`; backend stays in `starting` then becomes `unhealthy`.
+
+**Cause**: The backend container runs as `appuser` (uid/gid **1000**). Host directories bind-mounted as `./uploads` and `./logs` must be writable by that user.
 
 **Solution**:
 ```bash
-# Fix upload directory permissions
-sudo chown -R 1000:1000 uploads/
-sudo chmod -R 755 uploads/
+# Fix bind-mounted directories (run from the Industrace repo root)
+sudo chown -R 1000:1000 uploads/ logs/
+sudo chmod -R 755 uploads/ logs/
+
+# If log files were created as root, fix ownership or remove stale files:
+# sudo rm -f logs/*.log
+
+# Restart backend after fixing permissions
+docker-compose -f docker-compose.yml --env-file .env.prod-cloud restart backend
+# or for Nginx prod stack:
+docker-compose -f docker-compose.prod.yml --env-file .env.prod restart backend
 
 # Fix Docker permissions
 sudo chown -R $USER:$USER /var/run/docker.sock
