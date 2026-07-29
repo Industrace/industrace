@@ -1,6 +1,8 @@
 version: '3.8'
 
 services:
+  # Profilo consigliato: least-privilege con sole capability di capture.
+  # Fallback troubleshooting: se necessario testare temporaneamente con privileged: true.
   # Sonda principale per rete di produzione
   network-probe-prod:
     build:
@@ -8,7 +10,6 @@ services:
       dockerfile: Dockerfile.probe
     container_name: network-probe-prod
     restart: unless-stopped
-    privileged: true  # Necessario per accesso alle interfacce di rete
     network_mode: host  # Usa la rete dell'host per sniffing
     volumes:
       - ./probe.conf:/app/probe.conf:ro
@@ -20,8 +21,6 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    security_opt:
-      - seccomp:unconfined
     labels:
       - "industrace.probe.type=production"
       - "industrace.probe.site=main-facility"
@@ -33,7 +32,6 @@ services:
       dockerfile: Dockerfile.probe
     container_name: network-probe-backup
     restart: unless-stopped
-    privileged: true
     network_mode: host
     volumes:
       - ./probe-backup.conf:/app/probe.conf:ro
@@ -45,8 +43,6 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    security_opt:
-      - seccomp:unconfined
     labels:
       - "industrace.probe.type=backup"
       - "industrace.probe.site=backup-facility"
@@ -58,7 +54,6 @@ services:
       dockerfile: Dockerfile.probe
     container_name: network-probe-wireless
     restart: unless-stopped
-    privileged: true
     network_mode: host
     volumes:
       - ./probe-wireless.conf:/app/probe.conf:ro
@@ -70,8 +65,6 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    security_opt:
-      - seccomp:unconfined
     labels:
       - "industrace.probe.type=wireless"
       - "industrace.probe.site=wireless-network"
@@ -83,7 +76,6 @@ services:
       dockerfile: Dockerfile.probe
     container_name: network-probe-industrial
     restart: unless-stopped
-    privileged: true
     network_mode: host
     volumes:
       - ./probe-industrial.conf:/app/probe.conf:ro
@@ -95,8 +87,6 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    security_opt:
-      - seccomp:unconfined
     labels:
       - "industrace.probe.type=industrial"
       - "industrace.probe.site=plc-network"

@@ -1,0 +1,30 @@
+[Unit]
+Description=Industrace Network Probe
+Documentation=file:///opt/industrace/probe/SYSTEMD_NATIVE_SETUP.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=industrace-probe
+Group=industrace-probe
+WorkingDirectory=/opt/industrace/probe
+ExecStart=/usr/bin/python3 /opt/industrace/probe/network_probe_client.py -c /etc/industrace/probe.conf
+
+# Keep service-level privileges narrow: only packet capture and interface control.
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+NoNewPrivileges=yes
+
+# Hardening defaults compatible with probe runtime.
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/industrace/probe/logs /var/lib/industrace-probe
+
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

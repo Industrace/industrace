@@ -36,7 +36,10 @@
     "assign": "Assign to existing asset",
     "assignTooltip": "Assign to existing catalogued asset",
     "onboardTooltip": "Quick onboard as new asset",
-    "ignore": "Ignore"
+    "ignore": "Ignore",
+    "clear": "Clear list",
+    "clearAllLabel": "all probes",
+    "clearConfirm": "Confirm removal of discovered devices for {target}?"
   },
   "onboard": {
     "title": "Asset onboarding",
@@ -50,6 +53,8 @@
     "updated": "Device updated",
     "assigned": "Device assigned to existing asset",
     "assetCreated": "Asset created from discovered device",
-    "loadError": "Failed to load discovered devices"
+    "loadError": "Failed to load discovered devices",
+    "cleared": "Discovered devices removed",
+    "clearError": "Failed to remove discovered devices"
   }
 }

@@ -107,6 +107,7 @@ Distributed passive network discovery for **Industrace 2.1+**. Probes observe in
 ## Documentation
 
 **[NETWORK_PROBE.md](NETWORK_PROBE.md)** — complete guide: quick start, configuration, architecture, API, security, troubleshooting, and backlog.
+**[SYSTEMD_NATIVE_SETUP.md](SYSTEMD_NATIVE_SETUP.md)** — native Linux deployment with systemd and minimal capabilities.
 
 ## Quick start
 
@@ -116,9 +117,12 @@ Distributed passive network discovery for **Industrace 2.1+**. Probes observe in
 
 ```bash
 docker build -f Dockerfile.probe -t industrace-probe .
-docker run -d --name network-probe --privileged --network host \
+docker run -d --name network-probe --network host \
+  --cap-add NET_RAW --cap-add NET_ADMIN \
   -v $(pwd)/probe.conf:/app/probe.conf:ro industrace-probe
 ```
+
+If capture fails in your environment, temporarily test with `--privileged` and then tighten back to `--cap-add` once validated.
 
 4. Confirm heartbeat in the UI; check **Discovered devices** after the first data transmission (default ~5 minutes).
 
@@ -131,6 +135,8 @@ docker run -d --name network-probe --privileged --network host \
 | `probe.conf` / `probe.conf.example` | Configuration |
 | `Dockerfile.probe` | Container image |
 | `docker-compose.probes.yml` | Multi-probe compose example |
+| `SYSTEMD_NATIVE_SETUP.md` | Native systemd deployment quickstart |
+| `industrace-network-probe.service.example` | Example systemd unit |
 | `tests/` | Client unit tests |
 | `RUNBOOK.md` | Operational runbook (pilot) |
 | `README.md` | Module map (this file) |

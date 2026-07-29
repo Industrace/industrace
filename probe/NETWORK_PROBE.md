@@ -21,7 +21,7 @@ Distributed passive network discovery for **Industrace 2.1+**. Probes observe in
 
 - Industrace **2.1+** with migrations applied (`make migrate`)
 - RBAC permission **`network_probes`** on user roles (`make update-roles`)
-- Probe host with access to the target interface (`CAP_NET_RAW` / `CAP_NET_ADMIN` or Docker `--privileged`)
+- Probe host with access to the target interface (`CAP_NET_RAW` / `CAP_NET_ADMIN` via systemd or Docker `cap_add`)
 - Python 3.8+ or Docker (recommended for production)
 
 ### Key files
@@ -42,6 +42,8 @@ Distributed passive network discovery for **Industrace 2.1+**. Probes observe in
 | `probe.conf` / `probe.conf.example` | Configuration |
 | `Dockerfile.probe` | Container image (copies all `*.py` modules) |
 | `docker-compose.probes.yml` | Multi-probe compose example |
+| `SYSTEMD_NATIVE_SETUP.md` | Native systemd deployment guide |
+| `industrace-network-probe.service.example` | Example systemd unit |
 | `requirements.probe.txt` | Python dependencies |
 | `tests/` | Client unit tests (`pytest`) |
 
@@ -66,8 +68,9 @@ docker build -f Dockerfile.probe -t industrace-probe .
 
 docker run -d \
   --name network-probe \
-  --privileged \
   --network host \
+  --cap-add NET_RAW \
+  --cap-add NET_ADMIN \
   -v $(pwd)/probe.conf:/app/probe.conf:ro \
   -v $(pwd)/logs:/logs \
   industrace-probe
@@ -87,6 +90,8 @@ python3 network_probe_client.py --create-config
 # Edit probe.conf, then:
 python3 network_probe_client.py -c probe.conf
 ```
+
+For production native deployments, prefer systemd with dedicated non-root user and scoped capabilities. See [SYSTEMD_NATIVE_SETUP.md](SYSTEMD_NATIVE_SETUP.md).
 
 ---
 
@@ -281,12 +286,7 @@ See [API.md](../docs/API.md) for general REST conventions.
 2. Rotate API keys after de-authorize or compromise.
 3. Do not enable `payload_analysis` without authorization.
 4. Restrict outbound firewall to HTTPS to the Industrace server only.
-5. Use `--privileged` or capabilities only when required for capture.
-
-```bash
-# Optional: capabilities instead of full privileged (native)
-sudo setcap cap_net_raw,cap_net_admin=eip $(which python3)
-```
+5. Prefer least privilege: systemd `AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN` or Docker `--cap-add NET_RAW --cap-add NET_ADMIN`; use `--privileged` only as troubleshooting fallback.
 
 ---
 
@@ -405,7 +405,7 @@ Modbus (502), IEC 60870-5-104 / IEC 104 (2404), OPC-UA (4840), EtherNet/IP (4481
 ```bash
 ip link show
 sudo ip link set eth0 promisc on
-sudo setcap cap_net_raw,cap_net_admin=eip $(which python3)
+systemctl show industrace-network-probe -p AmbientCapabilities -p CapabilityBoundingSet
 ```
 
 ### Server connectivity

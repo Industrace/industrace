@@ -1,7 +1,7 @@
 # Industrace - Industrial Asset Management System
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://opensource.org/licenses/AGPL-3.0)
-[![Release](https://img.shields.io/badge/Release-v2.3.0-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.3.0)
+[![Release](https://img.shields.io/badge/Release-v2.3.1-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.3.1)
 [![Status](https://img.shields.io/badge/Status-Pilot%20recommended-orange.svg)](#release-status)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
@@ -13,7 +13,7 @@ Most asset management tools are designed for IT. Industrace was born from the ob
 
 ## Release status
 
-Industrace **2.3.0** adds **MFA/TOTP** for local password users (backup codes, tenant policy, admin reset) and fixes Network Probe deletion when discovered devices exist. The 2.x line remains **pilot recommended** — CSV import, deep health checks, IEC 62443 compliance, and Network Probes at *pilot-stable*. The codebase grew substantially between v1.x and v2.x; not every path is exercised in automated tests yet (CI runs backend tests with a coverage gate on critical modules).
+Industrace **2.3.1** adds bulk cleanup controls for discovered devices and improves Network Probe operational guidance for least-privilege deployments (systemd capabilities + Docker `cap_add`). The 2.x line remains **pilot recommended** — CSV import, deep health checks, IEC 62443 compliance, and Network Probes at *pilot-stable*. The codebase grew substantially between v1.x and v2.x; not every path is exercised in automated tests yet (CI runs backend tests with a coverage gate on critical modules).
 
 We recommend a **controlled pilot** — internal network, limited users, non-critical ICS data — before relying on v2 in production OT environments. See the [Pilot Deployment Checklist](docs/PILOT_DEPLOYMENT_CHECKLIST.md). Your feedback via [GitHub Issues](https://github.com/industrace/industrace/issues) and real-world testing is how the project matures.
 

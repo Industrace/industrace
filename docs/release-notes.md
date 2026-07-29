@@ -9,6 +9,33 @@
 
 ---
 
+## Version 2.3.1
+
+**Release Date**: July 29, 2026
+
+### Overview
+
+Industrace v2.3.1 focuses on operational hardening and probe data hygiene: bulk cleanup for discovered devices and a least-privilege deployment path for Network Probes.
+
+### Key Features
+
+#### Discovered Devices
+- Bulk cleanup endpoint: `DELETE /discovered-devices` (optional `probe_id` filter)
+- UI action to clear discovered devices per selected probe or across the tenant
+
+#### Network Probe Operations
+- Native deployment guide: [probe/SYSTEMD_NATIVE_SETUP.md](../probe/SYSTEMD_NATIVE_SETUP.md)
+- Example unit file: [probe/industrace-network-probe.service.example](../probe/industrace-network-probe.service.example)
+- Docker examples updated to use `cap_add` (`NET_RAW`, `NET_ADMIN`) with `--privileged` as troubleshooting fallback only
+
+### Upgrade notes (2.3.0 -> 2.3.1)
+
+1. Pull latest `main` and rebuild containers: `docker compose -f docker-compose.prod.yml build && docker compose -f docker-compose.prod.yml up -d`
+2. No new migrations required for this release
+3. Probe operators: review [probe/NETWORK_PROBE.md](../probe/NETWORK_PROBE.md), [probe/RUNBOOK.md](../probe/RUNBOOK.md), and [probe/SYSTEMD_NATIVE_SETUP.md](../probe/SYSTEMD_NATIVE_SETUP.md)
+
+---
+
 ## Version 2.3.0
 
 **Release Date**: July 22, 2026

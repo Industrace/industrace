@@ -36,7 +36,10 @@
     "assign": "Assegna ad asset esistente",
     "assignTooltip": "Associa asset già censito",
     "onboardTooltip": "Onboard rapido come nuovo asset",
-    "ignore": "Ignora"
+    "ignore": "Ignora",
+    "clear": "Svuota elenco",
+    "clearAllLabel": "tutte le sonde",
+    "clearConfirm": "Confermi la rimozione dei dispositivi scoperti per {target}?"
   },
   "onboard": {
     "title": "Onboarding asset",
@@ -50,6 +53,8 @@
     "updated": "Dispositivo aggiornato",
     "assigned": "Dispositivo associato ad asset esistente",
     "assetCreated": "Asset creato da dispositivo scoperto",
-    "loadError": "Errore caricamento dispositivi"
+    "loadError": "Errore caricamento dispositivi",
+    "cleared": "Dispositivi scoperti rimossi",
+    "clearError": "Errore durante la rimozione dei dispositivi scoperti"
   }
 }

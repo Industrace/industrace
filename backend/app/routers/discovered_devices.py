@@ -24,6 +24,7 @@ from app.schemas.discovered_device import (
     DiscoveredDeviceOnboardRequest,
     DiscoveredDeviceOnboardResponse,
     DiscoveredDeviceMatchesResponse,
+    DiscoveredDevicesClearResponse,
 )
 from app.services.discovered_device_service import DiscoveredDeviceService
 from app.services.oui_lookup import lookup_vendor_by_mac
@@ -122,6 +123,23 @@ async def get_discovered_device_matches(
     if not data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dispositivo non trovato")
     return data
+
+
+@router.delete("", response_model=DiscoveredDevicesClearResponse)
+@audit_log_action("delete", "DiscoveredDevice", model_class=DiscoveredDevice)
+async def clear_discovered_devices(
+    request: Request,
+    probe_id: Optional[UUID] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    query = db.query(DiscoveredDevice).filter(DiscoveredDevice.tenant_id == current_user.tenant_id)
+    if probe_id:
+        query = query.filter(DiscoveredDevice.probe_id == probe_id)
+
+    deleted_count = query.delete(synchronize_session=False)
+    db.commit()
+    return DiscoveredDevicesClearResponse(deleted_count=deleted_count)
 
 
 @router.put("/{device_id}", response_model=DiscoveredDeviceRead)

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-07-29
+
+### Added
+- **Discovered devices cleanup**: `DELETE /discovered-devices` with optional `probe_id` filter, plus UI action to clear per-probe or tenant-wide lists
+- **Probe native deployment docs**: `probe/SYSTEMD_NATIVE_SETUP.md` and `probe/industrace-network-probe.service.example` for non-root systemd execution with scoped capabilities
+
+### Changed
+- **Probe docs**: align guidance toward least-privilege capture (`CAP_NET_RAW`/`CAP_NET_ADMIN`) and document systemd-first native operations
+- **Probe compose examples**: switch from `privileged: true` to `cap_add` (`NET_RAW`, `NET_ADMIN`) and remove `seccomp:unconfined` in sample stacks
+
 ### Fixed
 - **prod-cloud / Traefik**: bump to `traefik:v2.11.31` so the Docker provider works with Docker Engine 29+ (fixes blanket `404` when API 1.24 is rejected); route frontend/backend on `websecure` with TLS; HTTP→HTTPS redirect; drop strict `Host(industrace.local)` so lab/NAT access by IP works
 - **Makefile**: `status` / `logs` / `build` / `rebuild` detect Traefik (cloud) vs Nginx (prod) stack and load the matching `--env-file`

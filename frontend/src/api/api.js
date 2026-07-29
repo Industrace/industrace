@@ -1122,6 +1122,9 @@ export default {
   getDiscoveredDeviceMatches(deviceId) {
     return api.get(`/discovered-devices/${deviceId}/matches`)
   },
+  clearDiscoveredDevices(params = {}) {
+    return api.delete('/discovered-devices', { params })
+  },
   updateDiscoveredDevice(deviceId, updateData) {
     return api.put(`/discovered-devices/${deviceId}`, updateData)
   },

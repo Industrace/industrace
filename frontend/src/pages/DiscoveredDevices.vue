@@ -4,6 +4,14 @@
       <h1>{{ t('menu.navigation.discoveredDevices') }}</h1>
       <div class="flex gap-2">
         <Button
+          :disabled="loading || !canManageDiscoveredDevices"
+          icon="pi pi-trash"
+          :label="t('discoveredDevices.actions.clear')"
+          severity="danger"
+          outlined
+          @click="clearDiscoveredDevices"
+        />
+        <Button
           :disabled="loading"
           icon="pi pi-sync"
           :label="t('common.actions.refresh')"
@@ -398,6 +406,26 @@ async function submitOnboard() {
   }, {
     successMessage: t('discoveredDevices.messages.assetCreated'),
     errorContext: t('common.messages.createError'),
+    showToast: true
+  })
+}
+
+async function clearDiscoveredDevices() {
+  const selectedProbe = probes.value.find(p => p.id === filters.probe_id)
+  const targetLabel = selectedProbe?.name || t('discoveredDevices.actions.clearAllLabel')
+  const confirmed = window.confirm(
+    t('discoveredDevices.actions.clearConfirm', { target: targetLabel })
+  )
+  if (!confirmed) return
+
+  await execute(async () => {
+    const params = filters.probe_id ? { probe_id: filters.probe_id } : {}
+    await api.clearDiscoveredDevices(params)
+    await fetchDevices()
+    return true
+  }, {
+    successMessage: t('discoveredDevices.messages.cleared'),
+    errorContext: t('discoveredDevices.messages.clearError'),
     showToast: true
   })
 }

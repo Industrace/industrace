@@ -81,7 +81,7 @@ flowchart TD
 1. Probe must be `active` with recent `last_data_received`
 2. Wait at least one `data_transmission_interval` (default 300s)
 3. Confirm L2 visibility: SPAN/mirror/tap on correct VLAN/segment
-4. On Linux: `ip link show`, promisc mode, capabilities (`CAP_NET_RAW`)
+4. On Linux: `ip link show`, promisc mode, and service capabilities (`CAP_NET_RAW`/`CAP_NET_ADMIN`)
 5. Check rate limits: server logs for HTTP 429 on `/data-transmission`
 6. Review `capture_filter` — overly restrictive BPF drops all traffic
 
@@ -175,6 +175,7 @@ Before handing to pilot users:
 ## Related docs
 
 - [NETWORK_PROBE.md](NETWORK_PROBE.md) — full guide
+- [SYSTEMD_NATIVE_SETUP.md](SYSTEMD_NATIVE_SETUP.md) — native systemd deployment
 - [PILOT_DEPLOYMENT_CHECKLIST.md](../docs/PILOT_DEPLOYMENT_CHECKLIST.md) — server pilot checklist
 - [troubleshooting.md](../docs/troubleshooting.md) — general Industrace server issues
 - [CONFIGURATION.md](../docs/CONFIGURATION.md) — `PROBE_*` environment variables
