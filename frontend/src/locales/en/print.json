@@ -5,6 +5,7 @@
     "print": "Print",
     "templates": {
         "loadError": "Error loading templates",
+        "notFound": "Print template not found",
         "tenantSpecific": "Tenant Specific",
         "global": "Global"
     },

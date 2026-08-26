@@ -69,9 +69,7 @@
                 "includeAssets": "Include schede asset",
                 "includeSites": "Include informazioni stabilimenti",
                 "includeContacts": "Include contatti",
-                "includeSuppliers": "Include fornitori",
-                "includePhotos": "Include foto asset",
-                "includeDocuments": "Include documenti asset"
+                "includeSuppliers": "Include fornitori"
             },
             "info": {
                 "title": "Printed Kit - Documentazione Completa",
@@ -80,14 +78,13 @@
                     "Informazioni generali del tenant",
                     "Lista degli stabilimenti e aree",
                     "Schede complete di tutti gli asset",
-                    "Contatti e fornitori",
-                    "Documenti e foto degli asset"
+                    "Contatti e fornitori"
                 ],
                 "item1": "Informazioni generali del tenant",
                 "item2": "Lista degli stabilimenti e aree",
                 "item3": "Schede complete di tutti gli asset",
                 "item4": "Contatti e fornitori",
-                "item5": "Documenti e foto degli asset"
+                "item5": "Panoramica asset critici"
             },
             "generationOptions": "Opzioni di generazione:"
         },

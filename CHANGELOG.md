@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Print System**: ReportLab-only PDF path; removed legacy Vue print layouts (`AssetCardPrint`, `PrintLayout`, template dialog)
+- **Print templates**: unique constraint is now `(tenant_id, key)` so each tenant can seed the same default keys
+- **Printed Kit API**: accepts snake_case and camelCase option fields; drops unused `include_photos` / `include_documents`
+
+### Fixed
+- **Print PDF**: protocols row no longer crashes ReportLab; special characters in names escaped; soft-deleted assets excluded
+- **Print history**: tenant isolation applied in SQL before pagination
+- **Print templates**: global templates are immutable for tenants; init-defaults works per tenant
+- **Printed Kit download**: files stored under `uploads/prints/{tenant_id}/` with path-traversal / cross-tenant guards
+
+### Security
+- Tenant-scoped kit download (prevents cross-tenant PDF access by filename)
+
+### Added
+- Print regression tests (`backend/tests/test_print_system.py`) and [PRINT.md](docs/PRINT.md)
+
 ## [2.3.1] - 2026-07-29
 
 ### Added

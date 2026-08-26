@@ -5,6 +5,7 @@
     "print": "Stampa",
     "templates": {
         "loadError": "Errore nel caricamento dei template",
+        "notFound": "Template di stampa non trovato",
         "tenantSpecific": "Specifico Tenant",
         "global": "Globale"
     },

@@ -4,12 +4,19 @@ from typing import List, Optional
 from datetime import datetime
 from uuid import UUID
 from app.models.print_history import PrintHistory
+from app.models.asset import Asset
 from app.schemas.print_history import PrintHistoryCreate
 
 
 def get_print_history(db: Session, history_id: str) -> Optional[PrintHistory]:
     """Retrieve a print history entry by ID"""
-    return db.query(PrintHistory).filter(PrintHistory.id == history_id).first()
+    try:
+        history_uuid = (
+            history_id if isinstance(history_id, UUID) else UUID(str(history_id))
+        )
+    except (ValueError, TypeError, AttributeError):
+        return None
+    return db.query(PrintHistory).filter(PrintHistory.id == history_uuid).first()
 
 
 def get_print_history_by_asset(
@@ -28,6 +35,7 @@ def get_print_history_by_asset(
 
 def get_print_history_list(
     db: Session,
+    tenant_id: Optional[UUID] = None,
     asset_id: Optional[UUID] = None,
     template_id: Optional[int] = None,
     from_date: Optional[datetime] = None,
@@ -35,8 +43,12 @@ def get_print_history_list(
     skip: int = 0,
     limit: int = 50,
 ) -> List[PrintHistory]:
-    """Retrieve the print history with filters"""
+    """Retrieve print history with filters. Tenant isolation is applied in SQL."""
     query = db.query(PrintHistory)
+    if tenant_id:
+        query = query.join(Asset, PrintHistory.asset_id == Asset.id).filter(
+            Asset.tenant_id == tenant_id
+        )
 
     if asset_id:
         query = query.filter(PrintHistory.asset_id == asset_id)
@@ -77,9 +89,9 @@ def update_print_history_status(
         return None
 
     db_history.status = status
-    if file_path:
+    if file_path is not None:
         db_history.file_path = file_path
-    if file_size:
+    if file_size is not None:
         db_history.file_size = file_size
 
     db.commit()

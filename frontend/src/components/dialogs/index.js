@@ -6,5 +6,4 @@ export { default as ManufacturerImportDialog } from './ManufacturerImportDialog.
 export { default as ContactImportDialog } from './ContactImportDialog.vue'
 export { default as UserImportDialog } from './UserImportDialog.vue'
 export { default as SiteImportDialog } from './SiteImportDialog.vue'
-export { default as LocationImportDialog } from './LocationImportDialog.vue'
-export { default as PrintTemplateDialog } from './PrintTemplateDialog.vue' 
+export { default as LocationImportDialog } from './LocationImportDialog.vue' 

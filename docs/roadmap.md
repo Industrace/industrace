@@ -4,7 +4,7 @@
 
 This roadmap outlines the development path for Industrace, the Configuration Management Database for Industrial Control Systems. The focus is on stability, documentation, and community growth.
 
-**Current version:** v2.3.0 (July 2026) — **pilot recommended**; MFA/TOTP available for local users; not validated for production OT environments without lab testing.
+**Current version:** v2.3.1 (July 2026) — **pilot recommended**; MFA/TOTP available for local users; not validated for production OT environments without lab testing. Print System hardening is ready for **v2.3.2**.
 
 ## Delivered in v2.0 (June 2026)
 
@@ -98,6 +98,10 @@ See [Release Notes](release-notes.md) and [CHANGELOG](../CHANGELOG.md) for full 
 - Deep health checks and Docker healthchecks
 - CI coverage gate on critical modules
 - Probe and RBAC hardening
+
+**Done for v2.3.2 (pending release):**
+
+- Print System hardening: ReportLab-only path, kit/download tenant isolation, template key uniqueness per tenant, regression tests — see [PRINT.md](PRINT.md)
 
 **Open:**
 

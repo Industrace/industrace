@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
 from typing import List, Optional
 from uuid import UUID
 from app.models.print_template import PrintTemplate
@@ -10,11 +9,11 @@ from app.utils import sanitize_text_fields
 def get_print_template(
     db: Session, template_id: int, tenant_id: Optional[UUID] = None
 ) -> Optional[PrintTemplate]:
-    """Retrieve a print template by ID and tenant (or global)."""
+    """Retrieve a print template by ID (tenant-owned or global)."""
     query = db.query(PrintTemplate).filter(PrintTemplate.id == template_id)
     if tenant_id:
         query = query.filter(
-            (PrintTemplate.tenant_id == tenant_id) | (PrintTemplate.tenant_id == None)
+            (PrintTemplate.tenant_id == tenant_id) | (PrintTemplate.tenant_id.is_(None))
         )
     return query.first()
 
@@ -22,25 +21,51 @@ def get_print_template(
 def get_print_template_by_key(
     db: Session, key: str, tenant_id: Optional[UUID] = None
 ) -> Optional[PrintTemplate]:
-    """Retrieve a print template by key and tenant (or global)"""
+    """Retrieve a print template by key. Tenant-specific rows win over globals."""
     query = db.query(PrintTemplate).filter(PrintTemplate.key == key)
     if tenant_id:
-        query = query.filter(
-            (PrintTemplate.tenant_id == tenant_id) | (PrintTemplate.tenant_id == None)
-        )
+        tenant_match = query.filter(PrintTemplate.tenant_id == tenant_id).first()
+        if tenant_match:
+            return tenant_match
+        return query.filter(PrintTemplate.tenant_id.is_(None)).first()
     return query.first()
 
 
 def get_print_templates(
-    db: Session, tenant_id: Optional[UUID] = None, skip: int = 0, limit: int = 100
+    db: Session,
+    tenant_id: Optional[UUID] = None,
+    skip: int = 0,
+    limit: int = 100,
+    tenant_only: bool = False,
 ) -> List[PrintTemplate]:
-    """Retrieve all print templates for tenant (or global)"""
+    """List print templates. Tenant rows override globals with the same key."""
     query = db.query(PrintTemplate)
-    if tenant_id:
-        query = query.filter(
-            (PrintTemplate.tenant_id == tenant_id) | (PrintTemplate.tenant_id == None)
+    if tenant_id and tenant_only:
+        return (
+            query.filter(PrintTemplate.tenant_id == tenant_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
         )
-    return query.offset(skip).limit(limit).all()
+    if not tenant_id:
+        return query.offset(skip).limit(limit).all()
+
+    global_rows = query.filter(PrintTemplate.tenant_id.is_(None)).all()
+    tenant_rows = query.filter(PrintTemplate.tenant_id == tenant_id).all()
+    by_key = {row.key: row for row in global_rows}
+    by_key.update({row.key: row for row in tenant_rows})
+    merged = list(by_key.values())
+    return merged[skip : skip + limit]
+
+
+def _owned_by_tenant(
+    db_template: PrintTemplate, tenant_id: Optional[UUID]
+) -> bool:
+    if not db_template or db_template.tenant_id is None:
+        return False
+    if tenant_id and db_template.tenant_id != tenant_id:
+        return False
+    return True
 
 
 def create_print_template(
@@ -63,9 +88,9 @@ def update_print_template(
     template: PrintTemplateUpdate,
     tenant_id: Optional[UUID] = None,
 ) -> Optional[PrintTemplate]:
-    """Update a print template"""
+    """Update a tenant-owned print template. Global templates are immutable."""
     db_template = get_print_template(db, template_id, tenant_id=tenant_id)
-    if not db_template:
+    if not _owned_by_tenant(db_template, tenant_id):
         return None
     update_data = sanitize_text_fields(
         template.model_dump(exclude_unset=True), ["description"]
@@ -80,9 +105,9 @@ def update_print_template(
 def delete_print_template(
     db: Session, template_id: int, tenant_id: Optional[UUID] = None
 ) -> bool:
-    """Delete a print template"""
+    """Delete a tenant-owned print template. Global templates cannot be deleted."""
     db_template = get_print_template(db, template_id, tenant_id=tenant_id)
-    if not db_template:
+    if not _owned_by_tenant(db_template, tenant_id):
         return False
     db.delete(db_template)
     db.commit()
@@ -90,7 +115,7 @@ def delete_print_template(
 
 
 def get_default_templates() -> List[dict]:
-    """Retrieve the default templates (global)"""
+    """Default templates seeded per tenant."""
     return [
         {
             "key": "asset-card",
@@ -102,11 +127,11 @@ def get_default_templates() -> List[dict]:
                 "en": "Full device sheet",
             },
             "icon": "pi pi-server",
-            "component": "AssetCardPrint",
+            "component": "reportlab-asset-card",
             "options": {
                 "includePhoto": True,
                 "includeQR": True,
-                "includeConnections": False,
+                "includeConnections": True,
                 "includeRiskMatrix": True,
                 "includeCustomFields": True,
             },
@@ -121,7 +146,7 @@ def get_default_templates() -> List[dict]:
                 "en": "Compact device sheet",
             },
             "icon": "pi pi-file",
-            "component": "AssetSummaryPrint",
+            "component": "reportlab-asset-summary",
             "options": {
                 "includePhoto": False,
                 "includeQR": True,

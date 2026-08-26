@@ -13,7 +13,8 @@
         :label="t('common.actions.print')" 
         icon="pi pi-print" 
         @click="handlePrint"
-        :loading="isPrinting"
+        :loading="isPrinting || loading"
+        :disabled="loading || isPrinting || !data"
         severity="primary"
         class="mt-3"
       />
@@ -22,18 +23,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePrint } from '@/composables/usePrint'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 
 const { t, locale } = useI18n()
-const { print, isPrinting, loadTemplates } = usePrint()
-
-onMounted(() => {
-  loadTemplates()
-})
+const { print, isPrinting, loading, loadTemplates } = usePrint()
 
 const props = defineProps({
   visible: {
@@ -53,10 +50,20 @@ const isVisible = computed({
   set: (value) => emit('update:visible', value)
 })
 
+watch(
+  () => props.visible,
+  (visible) => {
+    if (visible) {
+      loadTemplates()
+    }
+  },
+  { immediate: true }
+)
+
 const handlePrint = async () => {
   if (!props.data) return
   try {
-    await print('asset-card', props.data, { lang: locale.value })
+    await print('asset-card', props.data, { language: locale.value })
     emit('printed', { template: 'asset-card', data: props.data })
     isVisible.value = false
   } catch (error) {
@@ -74,4 +81,4 @@ const handlePrint = async () => {
   min-height: 120px;
   text-align: center;
 }
-</style> 
+</style>

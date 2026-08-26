@@ -891,23 +891,7 @@ export default {
   getPrintTemplates() {
     return api.get('/print/templates')
   },
-  
-  getPrintTemplate(id) {
-    return api.get(`/print/templates/${id}`)
-  },
-  
-  createPrintTemplate(templateData) {
-    return api.post('/print/templates', templateData)
-  },
-  
-  updatePrintTemplate(id, templateData) {
-    return api.put(`/print/templates/${id}`, templateData)
-  },
-  
-  deletePrintTemplate(id) {
-    return api.delete(`/print/templates/${id}`)
-  },
-  
+
   generatePrint(assetId, templateId, options = {}) {
     return api.post(`/print/generate`, {
       asset_id: assetId,
@@ -915,24 +899,11 @@ export default {
       options
     })
   },
-  
+
   downloadPrint(printId) {
     return api.get(`/print/download/${printId}`, { responseType: 'blob' })
   },
-  
-  getPrintHistory(assetId = null) {
-    const params = assetId ? { asset_id: assetId } : {}
-    return api.get('/print/history', { params })
-  },
-  
-  generateQRCode(text) {
-    return api.post('/print/qr-code', { text }, { responseType: 'blob' })
-  },
-  
-  getAssetForPrint(assetId) {
-    return api.get(`/assets/${assetId}/print-data`)
-  },
-  
+
   initDefaultTemplates() {
     return api.post('/print/templates/init-defaults')
   },

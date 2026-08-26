@@ -350,13 +350,14 @@ APP_DESCRIPTION=Configuration Management Database for Industrial Control Systems
 
 ### Feature Flags
 ```bash
-# Feature toggles
+# Feature toggles (documentation / planned — not all are wired as env vars in app.config)
 FEATURE_EXTERNAL_API=true
 FEATURE_AUDIT_LOGS=true
-FEATURE_PRINT_SYSTEM=true
 FEATURE_NETWORK_ANALYSIS=true
 FEATURE_RISK_ASSESSMENT=true
 ```
+
+> **Print System:** there is no `FEATURE_PRINT_SYSTEM` kill-switch. PDF print (ReportLab) is always available to users with assets RBAC access. See [PRINT.md](PRINT.md).
 
 ### Custom Fields
 ```bash

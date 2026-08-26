@@ -49,6 +49,7 @@ flowchart TD
 | [API.md](API.md) | REST API and external integrations |
 | [IEC62443.md](IEC62443.md) | ISA/IEC 62443 scope and limits (when enabled) |
 | [risk-scoring.md](risk-scoring.md) | Asset risk score formula, thresholds, API and UI |
+| [PRINT.md](PRINT.md) | Asset PDF and Printed Kit (ReportLab, server-side) |
 | [release-notes.md](release-notes.md) | Version history |
 
 ---

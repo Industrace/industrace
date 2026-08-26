@@ -1,11 +1,14 @@
+import logging
 import os
 import uuid
-from datetime import datetime
-from typing import Dict, Any, Optional
+from datetime import date, datetime, timezone
+from typing import Any, Dict, Optional
 from pathlib import Path
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4, A3, letter
-from reportlab.lib.units import mm, cm
+from xml.sax.saxutils import escape as xml_escape
+from io import BytesIO
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
 from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -14,28 +17,229 @@ from reportlab.platypus import (
     Table,
     TableStyle,
     Image,
-    Frame,
-    PageTemplate,
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+from reportlab.lib.enums import TA_CENTER
 import qrcode
-from io import BytesIO
-import requests
+
+from app.schemas.print import normalize_print_language
+from app.services.print_data import option_enabled
+
+logger = logging.getLogger(__name__)
+
+_ASSET_I18N = {
+    "en": {
+        "header_title": "Industrace - Asset Card",
+        "generated_on": "Generated on",
+        "at_time": "at",
+        "risk_section": "Risk",
+        "network_section": "Network",
+        "connections_section": "Connections",
+        "contacts_section": "Contacts",
+        "suppliers_section": "Suppliers",
+        "qr_code_label": "QR Code for quick access",
+        "yes": "Yes",
+        "no": "No",
+        "not_available": "N/A",
+        "connection_type": "Type",
+        "connected_asset": "Connected Asset",
+        "local_interface": "Local Interface",
+        "remote_interface": "Remote Interface",
+        "port": "Port",
+        "protocol": "Protocol",
+        "contact_name": "Name",
+        "contact_email": "Email",
+        "contact_phone": "Phone",
+        "contact_type": "Type",
+        "custom_fields_section": "Custom Fields",
+        "network_interfaces_section": "Network Interfaces",
+        "asset_name": "Name",
+        "asset_tag": "Tag",
+        "asset_ip": "IP",
+        "asset_serial": "Serial",
+        "asset_model": "Model",
+        "asset_manufacturer": "Manufacturer",
+        "asset_firmware": "Firmware",
+        "asset_type": "Type",
+        "asset_status": "Status",
+        "asset_site": "Site",
+        "asset_location": "Location",
+        "asset_risk_score": "Risk Score",
+        "asset_installation_date": "Installation Date",
+        "asset_business_criticality": "Business Criticality",
+        "asset_security_zone": "Security Zone",
+        "asset_area": "Area",
+        "asset_remote_access": "Remote Access",
+        "asset_remote_access_type": "Access Type",
+        "asset_protocols": "Protocols",
+        "risk_score": "Risk Score",
+        "business_criticality": "Criticality",
+        "impact_value": "Impact",
+        "purdue_level": "Purdue",
+        "physical_access": "Physical Access",
+        "exposure_level": "Exposure",
+        "iface_name": "Name",
+        "iface_type": "Type",
+        "iface_ip": "IP",
+        "iface_mac": "MAC",
+        "iface_vlan": "VLAN",
+        "iface_gateway": "Gateway",
+        "iface_subnet": "Subnet",
+        "iface_logical_port": "Logical port",
+        "iface_plug_label": "Plug label",
+        "supplier_name": "Name",
+        "supplier_email": "Email",
+        "supplier_phone": "Phone",
+        "supplier_website": "Website",
+        "supplier_notes": "Notes",
+    },
+    "it": {
+        "header_title": "Industrace - Scheda Asset",
+        "generated_on": "Generato il",
+        "at_time": "alle ore",
+        "risk_section": "Rischio",
+        "network_section": "Rete",
+        "connections_section": "Connessioni",
+        "contacts_section": "Contatti",
+        "suppliers_section": "Fornitori",
+        "qr_code_label": "QR Code per accesso rapido",
+        "yes": "Sì",
+        "no": "No",
+        "not_available": "N/A",
+        "connection_type": "Tipo",
+        "connected_asset": "Asset collegato",
+        "local_interface": "Interfaccia locale",
+        "remote_interface": "Interfaccia remota",
+        "port": "Porta",
+        "protocol": "Protocollo",
+        "contact_name": "Nome",
+        "contact_email": "Email",
+        "contact_phone": "Telefono",
+        "contact_type": "Tipo",
+        "custom_fields_section": "Campi personalizzati",
+        "network_interfaces_section": "Interfacce di rete",
+        "asset_name": "Nome",
+        "asset_tag": "Tag",
+        "asset_ip": "IP",
+        "asset_serial": "Serial",
+        "asset_model": "Modello",
+        "asset_manufacturer": "Produttore",
+        "asset_firmware": "Firmware",
+        "asset_type": "Tipo",
+        "asset_status": "Stato",
+        "asset_site": "Sito",
+        "asset_location": "Posizione",
+        "asset_risk_score": "Risk Score",
+        "asset_installation_date": "Data installazione",
+        "asset_business_criticality": "Criticità business",
+        "asset_security_zone": "Zona di sicurezza",
+        "asset_area": "Area",
+        "asset_remote_access": "Accesso remoto",
+        "asset_remote_access_type": "Tipo accesso remoto",
+        "asset_protocols": "Protocolli",
+        "risk_score": "Risk Score",
+        "business_criticality": "Criticità",
+        "impact_value": "Impatto",
+        "purdue_level": "Purdue",
+        "physical_access": "Accesso fisico",
+        "exposure_level": "Esposizione",
+        "iface_name": "Nome",
+        "iface_type": "Tipo",
+        "iface_ip": "IP",
+        "iface_mac": "MAC",
+        "iface_vlan": "VLAN",
+        "iface_gateway": "Gateway",
+        "iface_subnet": "Subnet",
+        "iface_logical_port": "Porta logica",
+        "iface_plug_label": "Etichetta presa",
+        "supplier_name": "Nome",
+        "supplier_email": "Email",
+        "supplier_phone": "Telefono",
+        "supplier_website": "Sito",
+        "supplier_notes": "Note",
+    },
+}
+
+_KIT_I18N = {
+    "en": {
+        "generated_on": "Generated on:",
+        "generated_by": "Generated by:",
+        "company_info": "COMPANY INFORMATION",
+        "company_name": "Company Name",
+        "slug": "Slug",
+        "created_on": "Created on",
+        "status": "Status",
+        "active": "Active",
+        "inactive": "Inactive",
+        "critical_assets": "CRITICAL ASSETS",
+        "name": "Name",
+        "type": "Type",
+        "site": "Site",
+        "risk_score": "Risk Score",
+        "no_critical_assets": "No critical assets identified",
+        "sites_areas": "SITES AND AREAS",
+        "code": "Code",
+        "address": "Address",
+        "description": "Description",
+        "complete_inventory": "COMPLETE ASSET INVENTORY",
+        "area": "Area",
+        "location": "Location",
+        "ip": "IP",
+        "manufacturer": "Manufacturer",
+        "serial_number": "Serial Number",
+        "notes": "Notes",
+        "contacts": "CONTACTS",
+        "no_contacts": "No contacts found",
+        "critical_suppliers": "CRITICAL SUPPLIERS",
+        "email": "Email",
+        "phone": "Phone",
+        "footer": "Document automatically generated by Industrace on",
+    },
+    "it": {
+        "generated_on": "Generato il:",
+        "generated_by": "Generato da:",
+        "company_info": "INFORMAZIONI AZIENDA",
+        "company_name": "Nome Azienda",
+        "slug": "Slug",
+        "created_on": "Creato il",
+        "status": "Stato",
+        "active": "Attivo",
+        "inactive": "Inattivo",
+        "critical_assets": "ASSET CRITICI",
+        "name": "Nome",
+        "type": "Tipo",
+        "site": "Sito",
+        "risk_score": "Risk Score",
+        "no_critical_assets": "Nessun asset critico identificato",
+        "sites_areas": "STABILIMENTI E AREE",
+        "code": "Codice",
+        "address": "Indirizzo",
+        "description": "Descrizione",
+        "complete_inventory": "INVENTARIO COMPLETO ASSET",
+        "area": "Area",
+        "location": "Location",
+        "ip": "IP",
+        "manufacturer": "Produttore",
+        "serial_number": "Serial Number",
+        "notes": "Note",
+        "contacts": "CONTATTI",
+        "no_contacts": "Nessun contatto trovato",
+        "critical_suppliers": "FORNITORI CRITICI",
+        "email": "Email",
+        "phone": "Telefono",
+        "footer": "Documento generato automaticamente da Industrace il",
+    },
+}
 
 
 class PDFGenerator:
     def __init__(self, upload_dir: str = "uploads/prints"):
         self.upload_dir = Path(upload_dir)
         self.upload_dir.mkdir(parents=True, exist_ok=True)
-
-        # Stili per il PDF
         self.styles = getSampleStyleSheet()
         self._setup_custom_styles()
 
     def _setup_custom_styles(self):
-        """Configura stili personalizzati per il PDF"""
-        # Stile per il titolo principale
         self.styles.add(
             ParagraphStyle(
                 name="AssetTitle",
@@ -51,8 +255,6 @@ class PDFGenerator:
                 backColor=colors.blue,
             )
         )
-
-        # Stile per i sottotitoli delle sezioni
         self.styles.add(
             ParagraphStyle(
                 name="SectionTitle",
@@ -65,8 +267,6 @@ class PDFGenerator:
                 leftIndent=0,
             )
         )
-
-        # Stile per le informazioni
         self.styles.add(
             ParagraphStyle(
                 name="InfoText",
@@ -76,8 +276,6 @@ class PDFGenerator:
                 fontName="Helvetica",
             )
         )
-
-        # Stile per le etichette
         self.styles.add(
             ParagraphStyle(
                 name="Label",
@@ -89,299 +287,76 @@ class PDFGenerator:
             )
         )
 
-        # Stile per i valori
-        self.styles.add(
-            ParagraphStyle(
-                name="Value",
-                parent=self.styles["Normal"],
-                fontSize=9,
-                spaceAfter=2,
-                fontName="Helvetica",
-            )
+    @staticmethod
+    def _xml(value) -> str:
+        return xml_escape("" if value is None else str(value))
+
+    def _para(self, text: str, style=None) -> Paragraph:
+        return Paragraph(text, style or self.styles["InfoText"])
+
+    def _labeled(self, label: str, value: str) -> Paragraph:
+        return self._para(
+            f"<b>{self._xml(label)}:</b> {self._xml(value)}", self.styles["InfoText"]
         )
 
-    def _get_page_size(self, paper_size: str):
-        """Restituisce le dimensioni della pagina"""
-        sizes = {"a4": A4, "a3": A3, "letter": letter}
-        return sizes.get(paper_size.lower(), A4)
+    def _output_dir(self, tenant_id=None) -> Path:
+        if tenant_id:
+            out = self.upload_dir / str(tenant_id)
+        else:
+            out = self.upload_dir
+        out.mkdir(parents=True, exist_ok=True)
+        return out
 
-    def _generate_qr_code(self, text: str, size: int = 80) -> BytesIO:
-        """Genera un QR code"""
+    def generate_qr_code(self, text: str, size: int = 80) -> BytesIO:
         qr = qrcode.QRCode(version=1, box_size=8, border=2)
         qr.add_data(text)
         qr.make(fit=True)
-
         img = qr.make_image(fill_color="black", back_color="white")
-
         buffer = BytesIO()
         img.save(buffer)
         buffer.seek(0)
         return buffer
 
     def _format_value(self, value, translations=None):
-        """Formatta il valore per la stampa: liste come stringhe, None come valore di default tradotto"""
         if translations is None:
             translations = self._get_translations("en")
-        if (
-            value is None
-            or value == ""
-            or value == translations.get("not_available", "N/A")
-        ):
-            return translations.get("not_available", "N/A")
+        na = translations.get("not_available", "N/A")
+        if value is None or value == "" or value == na:
+            return na
+        if isinstance(value, datetime):
+            return value.strftime("%d/%m/%Y %H:%M")
+        if isinstance(value, date):
+            return value.strftime("%d/%m/%Y")
         if isinstance(value, (list, tuple)):
-            return ", ".join(str(v) for v in value if v)
+            return ", ".join(str(v) for v in value if v) or na
         return str(value)
 
     def _format_risk_score(self, risk_score, translations=None):
-        """Format asset risk score on 0-10 scale."""
         if risk_score is None:
             if translations is None:
                 translations = self._get_translations("en")
             return translations.get("not_available", "N/A")
         return f"{float(risk_score):.2f} / 10"
 
-    def _create_compact_info_table(
-        self,
-        asset: Dict[str, Any],
-        fields_config: list,
-        translations: Optional[Dict[str, str]] = None,
-    ) -> Optional[Table]:
-        """Crea una tabella a due colonne (etichetta, valore) con le informazioni principali"""
-        if translations is None:
-            translations = self._get_translations("en")
-        if not fields_config:
-            fields_config = [
-                {
-                    "name": "asset_name",
-                    "label": translations.get("asset_name", "Name"),
-                    "visible": True,
-                },
-                {
-                    "name": "asset_tag",
-                    "label": translations.get("asset_tag", "Tag"),
-                    "visible": True,
-                },
-                {
-                    "name": "asset_ip",
-                    "label": translations.get("asset_ip", "IP"),
-                    "visible": True,
-                },
-                {
-                    "name": "asset_serial",
-                    "label": translations.get("asset_serial", "Serial"),
-                    "visible": True,
-                },
-                {
-                    "name": "asset_model",
-                    "label": translations.get("asset_model", "Model"),
-                    "visible": True,
-                },
-                {
-                    "name": "asset_manufacturer",
-                    "label": translations.get("asset_manufacturer", "Manufacturer"),
-                    "visible": True,
-                },
-                {
-                    "name": "asset_firmware",
-                    "label": translations.get("asset_firmware", "Firmware"),
-                    "visible": True,
-                },
-                {
-                    "name": "asset_type",
-                    "label": translations.get("asset_type", "Type"),
-                    "visible": True,
-                },
-                {
-                    "name": "asset_status",
-                    "label": translations.get("asset_status", "Status"),
-                    "visible": True,
-                },
-                {
-                    "name": "asset_site",
-                    "label": translations.get("asset_site", "Site"),
-                    "visible": True,
-                },
-                {
-                    "name": "asset_location",
-                    "label": translations.get("asset_location", "Location"),
-                    "visible": True,
-                },
-                {
-                    "name": "asset_risk_score",
-                    "label": translations.get("asset_risk_score", "Risk Score"),
-                    "visible": True,
-                },
-            ]
-        visible_fields = [
-            field for field in fields_config if field.get("visible", True)
-        ]
-        data = []
-        for field in visible_fields:
-            field_name = field.get("name", "")
-            field_label = field.get("label", "") or self._get_field_label(
-                field_name, translations
-            )
-            field_value = self._get_field_value(asset, field_name, translations)
-            field_value = self._format_value(field_value, translations)
-            # Limita la lunghezza del valore per evitare overflow
-            if len(field_value) > 60:
-                field_value = field_value[:57] + "..."
-            data.append([str(field_label), str(field_value)])
-        if not data:
-            return None
-        col_widths = [60 * mm, 120 * mm]
-        try:
-            table = Table(data, colWidths=col_widths)
-        except Exception as e:
-            return None
-        table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#2c3e50")),
-                    ("BACKGROUND", (1, 0), (1, -1), colors.white),
-                    ("TEXTCOLOR", (0, 0), (0, -1), colors.white),
-                    ("TEXTCOLOR", (1, 0), (1, -1), colors.black),
-                    ("ALIGN", (0, 0), (0, -1), "LEFT"),
-                    ("ALIGN", (1, 0), (1, -1), "LEFT"),
-                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                    ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 10),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                    ("GRID", (0, 0), (-1, -1), 0.3, colors.grey),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ]
-            )
+    def _separator(self):
+        return Table(
+            [[""]],
+            colWidths=[180 * mm],
+            rowHeights=[1],
+            style=TableStyle(
+                [("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#bfc9ca"))]
+            ),
         )
-        return table
-
-    def _create_risk_info_table(
-        self, asset: Dict[str, Any], translations: Optional[Dict[str, str]] = None
-    ) -> Table:
-        """Crea una tabella compatta per le informazioni di rischio"""
-        data = [
-            ["Risk Score", self._format_risk_score(asset.get("risk_score"))],
-            ["Purdue Level", str(asset.get("purdue_level", "N/A"))],
-            ["Business Criticality", str(asset.get("business_criticality", "N/A"))],
-            ["Impact Value", str(asset.get("impact_value", "N/A"))],
-            ["Physical Access", str(asset.get("physical_access_ease", "N/A"))],
-            ["Exposure Level", str(asset.get("exposure_level", "N/A"))],
-        ]
-
-        table = Table(data, colWidths=[80 * mm, 100 * mm])
-        table.setStyle(
-            TableStyle(
-                [
-                    (
-                        "BACKGROUND",
-                        (0, 0),
-                        (0, -1),
-                        colors.lightblue,
-                    ),  # Prima colonna con sfondo azzurro
-                    (
-                        "BACKGROUND",
-                        (1, 0),
-                        (-1, -1),
-                        colors.white,
-                    ),  # Altre colonne bianche
-                    (
-                        "TEXTCOLOR",
-                        (0, 0),
-                        (0, -1),
-                        colors.darkblue,
-                    ),  # Etichette in blu scuro
-                    ("TEXTCOLOR", (1, 0), (-1, -1), colors.black),  # Valori in nero
-                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    (
-                        "FONTNAME",
-                        (0, 0),
-                        (0, -1),
-                        "Helvetica-Bold",
-                    ),  # Etichette in grassetto
-                    ("FONTNAME", (1, 0), (-1, -1), "Helvetica"),  # Valori normali
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                    ("GRID", (0, 0), (-1, -1), 0.3, colors.grey),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ]
-            )
-        )
-
-        return table
-
-    def _create_network_info_table(
-        self, asset: Dict[str, Any], translations: Optional[Dict[str, str]] = None
-    ) -> Table:
-        """Crea una tabella per le informazioni di rete"""
-        data = [
-            ["VLAN", str(asset.get("vlan", "N/A"))],
-            ["Logical Port", str(asset.get("logical_port", "N/A"))],
-            ["Physical Plug", str(asset.get("physical_plug_label", "N/A"))],
-            ["Remote Access", "Yes" if asset.get("remote_access") else "No"],
-            ["Access Type", str(asset.get("remote_access_type", "N/A"))],
-            ["Last Seen", str(asset.get("last_seen", "N/A"))],
-        ]
-
-        table = Table(data, colWidths=[80 * mm, 100 * mm])
-        table.setStyle(
-            TableStyle(
-                [
-                    (
-                        "BACKGROUND",
-                        (0, 0),
-                        (0, -1),
-                        colors.green,
-                    ),  # Prima colonna con sfondo verde chiaro
-                    (
-                        "BACKGROUND",
-                        (1, 0),
-                        (-1, -1),
-                        colors.white,
-                    ),  # Altre colonne bianche
-                    (
-                        "TEXTCOLOR",
-                        (0, 0),
-                        (0, -1),
-                        colors.darkgreen,
-                    ),  # Etichette in verde scuro
-                    ("TEXTCOLOR", (1, 0), (-1, -1), colors.black),  # Valori in nero
-                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    (
-                        "FONTNAME",
-                        (0, 0),
-                        (0, -1),
-                        "Helvetica-Bold",
-                    ),  # Etichette in grassetto
-                    ("FONTNAME", (1, 0), (-1, -1), "Helvetica"),  # Valori normali
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                    ("GRID", (0, 0), (-1, -1), 0.3, colors.grey),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ]
-            )
-        )
-
-        return table
 
     def _create_connections_table(
         self, asset: Dict[str, Any], translations: Optional[Dict[str, str]] = None
     ) -> Optional[Table]:
-        """Crea una tabella per le connessioni remote"""
         connections = asset.get("connections", [])
         if not connections:
             return None
         if translations is None:
             translations = self._get_translations("en")
 
-        # Intestazioni tradotte per connessioni remote
         headers = [
             translations.get("connected_asset", "Connected Asset"),
             translations.get("connection_type", "Type"),
@@ -392,14 +367,12 @@ class PDFGenerator:
         ]
         data = [headers]
 
-        for conn in connections[:8]:  # Limita a 8 connessioni per spazio
-            # Determina l'asset collegato
+        for conn in connections[:8]:
             target_asset = conn.get("target_asset", {})
             target_name = target_asset.get("name", "—") if target_asset else "—"
             if len(target_name) > 25:
                 target_name = target_name[:22] + "..."
 
-            # Interfacce (se disponibili)
             local_iface = (
                 conn.get("local_interface", {}).get("name", "—")
                 if conn.get("local_interface")
@@ -410,8 +383,6 @@ class PDFGenerator:
                 if conn.get("remote_interface")
                 else "—"
             )
-
-            # Limita lunghezza interfacce
             if len(local_iface) > 15:
                 local_iface = local_iface[:12] + "..."
             if len(remote_iface) > 15:
@@ -428,7 +399,6 @@ class PDFGenerator:
                 ]
             )
 
-        # Larghezze colonne ottimizzate per le nuove informazioni
         table = Table(
             data, colWidths=[35 * mm, 25 * mm, 30 * mm, 30 * mm, 20 * mm, 20 * mm]
         )
@@ -441,12 +411,7 @@ class PDFGenerator:
                     ("ALIGN", (0, 0), (-1, -1), "LEFT"),
                     ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                     ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                    (
-                        "FONTSIZE",
-                        (0, 0),
-                        (-1, -1),
-                        7,
-                    ),  # Smaller font for more information
+                    ("FONTSIZE", (0, 0), (-1, -1), 7),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
                     ("TOPPADDING", (0, 0), (-1, -1), 2),
                     ("LEFTPADDING", (0, 0), (-1, -1), 3),
@@ -455,13 +420,11 @@ class PDFGenerator:
                 ]
             )
         )
-
         return table
 
     def _create_contacts_table(
         self, asset: Dict[str, Any], translations: Optional[Dict[str, str]] = None
     ) -> Optional[Table]:
-        """Crea una tabella per i contatti"""
         contacts = asset.get("contacts", [])
         if not contacts:
             return None
@@ -474,11 +437,10 @@ class PDFGenerator:
             translations.get("contact_type", "Type"),
         ]
         data = [headers]
-        for contact in contacts[:3]:  # Limita a 3 contatti per spazio
+        for contact in contacts[:3]:
             name = f"{contact.get('first_name', '')} {contact.get('last_name', '')}".strip()
             if len(name) > 20:
                 name = name[:17] + "..."
-
             data.append(
                 [
                     self._format_value(name, translations),
@@ -507,219 +469,22 @@ class PDFGenerator:
                 ]
             )
         )
-
         return table
 
-    def _get_field_value(
-        self,
-        asset: Dict[str, Any],
-        field_name: str,
-        translations: Optional[Dict[str, str]] = None,
-    ) -> str:
-        """Ottiene il valore di un campo specifico dall'asset"""
-        if translations is None:
-            translations = self._get_translations("en")
-        if field_name == "asset_id":
-            return str(asset.get("id", translations.get("not_available", "N/A")))
-        elif field_name == "asset_name":
-            return asset.get("name", translations.get("not_available", "N/A"))
-        elif field_name == "asset_tag":
-            return asset.get("tag", translations.get("not_available", "N/A"))
-        elif field_name == "asset_type":
-            return (asset.get("asset_type") or {}).get(
-                "name", translations.get("not_available", "N/A")
-            )
-        elif field_name == "asset_status":
-            return (asset.get("status") or {}).get(
-                "name", translations.get("not_available", "N/A")
-            )
-        elif field_name == "asset_location":
-            return (asset.get("location") or {}).get(
-                "name", translations.get("not_available", "N/A")
-            )
-        elif field_name == "asset_site":
-            return (asset.get("site") or {}).get(
-                "name", translations.get("not_available", "N/A")
-            )
-        elif field_name == "asset_manufacturer":
-            return (asset.get("manufacturer") or {}).get(
-                "name", translations.get("not_available", "N/A")
-            )
-        elif field_name == "asset_model":
-            return asset.get("model", translations.get("not_available", "N/A"))
-        elif field_name == "asset_serial":
-            return asset.get("serial_number", translations.get("not_available", "N/A"))
-        elif field_name == "asset_ip":
-            return asset.get("ip_address", translations.get("not_available", "N/A"))
-        elif field_name == "asset_firmware":
-            return asset.get(
-                "firmware_version", translations.get("not_available", "N/A")
-            )
-        elif field_name == "asset_description":
-            desc = asset.get("description", translations.get("not_available", "N/A"))
-            if desc and len(desc) > 50:
-                desc = desc[:47] + "..."
-            return desc
-        elif field_name == "asset_installation_date":
-            install_date = asset.get("installation_date")
-            if install_date:
-                return (
-                    install_date.strftime("%d/%m/%Y")
-                    if hasattr(install_date, "strftime")
-                    else str(install_date)
-                )
-            return translations.get("not_available", "N/A")
-        elif field_name == "asset_business_criticality":
-            return asset.get(
-                "business_criticality", translations.get("not_available", "N/A")
-            )
-        elif field_name == "asset_risk_score":
-            return self._format_risk_score(asset.get("risk_score"), translations)
-        elif field_name == "asset_vlan":
-            return asset.get("vlan", translations.get("not_available", "N/A"))
-        elif field_name == "asset_logical_port":
-            return asset.get("logical_port", translations.get("not_available", "N/A"))
-        elif field_name == "asset_physical_plug":
-            return asset.get(
-                "physical_plug_label", translations.get("not_available", "N/A")
-            )
-        elif field_name == "asset_remote_access":
-            return (
-                translations.get("yes", "Yes")
-                if asset.get("remote_access")
-                else translations.get("no", "No")
-            )
-        elif field_name == "asset_remote_access_type":
-            return asset.get(
-                "remote_access_type", translations.get("not_available", "N/A")
-            )
-        elif field_name == "asset_last_seen":
-            last_seen = asset.get("last_seen")
-            if last_seen:
-                return (
-                    last_seen.strftime("%d/%m/%Y")
-                    if hasattr(last_seen, "strftime")
-                    else str(last_seen)
-                )
-            return translations.get("not_available", "N/A")
-        else:
-            return translations.get("not_available", "N/A")
-
-    def _get_field_label(
-        self, field_name: str, translations: Optional[Dict[str, str]] = None
-    ) -> str:
-        """Ottiene l'etichetta di un campo con supporto traduzioni"""
-        # Etichette di fallback in inglese
-        field_labels = {
-            "asset_id": "ID",
-            "asset_name": "Name",
-            "asset_tag": "Tag",
-            "asset_type": "Type",
-            "asset_status": "Status",
-            "asset_location": "Location",
-            "asset_site": "Site",
-            "asset_manufacturer": "Manufacturer",
-            "asset_model": "Model",
-            "asset_serial": "Serial",
-            "asset_ip": "IP",
-            "asset_firmware": "Firmware",
-            "asset_description": "Description",
-            "asset_installation_date": "Installation Date",
-            "asset_business_criticality": "Business Criticality",
-            "asset_risk_score": "Risk Score",
-            "asset_vlan": "VLAN",
-            "asset_logical_port": "Logical Port",
-            "asset_physical_plug": "Physical Plug",
-            "asset_remote_access": "Remote Access",
-            "asset_remote_access_type": "Access Type",
-            "asset_last_seen": "Last Seen",
-        }
-
-        # Se ci sono traduzioni, usa quelle, altrimenti fallback in inglese
-        if translations and field_name in translations:
-            return translations[field_name]
-
-        return field_labels.get(field_name, field_name)
-
     def _get_translations(self, language: str) -> Dict[str, str]:
-        """Ottiene le traduzioni per la lingua specificata"""
-        translations = {
-            "en": {
-                "header_title": "Industrace - Asset Card",
-                "generated_on": "Generated on",
-                "at_time": "at",
-                "risk_section": "Risk",
-                "network_section": "Network",
-                "connections_section": "Connections",
-                "contacts_section": "Contacts",
-                "qr_code_label": "QR Code for quick access",
-                "yes": "Yes",
-                "no": "No",
-                "not_available": "N/A",
-                "connection_type": "Type",
-                "connected_asset": "Connected Asset",
-                "local_interface": "Local Interface",
-                "remote_interface": "Remote Interface",
-                "port": "Port",
-                "protocol": "Protocol",
-                "contact_name": "Name",
-                "contact_email": "Email",
-                "contact_phone": "Phone",
-                "contact_type": "Type",
-                "custom_fields_section": "Custom Fields",
-                "network_interfaces_section": "Network Interfaces",
-                "asset_name": "Name",
-                "asset_tag": "Tag",
-                "asset_ip": "IP",
-                "asset_serial": "Serial",
-                "asset_model": "Model",
-                "asset_manufacturer": "Manufacturer",
-                "asset_firmware": "Firmware",
-                "asset_type": "Type",
-                "asset_status": "Status",
-                "asset_site": "Site",
-                "asset_location": "Location",
-                "asset_risk_score": "Risk Score",
-            },
-            "it": {
-                "header_title": "Industrace - Scheda Asset",
-                "generated_on": "Generato il",
-                "at_time": "alle ore",
-                "risk_section": "Rischio",
-                "network_section": "Rete",
-                "connections_section": "Connessioni",
-                "contacts_section": "Contatti",
-                "qr_code_label": "QR Code per accesso rapido",
-                "yes": "Sì",
-                "no": "No",
-                "not_available": "N/A",
-                "connection_type": "Tipo",
-                "connected_asset": "Asset collegato",
-                "local_interface": "Interfaccia locale",
-                "remote_interface": "Interfaccia remota",
-                "port": "Porta",
-                "protocol": "Protocollo",
-                "contact_name": "Nome",
-                "contact_email": "Email",
-                "contact_phone": "Telefono",
-                "contact_type": "Tipo",
-                "custom_fields_section": "Campi personalizzati",
-                "network_interfaces_section": "Interfacce di rete",
-                "asset_name": "Nome",
-                "asset_tag": "Tag",
-                "asset_ip": "IP",
-                "asset_serial": "Serial",
-                "asset_model": "Modello",
-                "asset_manufacturer": "Produttore",
-                "asset_firmware": "Firmware",
-                "asset_type": "Tipo",
-                "asset_status": "Stato",
-                "asset_site": "Sito",
-                "asset_location": "Posizione",
-                "asset_risk_score": "Risk Score",
-            },
-        }
-        return translations.get(language, translations["en"])
+        lang = normalize_print_language(language)
+        return _ASSET_I18N.get(lang, _ASSET_I18N["en"])
+
+    def _info_table_style(self) -> TableStyle:
+        return TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ]
+        )
 
     def generate_asset_pdf(
         self,
@@ -728,9 +493,17 @@ class PDFGenerator:
         options: Dict[str, Any],
         language: str = "en",
     ) -> str:
-        """Genera un PDF compatto e professionale per un asset su una pagina A4"""
+        """Generate a compact A4 asset sheet with ReportLab."""
+        options = options or {}
+        template_options = (template or {}).get("options") or {}
+        options = {**template_options, **options}
+        language = normalize_print_language(
+            language or options.get("language") or options.get("lang")
+        )
+        translations = self._get_translations(language)
+
         filename = f"asset_{asset.get('id', 'unknown')}_{uuid.uuid4().hex[:8]}.pdf"
-        filepath = self.upload_dir / filename
+        filepath = self._output_dir(asset.get("tenant_id")) / filename
         doc = SimpleDocTemplate(
             str(filepath),
             pagesize=A4,
@@ -739,10 +512,8 @@ class PDFGenerator:
             topMargin=15 * mm,
             bottomMargin=15 * mm,
         )
-        translations = self._get_translations(language)
         story = []
-        # Header con logo e titolo
-        # Cerca il logo in diversi percorsi
+
         logo_paths = [
             os.getenv("PDF_LOGO_PATH", "static/logo.png"),
             "backend/static/logo.png",
@@ -756,12 +527,10 @@ class PDFGenerator:
                 try:
                     logo_img = Image(logo_path, width=25 * mm, height=25 * mm)
                     break
-                except:
+                except Exception:
                     continue
 
-        # Asset name in center (smaller than previous title)
         asset_name = self._format_value(asset.get("name", "Asset"), translations)
-        # Creo uno stile specifico per centrare il nome dell'asset
         centered_style = ParagraphStyle(
             "CenteredAssetName",
             parent=self.styles["InfoText"],
@@ -769,27 +538,20 @@ class PDFGenerator:
             fontSize=14,
             fontName="Helvetica-Bold",
         )
-        asset_name_para = Paragraph(asset_name, centered_style)
+        asset_name_para = Paragraph(self._xml(asset_name), centered_style)
 
-        # Data formattata con etichette su due righe
-        current_date = datetime.now()
+        current_date = datetime.now(timezone.utc)
         date_str = current_date.strftime("%d/%m/%Y")
         time_str = current_date.strftime("%H:%M")
-        generated_on = translations.get("generated_on", "Generato il")
-        at_time = translations.get("at_time", "alle ore")
+        generated_on = translations.get("generated_on", "Generated on")
+        at_time = translations.get("at_time", "at")
         date_para = Paragraph(
-            f"<font size=8 color='#666'>{generated_on} {date_str}<br/>{at_time} {time_str}</font>",
+            f"<font size=8 color='#666'>{self._xml(generated_on)} {self._xml(date_str)}"
+            f"<br/>{self._xml(at_time)} {self._xml(time_str)}</font>",
             self.styles["InfoText"],
         )
 
-        # Intestazione: logo | nome asset | data
-        header_row = []
-        if logo_img:
-            header_row.append(logo_img)
-        else:
-            header_row.append("")
-        header_row.append(asset_name_para)
-        header_row.append(date_para)
+        header_row = [logo_img if logo_img else "", asset_name_para, date_para]
         header_table = Table([header_row], colWidths=[30 * mm, 95 * mm, 50 * mm])
         header_table.setStyle(
             TableStyle(
@@ -806,196 +568,144 @@ class PDFGenerator:
         story.append(header_table)
         story.append(Spacer(1, 8))
 
-        # Riga asset info principale: nome asset, tipo, stato, produttore, modello, seriale
+        def cell(key, value):
+            return self._labeled(
+                translations.get(key, key),
+                self._format_value(value, translations),
+            )
+
+        empty = self._para("")
         asset_info_data = [
             [
-                Paragraph(
-                    f"<b>{translations.get('asset_name', 'Nome')}:</b> {self._format_value(asset.get('name'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('asset_type', 'Tipo')}:</b> {self._format_value((asset.get('asset_type') or {}).get('name'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('asset_status', 'Stato')}:</b> {self._format_value((asset.get('status') or {}).get('name'), translations)}",
-                    self.styles["InfoText"],
-                ),
+                cell("asset_name", asset.get("name")),
+                cell("asset_type", (asset.get("asset_type") or {}).get("name")),
+                cell("asset_status", (asset.get("status") or {}).get("name")),
             ],
             [
-                Paragraph(
-                    f"<b>{translations.get('asset_manufacturer', 'Produttore')}:</b> {self._format_value((asset.get('manufacturer') or {}).get('name'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('asset_model', 'Modello')}:</b> {self._format_value(asset.get('model'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('asset_serial', 'Serial')}:</b> {self._format_value(asset.get('serial_number'), translations)}",
-                    self.styles["InfoText"],
-                ),
+                cell("asset_manufacturer", (asset.get("manufacturer") or {}).get("name")),
+                cell("asset_model", asset.get("model")),
+                cell("asset_serial", asset.get("serial_number")),
             ],
             [
-                Paragraph(
-                    f"<b>{translations.get('asset_site', 'Sito')}:</b> {self._format_value((asset.get('site') or {}).get('name'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('asset_location', 'Posizione')}:</b> {self._format_value((asset.get('location') or {}).get('name'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('asset_firmware', 'Firmware')}:</b> {self._format_value(asset.get('firmware_version'), translations)}",
-                    self.styles["InfoText"],
-                ),
+                cell("asset_site", (asset.get("site") or {}).get("name")),
+                cell("asset_location", (asset.get("location") or {}).get("name")),
+                cell("asset_firmware", asset.get("firmware_version")),
             ],
         ]
-        
-        # Aggiungi righe aggiuntive se i campi sono presenti
-        additional_rows = []
-        
-        # Riga con installation_date, business_criticality, security_zone
-        if asset.get('installation_date') or asset.get('business_criticality') or asset.get('security_zone'):
-            additional_rows.append([
-                Paragraph(
-                    f"<b>{translations.get('asset_installation_date', 'Data Installazione')}:</b> {self._format_value(asset.get('installation_date'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('asset_business_criticality', 'Criticità Business')}:</b> {self._format_value(asset.get('business_criticality'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('asset_security_zone', 'Security Zone')}:</b> {self._format_value((asset.get('security_zone') or {}).get('name') if isinstance(asset.get('security_zone'), dict) else asset.get('security_zone'), translations)}",
-                    self.styles["InfoText"],
-                ),
-            ])
-        
-        # Riga con area, remote_access, remote_access_type
-        if asset.get('area') or asset.get('remote_access') is not None or asset.get('remote_access_type'):
-            additional_rows.append([
-                Paragraph(
-                    f"<b>{translations.get('asset_area', 'Area')}:</b> {self._format_value((asset.get('area') or {}).get('name') if isinstance(asset.get('area'), dict) else asset.get('area'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('asset_remote_access', 'Accesso Remoto')}:</b> {self._format_value('Yes' if asset.get('remote_access') else 'No', translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('asset_remote_access_type', 'Tipo Accesso Remoto')}:</b> {self._format_value(asset.get('remote_access_type'), translations)}",
-                    self.styles["InfoText"],
-                ),
-            ])
-        
-        # Riga con protocols se presente
-        if asset.get('protocols') and isinstance(asset.get('protocols'), list) and len(asset.get('protocols', [])) > 0:
-            additional_rows.append([
-                Paragraph(
-                    f"<b>{translations.get('asset_protocols', 'Protocolli')}:</b> {self._format_value(', '.join(asset.get('protocols', [])), translations)}",
-                    self.styles["InfoText"],
-                ),
-            ])
-        
-        asset_info_data.extend(additional_rows)
-        
-        asset_info_table = Table(asset_info_data, colWidths=[60 * mm, 60 * mm, 55 * mm])
-        asset_info_table.setStyle(
-            TableStyle(
+
+        if (
+            asset.get("installation_date")
+            or asset.get("business_criticality")
+            or asset.get("security_zone")
+        ):
+            zone = asset.get("security_zone")
+            zone_name = zone.get("name") if isinstance(zone, dict) else zone
+            asset_info_data.append(
                 [
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 10),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    cell("asset_installation_date", asset.get("installation_date")),
+                    cell("asset_business_criticality", asset.get("business_criticality")),
+                    cell("asset_security_zone", zone_name),
                 ]
             )
-        )
+
+        if (
+            asset.get("area")
+            or asset.get("remote_access") is not None
+            or asset.get("remote_access_type")
+        ):
+            area = asset.get("area")
+            area_name = area.get("name") if isinstance(area, dict) else area
+            remote_label = (
+                translations.get("yes", "Yes")
+                if asset.get("remote_access")
+                else translations.get("no", "No")
+            )
+            asset_info_data.append(
+                [
+                    cell("asset_area", area_name),
+                    cell("asset_remote_access", remote_label),
+                    cell("asset_remote_access_type", asset.get("remote_access_type")),
+                ]
+            )
+
+        protocols = asset.get("protocols") or []
+        if isinstance(protocols, list) and protocols:
+            asset_info_data.append(
+                [
+                    cell("asset_protocols", ", ".join(str(p) for p in protocols)),
+                    empty,
+                    empty,
+                ]
+            )
+
+        asset_info_table = Table(asset_info_data, colWidths=[60 * mm, 60 * mm, 55 * mm])
+        asset_info_table.setStyle(self._info_table_style())
         story.append(asset_info_table)
         story.append(Spacer(1, 8))
-        # Linea di separazione
-        story.append(
-            Table(
-                [[""]],
-                colWidths=[180 * mm],
-                rowHeights=[1],
-                style=TableStyle(
-                    [("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#bfc9ca"))]
-                ),
-            )
-        )
+        story.append(self._separator())
         story.append(Spacer(1, 4))
 
-        # --- RISK AND CRITICALITY SECTION ---
-        story.append(
-            Paragraph(
-                translations.get("risk_section", "Rischio e criticità"),
-                self.styles["SectionTitle"],
-            )
-        )
+        if option_enabled(
+            options, "includePhoto", "include_photo", default=False
+        ):
+            for photo in asset.get("photos") or []:
+                path = photo.get("file_path") if isinstance(photo, dict) else None
+                if path and os.path.exists(path):
+                    try:
+                        story.append(Image(path, width=40 * mm, height=40 * mm))
+                        story.append(Spacer(1, 4))
+                        break
+                    except Exception:
+                        continue
 
-        risk_info_data = [
-            [
-                Paragraph(
-                    f"<b>{translations.get('risk_score', 'Rischio')}:</b> {self._format_risk_score(asset.get('risk_score'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('business_criticality', 'Criticità')}:</b> {self._format_value(asset.get('business_criticality'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('impact_value', 'Impact')}:</b> {self._format_value(asset.get('impact_value'), translations)}",
-                    self.styles["InfoText"],
-                ),
-            ],
-            [
-                Paragraph(
-                    f"<b>{translations.get('purdue_level', 'Purdue')}:</b> {self._format_value(asset.get('purdue_level'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('physical_access', 'Accesso fisico')}:</b> {self._format_value(asset.get('physical_access_ease'), translations)}",
-                    self.styles["InfoText"],
-                ),
-                Paragraph(
-                    f"<b>{translations.get('exposure_level', 'Esposizione')}:</b> {self._format_value(asset.get('exposure_level'), translations)}",
-                    self.styles["InfoText"],
-                ),
-            ],
-        ]
-
-        risk_table = Table(risk_info_data, colWidths=[60 * mm, 60 * mm, 55 * mm])
-        risk_table.setStyle(
-            TableStyle(
-                [
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 10),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                    ("TOPPADDING", (0, 0), (-1, -1), 2),
-                ]
-            )
-        )
-        story.append(risk_table)
-        story.append(Spacer(1, 4))
-
-        # --- SEZIONE INTERFACCE DI RETE ---
-        interfaces = asset.get("interfaces", [])
-        if interfaces and isinstance(interfaces, list) and len(interfaces) > 0:
+        if option_enabled(
+            options, "includeRiskMatrix", "include_risk_matrix", default=True
+        ):
             story.append(
                 Paragraph(
-                    translations.get(
-                        "network_interfaces_section", "Interfacce di rete"
+                    self._xml(translations.get("risk_section", "Risk")),
+                    self.styles["SectionTitle"],
+                )
+            )
+            risk_table = Table(
+                [
+                    [
+                        self._labeled(
+                            translations.get("risk_score", "Risk Score"),
+                            self._format_risk_score(
+                                asset.get("risk_score"), translations
+                            ),
+                        ),
+                        cell("business_criticality", asset.get("business_criticality")),
+                        cell("impact_value", asset.get("impact_value")),
+                    ],
+                    [
+                        cell("purdue_level", asset.get("purdue_level")),
+                        cell("physical_access", asset.get("physical_access_ease")),
+                        cell("exposure_level", asset.get("exposure_level")),
+                    ],
+                ],
+                colWidths=[60 * mm, 60 * mm, 55 * mm],
+            )
+            risk_table.setStyle(self._info_table_style())
+            story.append(risk_table)
+            story.append(Spacer(1, 4))
+
+        interfaces = asset.get("interfaces") or []
+        if isinstance(interfaces, list) and interfaces:
+            story.append(
+                Paragraph(
+                    self._xml(
+                        translations.get(
+                            "network_interfaces_section", "Network Interfaces"
+                        )
                     ),
                     self.styles["SectionTitle"],
                 )
             )
-            # Intestazioni multilingua
             headers = [
-                translations.get("iface_name", "Nome"),
-                translations.get("iface_type", "Tipo"),
+                translations.get("iface_name", "Name"),
+                translations.get("iface_type", "Type"),
                 translations.get("iface_ip", "IP"),
                 translations.get("iface_mac", "MAC"),
                 translations.get("iface_vlan", "VLAN"),
@@ -1061,51 +771,59 @@ class PDFGenerator:
             story.append(iface_table)
             story.append(Spacer(1, 4))
 
-        # Linea di separazione
-        story.append(
-            Table(
-                [[""]],
-                colWidths=[180 * mm],
-                rowHeights=[1],
-                style=TableStyle(
-                    [("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#bfc9ca"))]
-                ),
-            )
-        )
+        story.append(self._separator())
         story.append(Spacer(1, 4))
-        # Tabella connessioni principali (max 5)
-        connections_table = self._create_connections_table(asset, translations)
-        if connections_table:
-            story.append(
-                Paragraph(
-                    translations.get("connections_section", "Connessioni principali"),
-                    self.styles["SectionTitle"],
+
+        if option_enabled(
+            options, "includeConnections", "include_connections", default=True
+        ):
+            connections_table = self._create_connections_table(asset, translations)
+            if connections_table:
+                story.append(
+                    Paragraph(
+                        self._xml(
+                            translations.get("connections_section", "Connections")
+                        ),
+                        self.styles["SectionTitle"],
+                    )
                 )
-            )
-            story.append(connections_table)
-        # Tabella contatti chiave (max 3)
+                story.append(connections_table)
+
         contacts_table = self._create_contacts_table(asset, translations)
         if contacts_table:
             story.append(
                 Paragraph(
-                    translations.get("contacts_section", "Contatti chiave"),
+                    self._xml(translations.get("contacts_section", "Contacts")),
                     self.styles["SectionTitle"],
                 )
             )
             story.append(contacts_table)
-        # --- SEZIONE FORNITORI ---
-        suppliers = asset.get("suppliers", [])
-        if suppliers and isinstance(suppliers, list) and len(suppliers) > 0:
-            story.append(Paragraph("Fornitori", self.styles["SectionTitle"]))
-            supplier_data = [["Nome", "Email", "Telefono", "Sito", "Note"]]
-            for s in suppliers:
+
+        suppliers = asset.get("suppliers") or []
+        if isinstance(suppliers, list) and suppliers:
+            story.append(
+                Paragraph(
+                    self._xml(translations.get("suppliers_section", "Suppliers")),
+                    self.styles["SectionTitle"],
+                )
+            )
+            supplier_data = [
+                [
+                    translations.get("supplier_name", "Name"),
+                    translations.get("supplier_email", "Email"),
+                    translations.get("supplier_phone", "Phone"),
+                    translations.get("supplier_website", "Website"),
+                    translations.get("supplier_notes", "Notes"),
+                ]
+            ]
+            for supplier in suppliers:
                 supplier_data.append(
                     [
-                        self._format_value(s.get("name"), translations),
-                        self._format_value(s.get("email"), translations),
-                        self._format_value(s.get("phone"), translations),
-                        self._format_value(s.get("website"), translations),
-                        self._format_value(s.get("notes"), translations),
+                        self._format_value(supplier.get("name"), translations),
+                        self._format_value(supplier.get("email"), translations),
+                        self._format_value(supplier.get("phone"), translations),
+                        self._format_value(supplier.get("website"), translations),
+                        self._format_value(supplier.get("notes"), translations),
                     ]
                 )
             supplier_table = Table(
@@ -1136,367 +854,450 @@ class PDFGenerator:
             story.append(supplier_table)
             story.append(Spacer(1, 4))
 
-        # --- SEZIONE CAMPI CUSTOM ---
-        custom_fields = asset.get("custom_fields", {})
-        if custom_fields and isinstance(custom_fields, dict) and len(custom_fields) > 0:
-            story.append(
-                Paragraph(
-                    translations.get("custom_fields_section", "Campi custom"),
-                    self.styles["SectionTitle"],
+        if option_enabled(
+            options, "includeCustomFields", "include_custom_fields", default=True
+        ):
+            custom_fields = asset.get("custom_fields") or {}
+            if isinstance(custom_fields, dict) and custom_fields:
+                story.append(
+                    Paragraph(
+                        self._xml(
+                            translations.get("custom_fields_section", "Custom Fields")
+                        ),
+                        self.styles["SectionTitle"],
+                    )
                 )
-            )
-            custom_data = [
-                [str(k), self._format_value(v, translations)]
-                for k, v in custom_fields.items()
-            ]
-            custom_table = Table(custom_data, colWidths=[60 * mm, 110 * mm])
-            custom_table.setStyle(
-                TableStyle(
-                    [
-                        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f9e79f")),
-                        ("BACKGROUND", (1, 0), (1, -1), colors.white),
-                        ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#7d6608")),
-                        ("TEXTCOLOR", (1, 0), (1, -1), colors.black),
-                        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                        ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
-                        ("FONTSIZE", (0, 0), (-1, -1), 9),
-                        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                        ("TOPPADDING", (0, 0), (-1, -1), 2),
-                        ("GRID", (0, 0), (-1, -1), 0.2, colors.lightgrey),
-                    ]
+                custom_data = [
+                    [str(k), self._format_value(v, translations)]
+                    for k, v in custom_fields.items()
+                ]
+                custom_table = Table(custom_data, colWidths=[60 * mm, 110 * mm])
+                custom_table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f9e79f")),
+                            ("BACKGROUND", (1, 0), (1, -1), colors.white),
+                            ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#7d6608")),
+                            ("TEXTCOLOR", (1, 0), (1, -1), colors.black),
+                            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                            ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+                            ("FONTSIZE", (0, 0), (-1, -1), 9),
+                            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                            ("TOPPADDING", (0, 0), (-1, -1), 2),
+                            ("GRID", (0, 0), (-1, -1), 0.2, colors.lightgrey),
+                        ]
+                    )
                 )
-            )
-            story.append(custom_table)
-        # QR code in basso a destra solo se richiesto
-        if options.get("includeQR", True):
+                story.append(custom_table)
+
+        if option_enabled(options, "includeQR", "include_qr", default=True):
             base_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
             asset_url = f"{base_url}/assets/{asset.get('id')}"
-            qr_buffer = self._generate_qr_code(asset_url, 60)
+            qr_buffer = self.generate_qr_code(asset_url, 60)
             qr_img = Image(qr_buffer, width=30 * mm, height=30 * mm)
             story.append(Spacer(1, 6))
             story.append(
                 Paragraph(
-                    translations.get("qr_code_label", "QR Code for quick access"),
+                    self._xml(
+                        translations.get("qr_code_label", "QR Code for quick access")
+                    ),
                     self.styles["Label"],
                 )
             )
             story.append(qr_img)
+
         doc.build(story)
         return str(filepath)
 
     def get_file_size(self, filepath: str) -> int:
-        """Restituisce la dimensione del file in bytes"""
         try:
             return os.path.getsize(filepath)
         except OSError:
             return 0
 
-    def generate_printed_kit(self, kit_data: Dict[str, Any], options: Dict[str, Any]) -> str:
-        """Genera un printed kit completo per l'azienda"""
-        try:
-            import logging
-            logging.info("Inizio generazione printed kit")
-            
-            # Determina la lingua (default: inglese)
-            language = options.get("language", "en")
-            
-            # Dizionario traduzioni
-            translations = {
-                "en": {
-                    "generated_on": "Generated on:",
-                    "generated_by": "Generated by:",
-                    "company_info": "1. COMPANY INFORMATION",
-                    "company_name": "Company Name",
-                    "slug": "Slug",
-                    "created_on": "Created on",
-                    "status": "Status",
-                    "active": "Active",
-                    "inactive": "Inactive",
-                    "critical_assets": "2. CRITICAL ASSETS",
-                    "name": "Name",
-                    "type": "Type",
-                    "site": "Site",
-                    "risk_score": "Risk Score",
-                    "no_critical_assets": "No critical assets identified",
-                    "sites_areas": "3. SITES AND AREAS",
-                    "code": "Code",
-                    "address": "Address",
-                    "description": "Description",
-                    "complete_inventory": "4. COMPLETE ASSET INVENTORY",
-                    "area": "Area",
-                    "location": "Location",
-                    "ip": "IP",
-                    "manufacturer": "Manufacturer",
-                    "serial_number": "Serial Number",
-                    "notes": "Notes",
-                    "critical_suppliers": "5. CRITICAL SUPPLIERS",
-                    "email": "Email",
-                    "phone": "Phone",
-                    "footer": "Document automatically generated by Industrace on"
-                },
-                "it": {
-                    "generated_on": "Generato il:",
-                    "generated_by": "Generato da:",
-                    "company_info": "1. INFORMAZIONI AZIENDA",
-                    "company_name": "Nome Azienda",
-                    "slug": "Slug",
-                    "created_on": "Creato il",
-                    "status": "Stato",
-                    "active": "Attivo",
-                    "inactive": "Inattivo",
-                    "critical_assets": "2. ASSET CRITICI",
-                    "name": "Nome",
-                    "type": "Tipo",
-                    "site": "Sito",
-                    "risk_score": "Risk Score",
-                    "no_critical_assets": "Nessun asset critico identificato",
-                    "sites_areas": "3. STABILIMENTI E AREE",
-                    "code": "Codice",
-                    "address": "Indirizzo",
-                    "description": "Descrizione",
-                    "complete_inventory": "4. INVENTARIO COMPLETO ASSET",
-                    "area": "Area",
-                    "location": "Location",
-                    "ip": "IP",
-                    "manufacturer": "Produttore",
-                    "serial_number": "Serial Number",
-                    "notes": "Note",
-                    "critical_suppliers": "5. FORNITORI CRITICI",
-                    "email": "Email",
-                    "phone": "Telefono",
-                    "footer": "Documento generato automaticamente da Industrace il"
-                }
-            }
-            
-            t = translations.get(language, translations["en"])
-            
-            # Crea il nome del file
-            tenant_name = kit_data["tenant"].name.replace(" ", "_").lower()
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"printed-kit-{tenant_name}-{timestamp}.pdf"
-            filepath = self.upload_dir / filename
-            
-            logging.info(f"File path: {filepath}")
+    @staticmethod
+    def _is_critical_kit_asset(asset) -> bool:
+        risk = getattr(asset, "risk_score", None)
+        if risk is not None:
+            try:
+                if float(risk) >= 7:
+                    return True
+            except (TypeError, ValueError):
+                pass
+        criticality = (
+            getattr(asset, "business_criticality", None) or ""
+        ).strip().lower()
+        return criticality in ("critical", "high")
 
-            # Crea il documento PDF
+    def generate_printed_kit(
+        self, kit_data: Dict[str, Any], options: Dict[str, Any]
+    ) -> str:
+        """Generate a tenant printed kit PDF."""
+        try:
+            language = normalize_print_language(
+                (options or {}).get("language") or (options or {}).get("lang")
+            )
+            t = _KIT_I18N.get(language, _KIT_I18N["en"])
+            section_num = 0
+
+            def next_section_title(label: str) -> str:
+                nonlocal section_num
+                section_num += 1
+                return f"{section_num}. {label}"
+
+            tenant = kit_data["tenant"]
+            tenant_dir = self._output_dir(tenant.id)
+            tenant_slug = (
+                (tenant.slug or tenant.name or "tenant").replace(" ", "_").lower()
+            )
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            filename = f"printed-kit-{tenant_slug}-{timestamp}.pdf"
+            filepath = tenant_dir / filename
+
             doc = SimpleDocTemplate(
                 str(filepath),
                 pagesize=A4,
-                rightMargin=15*mm,
-                leftMargin=15*mm,
-                topMargin=15*mm,
-                bottomMargin=15*mm
+                rightMargin=15 * mm,
+                leftMargin=15 * mm,
+                topMargin=15 * mm,
+                bottomMargin=15 * mm,
             )
 
-            # Lista degli elementi del PDF
             story = []
-            
-            logging.info("Creazione header documento")
-
-            # Header del documento
-            story.append(Paragraph(
-                f"<b>PRINTED KIT - {kit_data['tenant'].name.upper()}</b>",
-                self.styles["AssetTitle"]
-            ))
+            story.append(
+                Paragraph(
+                    f"<b>PRINTED KIT - {self._xml((tenant.name or '').upper())}</b>",
+                    self.styles["AssetTitle"],
+                )
+            )
             story.append(Spacer(1, 10))
 
-            # Informazioni di generazione
-            date_format = '%d/%m/%Y at %H:%M' if language == "en" else '%d/%m/%Y alle %H:%M'
-            story.append(Paragraph(
-                f"<b>{t['generated_on']}</b> {kit_data['generated_at'].strftime(date_format)}",
-                self.styles["InfoText"]
-            ))
-            story.append(Paragraph(
-                f"<b>{t['generated_by']}</b> {kit_data['generated_by']}",
-                self.styles["InfoText"]
-            ))
+            date_format = (
+                "%d/%m/%Y at %H:%M" if language == "en" else "%d/%m/%Y alle %H:%M"
+            )
+            generated_at = kit_data["generated_at"]
+            story.append(
+                self._para(
+                    f"<b>{self._xml(t['generated_on'])}</b> "
+                    f"{self._xml(generated_at.strftime(date_format))}"
+                )
+            )
+            story.append(
+                self._para(
+                    f"<b>{self._xml(t['generated_by'])}</b> "
+                    f"{self._xml(kit_data['generated_by'])}"
+                )
+            )
             story.append(Spacer(1, 15))
-            
-            logging.info("Creazione sezione tenant")
 
-            # 1. INFORMAZIONI AZIENDA
-            story.append(Paragraph(f"1. {t['company_info']}", self.styles["SectionTitle"]))
-            created_date = kit_data["tenant"].created_at.strftime('%d/%m/%Y') if kit_data["tenant"].created_at else "N/A"
+            story.append(
+                Paragraph(
+                    self._xml(next_section_title(t["company_info"])),
+                    self.styles["SectionTitle"],
+                )
+            )
+            created_date = (
+                tenant.created_at.strftime("%d/%m/%Y") if tenant.created_at else "N/A"
+            )
             tenant_info = [
-                [t["company_name"], kit_data["tenant"].name],
-                [t["slug"], kit_data["tenant"].slug],
+                [t["company_name"], tenant.name],
+                [t["slug"], tenant.slug],
                 [t["created_on"], created_date],
-                [t["status"], t["active"] if kit_data["tenant"].is_active else t["inactive"]]
+                [t["status"], t["active"] if tenant.is_active else t["inactive"]],
             ]
-            tenant_table = Table(tenant_info, colWidths=[80*mm, 100*mm])
-            tenant_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.blue),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black)
-            ]))
+            tenant_table = Table(tenant_info, colWidths=[80 * mm, 100 * mm])
+            tenant_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (0, -1), colors.blue),
+                        ("TEXTCOLOR", (0, 0), (0, -1), colors.white),
+                        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 10),
+                        ("BACKGROUND", (1, 0), (1, -1), colors.white),
+                        ("TEXTCOLOR", (1, 0), (1, -1), colors.black),
+                        ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ]
+                )
+            )
             story.append(tenant_table)
             story.append(Spacer(1, 20))
-            
-            logging.info("Controllo sezioni opzionali")
 
-            # 2. ASSET CRITICI
-            if options.get("include_assets", True) and "assets" in kit_data:
-                logging.info("Aggiunta sezione asset critici")
-                story.append(Paragraph(f"2. {t['critical_assets']}", self.styles["SectionTitle"]))
-                
-                # Filtra asset critici (high risk o critical)
-                critical_assets = []
-                for asset in kit_data["assets"]:
-                    # Considera critici asset con risk_score alto o status critico
-                    if hasattr(asset, 'risk_score') and asset.risk_score and asset.risk_score > 7:
-                        critical_assets.append(asset)
-                    elif hasattr(asset, 'status') and asset.status and 'critic' in asset.status.name.lower():
-                        critical_assets.append(asset)
-                    elif hasattr(asset, 'criticality') and asset.criticality and asset.criticality == 'critical':
-                        critical_assets.append(asset)
-                
+            if option_enabled(
+                options, "include_assets", "includeAssets", default=True
+            ) and "assets" in kit_data:
+                story.append(
+                    Paragraph(
+                        self._xml(next_section_title(t["critical_assets"])),
+                        self.styles["SectionTitle"],
+                    )
+                )
+                critical_assets = [
+                    asset
+                    for asset in kit_data["assets"]
+                    if self._is_critical_kit_asset(asset)
+                ]
                 if critical_assets:
-                    critical_data = [[t["name"], t["type"], t["status"], t["site"], t["risk_score"]]]
+                    critical_data = [
+                        [t["name"], t["type"], t["status"], t["site"], t["risk_score"]]
+                    ]
                     for asset in critical_assets:
-                        critical_data.append([
-                            asset.name,
-                            asset.asset_type.name if asset.asset_type else "N/A",
-                            asset.status.name if asset.status else "N/A",
-                            asset.site.name if asset.site else "N/A",
-                            str(getattr(asset, 'risk_score', 'N/A'))
-                        ])
-                    
-                    critical_table = Table(critical_data, colWidths=[50*mm, 35*mm, 35*mm, 40*mm, 30*mm])
-                    critical_table.setStyle(TableStyle([
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.red),
-                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                        ('FONTSIZE', (0, 0), (-1, -1), 7),
-                        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.yellow])
-                    ]))
+                        risk = getattr(asset, "risk_score", None)
+                        critical_data.append(
+                            [
+                                asset.name,
+                                asset.asset_type.name if asset.asset_type else "N/A",
+                                asset.status.name if asset.status else "N/A",
+                                asset.site.name if asset.site else "N/A",
+                                f"{float(risk):.2f}" if risk is not None else "N/A",
+                            ]
+                        )
+                    critical_table = Table(
+                        critical_data,
+                        colWidths=[50 * mm, 35 * mm, 35 * mm, 40 * mm, 30 * mm],
+                    )
+                    critical_table.setStyle(
+                        TableStyle(
+                            [
+                                ("BACKGROUND", (0, 0), (-1, 0), colors.red),
+                                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                                (
+                                    "ROWBACKGROUNDS",
+                                    (0, 1),
+                                    (-1, -1),
+                                    [colors.white, colors.yellow],
+                                ),
+                            ]
+                        )
+                    )
                     story.append(critical_table)
                 else:
-                    story.append(Paragraph(t["no_critical_assets"], self.styles["InfoText"]))
-                
+                    story.append(
+                        Paragraph(self._xml(t["no_critical_assets"]), self.styles["InfoText"])
+                    )
                 story.append(Spacer(1, 20))
 
-            # 3. STABILIMENTI E AREE
-            if options.get("include_sites", True) and "sites" in kit_data:
-                logging.info("Aggiunta sezione sites")
-                story.append(Paragraph(f"3. {t['sites_areas']}", self.styles["SectionTitle"]))
-                
+            if option_enabled(
+                options, "include_sites", "includeSites", default=True
+            ) and "sites" in kit_data:
+                story.append(
+                    Paragraph(
+                        self._xml(next_section_title(t["sites_areas"])),
+                        self.styles["SectionTitle"],
+                    )
+                )
                 sites_data = [[t["name"], t["code"], t["address"], t["description"]]]
                 for site in kit_data["sites"]:
-                    sites_data.append([
-                        site.name,
-                        site.code,
-                        site.address or "N/A",
-                        site.description or "N/A"
-                    ])
-                
-                sites_table = Table(sites_data, colWidths=[50*mm, 30*mm, 60*mm, 40*mm])
-                sites_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 8),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
-                ]))
+                    sites_data.append(
+                        [
+                            site.name,
+                            site.code,
+                            site.address or "N/A",
+                            site.description or "N/A",
+                        ]
+                    )
+                sites_table = Table(
+                    sites_data, colWidths=[50 * mm, 30 * mm, 60 * mm, 40 * mm]
+                )
+                sites_table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, -1), 8),
+                            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ]
+                    )
+                )
                 story.append(sites_table)
                 story.append(Spacer(1, 20))
 
-            # 4. INVENTARIO COMPLETO ASSET
-            if options.get("include_assets", True) and "assets" in kit_data:
-                logging.info("Aggiunta sezione inventario completo")
-                story.append(Paragraph(f"4. {t['complete_inventory']}", self.styles["SectionTitle"]))
-                
+            if option_enabled(
+                options, "include_assets", "includeAssets", default=True
+            ) and "assets" in kit_data:
+                story.append(
+                    Paragraph(
+                        self._xml(next_section_title(t["complete_inventory"])),
+                        self.styles["SectionTitle"],
+                    )
+                )
                 for i, asset in enumerate(kit_data["assets"], 1):
-                    # Header dell'asset
-                    story.append(Paragraph(f"<b>Asset {i}: {asset.name}</b>", self.styles["InfoText"]))
-                    
-                    # Dettagli dell'asset
+                    story.append(
+                        self._para(
+                            f"<b>Asset {i}: {self._xml(asset.name)}</b>"
+                        )
+                    )
+                    first_ip = "N/A"
+                    if getattr(asset, "interfaces", None):
+                        first_ip = asset.interfaces[0].ip_address or "N/A"
                     asset_details = [
                         [t["name"], asset.name],
-                        [t["type"], asset.asset_type.name if asset.asset_type else "N/A"],
+                        [
+                            t["type"],
+                            asset.asset_type.name if asset.asset_type else "N/A",
+                        ],
                         [t["site"], asset.site.name if asset.site else "N/A"],
-                        [t["area"], asset.location.area.name if asset.location and asset.location.area else "N/A"],
-                        [t["location"], asset.location.name if asset.location else "N/A"],
-                        [t["ip"], asset.interfaces[0].ip_address if asset.interfaces else "N/A"],
-                        [t["manufacturer"], asset.manufacturer.name if asset.manufacturer else "N/A"],
+                        [
+                            t["area"],
+                            asset.location.area.name
+                            if asset.location and asset.location.area
+                            else "N/A",
+                        ],
+                        [
+                            t["location"],
+                            asset.location.name if asset.location else "N/A",
+                        ],
+                        [t["ip"], first_ip],
+                        [
+                            t["manufacturer"],
+                            asset.manufacturer.name if asset.manufacturer else "N/A",
+                        ],
                         [t["serial_number"], asset.serial_number or "N/A"],
-                        [t["notes"], asset.description or "N/A"]
+                        [t["notes"], asset.description or "N/A"],
                     ]
-                    
-                    # Creo una tabella per ogni asset
-                    asset_table = Table(asset_details, colWidths=[50*mm, 130*mm])
-                    asset_table.setStyle(TableStyle([
-                        ('BACKGROUND', (0, 0), (0, -1), colors.grey),
-                        ('TEXTCOLOR', (0, 0), (0, -1), colors.white),
-                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                        ('FONTSIZE', (0, 0), (-1, -1), 8),
-                        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-                        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-                        ('TOPPADDING', (0, 0), (-1, -1), 3),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 3)
-                    ]))
+                    asset_table = Table(asset_details, colWidths=[50 * mm, 130 * mm])
+                    asset_table.setStyle(
+                        TableStyle(
+                            [
+                                ("BACKGROUND", (0, 0), (0, -1), colors.grey),
+                                ("TEXTCOLOR", (0, 0), (0, -1), colors.white),
+                                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                                ("GRID", (0, 0), (-1, -1), 1, colors.grey),
+                                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                            ]
+                        )
+                    )
                     story.append(asset_table)
                     story.append(Spacer(1, 10))
-                
                 story.append(Spacer(1, 20))
 
-            # 5. FORNITORI CRITICI
-            if options.get("include_suppliers", True) and "suppliers" in kit_data:
-                logging.info("Aggiunta sezione fornitori critici")
-                story.append(Paragraph(f"5. {t['critical_suppliers']}", self.styles["SectionTitle"]))
-                
+            if option_enabled(
+                options, "include_contacts", "includeContacts", default=True
+            ) and "contacts" in kit_data:
+                story.append(
+                    Paragraph(
+                        self._xml(next_section_title(t["contacts"])),
+                        self.styles["SectionTitle"],
+                    )
+                )
+                contacts = kit_data["contacts"]
+                if contacts:
+                    contacts_data = [
+                        [t["name"], t["type"], t["email"], t["phone"], t["notes"]]
+                    ]
+                    for contact in contacts:
+                        full_name = (
+                            f"{contact.first_name or ''} {contact.last_name or ''}".strip()
+                            or "N/A"
+                        )
+                        phone = contact.phone1 or contact.phone2 or "N/A"
+                        contacts_data.append(
+                            [
+                                full_name,
+                                contact.type or "N/A",
+                                contact.email or "N/A",
+                                phone,
+                                (contact.notes or "N/A")[:80],
+                            ]
+                        )
+                    contacts_table = Table(
+                        contacts_data,
+                        colWidths=[40 * mm, 25 * mm, 45 * mm, 30 * mm, 40 * mm],
+                    )
+                    contacts_table.setStyle(
+                        TableStyle(
+                            [
+                                (
+                                    "BACKGROUND",
+                                    (0, 0),
+                                    (-1, 0),
+                                    colors.Color(0.2, 0.4, 0.6),
+                                ),
+                                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                            ]
+                        )
+                    )
+                    story.append(contacts_table)
+                else:
+                    story.append(
+                        Paragraph(self._xml(t["no_contacts"]), self.styles["InfoText"])
+                    )
+                story.append(Spacer(1, 20))
+
+            if option_enabled(
+                options, "include_suppliers", "includeSuppliers", default=True
+            ) and "suppliers" in kit_data:
+                story.append(
+                    Paragraph(
+                        self._xml(next_section_title(t["critical_suppliers"])),
+                        self.styles["SectionTitle"],
+                    )
+                )
                 suppliers_data = [[t["name"], t["email"], t["phone"], t["address"]]]
                 for supplier in kit_data["suppliers"]:
-                    suppliers_data.append([
-                        supplier.name,
-                        supplier.email or "N/A",
-                        supplier.phone or "N/A",
-                        f"{supplier.address or ''} {supplier.city or ''}".strip() or "N/A"
-                    ])
-                
-                suppliers_table = Table(suppliers_data, colWidths=[50*mm, 50*mm, 35*mm, 55*mm])
-                suppliers_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.orange),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 8),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
-                ]))
+                    suppliers_data.append(
+                        [
+                            supplier.name,
+                            supplier.email or "N/A",
+                            supplier.phone or "N/A",
+                            f"{supplier.address or ''} {supplier.city or ''}".strip()
+                            or "N/A",
+                        ]
+                    )
+                suppliers_table = Table(
+                    suppliers_data, colWidths=[50 * mm, 50 * mm, 35 * mm, 55 * mm]
+                )
+                suppliers_table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.orange),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, -1), 8),
+                            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ]
+                    )
+                )
                 story.append(suppliers_table)
                 story.append(Spacer(1, 20))
 
-            # Footer
             story.append(Spacer(1, 20))
-            footer_date_format = '%d/%m/%Y at %H:%M' if language == "en" else '%d/%m/%Y alle %H:%M'
-            story.append(Paragraph(
-                f"<i>{t['footer']} {datetime.now().strftime(footer_date_format)}</i>",
-                self.styles["InfoText"]
-            ))
+            footer_date_format = (
+                "%d/%m/%Y at %H:%M" if language == "en" else "%d/%m/%Y alle %H:%M"
+            )
+            story.append(
+                Paragraph(
+                    f"<i>{self._xml(t['footer'])} "
+                    f"{self._xml(datetime.now(timezone.utc).strftime(footer_date_format))}</i>",
+                    self.styles["InfoText"],
+                )
+            )
 
-            logging.info("Generazione PDF finale")
-            # Genera il PDF
             doc.build(story)
-            
-            logging.info(f"PDF generato con successo: {filepath}")
             return str(filepath)
 
         except Exception as e:
-            import logging
-            logging.error(f"Errore nella generazione del printed kit: {str(e)}")
-            import traceback
-            logging.error(f"Traceback: {traceback.format_exc()}")
-            raise Exception(f"Errore nella generazione del printed kit: {str(e)}")
+            logger.error("Printed kit generation failed: %s", e, exc_info=True)
+            raise

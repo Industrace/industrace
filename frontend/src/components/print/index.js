@@ -1,4 +1,2 @@
-// Componenti di stampa
+// Print UI entry point — PDF is generated server-side (ReportLab)
 export { default as PrintDialog } from './PrintDialog.vue'
-export { default as AssetCardPrint } from './AssetCardPrint.vue'
-export { default as PrintLayout } from './PrintLayout.vue' 

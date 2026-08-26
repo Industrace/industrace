@@ -410,6 +410,7 @@ import { useToast } from 'primevue/usetoast'
 import { usePermissions } from '@/composables/usePermissions'
 import { useAuthStore } from '@/store/auth'
 import api from '@/api/api'
+import { downloadBlob } from '@/composables/usePrint'
 
 // PrimeVue Components
 import Dialog from 'primevue/dialog'
@@ -603,32 +604,21 @@ const generatePrintedKit = async () => {
   try {
     generatingKit.value = true
     
-    // Include current language in options
+    // Backend PrintedKitRequest expects snake_case field names
     const options = {
-      ...kitOptions.value,
+      include_assets: kitOptions.value.includeAssets,
+      include_sites: kitOptions.value.includeSites,
+      include_contacts: kitOptions.value.includeContacts,
+      include_suppliers: kitOptions.value.includeSuppliers,
       language: locale.value || 'en'
     }
     
     const response = await api.generatePrintedKit(options)
     
-    // Download the generated file
     if (response.data.file_url) {
-      // Extract filename from URL
       const filename = response.data.file_url.split('/').pop()
-      
-      // Download file using API
       const downloadResponse = await api.downloadPrintedKit(filename)
-      
-      // Create blob and download
-      const blob = new Blob([downloadResponse.data], { type: 'application/pdf' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
+      downloadBlob(downloadResponse.data, filename)
     }
     
     toast.add({

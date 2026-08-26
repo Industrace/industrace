@@ -69,9 +69,7 @@
         "includeAssets": "Include asset sheets",
         "includeSites": "Include site information",
         "includeContacts": "Include contacts",
-        "includeSuppliers": "Include suppliers",
-        "includePhotos": "Include asset photos",
-        "includeDocuments": "Include asset documents"
+        "includeSuppliers": "Include suppliers"
       },
       "info": {
         "title": "Printed Kit - Complete Documentation",
@@ -80,14 +78,13 @@
           "General tenant information",
           "List of sites and areas",
           "Complete asset sheets",
-          "Contacts and suppliers",
-          "Asset documents and photos"
+          "Contacts and suppliers"
         ],
         "item1": "General tenant information",
         "item2": "List of sites and areas",
         "item3": "Complete asset sheets",
         "item4": "Contacts and suppliers",
-        "item5": "Asset documents and photos"
+        "item5": "Critical assets overview"
       },
       "generationOptions": "Generation options:"
     },

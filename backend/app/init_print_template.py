@@ -1,11 +1,9 @@
 # init_print_template.py
 
-import os
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models.print_template import PrintTemplate
 from app.crud.print_templates import get_default_templates
-from uuid import UUID
 
 
 def init_default_templates(tenant_id=None):
@@ -13,13 +11,13 @@ def init_default_templates(tenant_id=None):
     try:
         default_templates = get_default_templates()
         for template_data in default_templates:
-            # Check if it already exists for key and tenant
             query = session.query(PrintTemplate).filter_by(key=template_data["key"])
             if tenant_id:
                 query = query.filter_by(tenant_id=tenant_id)
+            else:
+                query = query.filter(PrintTemplate.tenant_id.is_(None))
             existing = query.first()
             if existing:
-                # print(f"Template '{template_data['key']}' already exists.")
                 continue
             template = PrintTemplate(
                 key=template_data["key"],
@@ -35,17 +33,13 @@ def init_default_templates(tenant_id=None):
                 tenant_id=tenant_id,
             )
             session.add(template)
-            # print(f"Template '{template_data['key']}' created.")
         session.commit()
-        # print("All default templates have been created or already exist.")
-    except Exception as e:
-        # print("Error creating templates:", e)
+    except Exception:
         session.rollback()
+        raise
     finally:
         session.close()
 
 
 if __name__ == "__main__":
-    # If you need multi-tenant support, you can pass a tenant_id here
-    # Example: init_default_templates(tenant_id=UUID('...'))
     init_default_templates()
