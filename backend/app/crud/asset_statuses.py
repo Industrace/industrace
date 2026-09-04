@@ -9,7 +9,9 @@ def create_asset_status(
     db: Session, status_in: AssetStatusCreate, tenant_id: uuid.UUID
 ) -> AssetStatus:
     """Create a new asset status"""
-    status = AssetStatus(**status_in.model_dump(), tenant_id=tenant_id)
+    status = AssetStatus(
+        **status_in.model_dump(exclude={"tenant_id"}), tenant_id=tenant_id
+    )
     db.add(status)
     db.commit()
     db.refresh(status)

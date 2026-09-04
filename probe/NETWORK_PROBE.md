@@ -40,7 +40,7 @@ Distributed passive network discovery for **Industrace 2.1+**. Probes observe in
 | `retry_policy.py` | Exponential backoff for worker retries |
 | `README.md` | Module map and contributor guide |
 | `probe.conf` / `probe.conf.example` | Configuration |
-| `Dockerfile.probe` | Container image (copies all `*.py` modules) |
+| `Dockerfile.probe` | Container image (`python:3.11-slim`, `tcpdump`, `libpcap-dev`; copies all `*.py` modules) |
 | `docker-compose.probes.yml` | Multi-probe compose example |
 | `SYSTEMD_NATIVE_SETUP.md` | Native systemd deployment guide |
 | `industrace-network-probe.service.example` | Example systemd unit |
@@ -83,7 +83,7 @@ docker run -d \
 
 ```bash
 # Dependencies (Ubuntu/Debian)
-sudo apt-get update && sudo apt-get install -y python3 python3-pip tcpdump
+sudo apt-get update && sudo apt-get install -y python3 python3-pip tcpdump libpcap-dev
 pip3 install -r requirements.probe.txt
 
 python3 network_probe_client.py --create-config

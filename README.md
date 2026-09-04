@@ -1,7 +1,7 @@
 # Industrace - Industrial Asset Management System
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://opensource.org/licenses/AGPL-3.0)
-[![Release](https://img.shields.io/badge/Release-v2.3.1-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.3.1)
+[![Release](https://img.shields.io/badge/Release-v2.3.3-blue.svg)](https://github.com/industrace/industrace/releases/tag/v2.3.3)
 [![Status](https://img.shields.io/badge/Status-Pilot%20recommended-orange.svg)](#release-status)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
@@ -13,7 +13,7 @@ Most asset management tools are designed for IT. Industrace was born from the ob
 
 ## Release status
 
-Industrace **2.3.1** adds bulk cleanup controls for discovered devices and improves Network Probe operational guidance for least-privilege deployments (systemd capabilities + Docker `cap_add`). The 2.x line remains **pilot recommended** — CSV import, deep health checks, IEC 62443 compliance, and Network Probes at *pilot-stable*. The codebase grew substantially between v1.x and v2.x; not every path is exercised in automated tests yet (CI runs backend tests with a coverage gate on critical modules).
+Industrace **2.3.3** binds asset type/status create to the authenticated tenant, defaults the UI to English, and adds `libpcap-dev` to the probe image. **2.3.2** hardened the Print System (ReportLab-only PDFs, tenant-scoped kit download). The 2.x line remains **pilot recommended** — CSV import, deep health checks, IEC 62443 compliance, and Network Probes at *pilot-stable*. The codebase grew substantially between v1.x and v2.x; not every path is exercised in automated tests yet (CI runs backend tests with a coverage gate on critical modules).
 
 We recommend a **controlled pilot** — internal network, limited users, non-critical ICS data — before relying on v2 in production OT environments. See the [Pilot Deployment Checklist](docs/PILOT_DEPLOYMENT_CHECKLIST.md). Your feedback via [GitHub Issues](https://github.com/industrace/industrace/issues) and real-world testing is how the project matures.
 
@@ -291,6 +291,22 @@ See the [LICENSE](LICENSE) file for details.
 ## 📋 Changelog
 
 See **[CHANGELOG.md](CHANGELOG.md)** and **[Release Notes](docs/release-notes.md)** for full version history.
+
+### [v2.3.3] - September 4, 2026
+- **Asset types / statuses**: create uses the authenticated tenant; OpenAPI create schema no longer has `tenant_id`; type get/update/delete hide other tenants
+- **UI language**: default locale is English (saved preference and `it`/`en` browser language still win)
+- **Probe image**: `Dockerfile.probe` installs `libpcap-dev` for Scapy capture
+- See [CHANGELOG.md](CHANGELOG.md) and [API.md](docs/API.md) for full details
+
+### [v2.3.2] - August 26, 2026
+- **Print System**: ReportLab-only PDF path; unique template keys per tenant; tenant-scoped kit download
+- **Docs / tests**: [PRINT.md](docs/PRINT.md) and print regression tests
+- See [CHANGELOG.md](CHANGELOG.md) for full details
+
+### [v2.3.1] - July 29, 2026
+- **Discovered devices**: bulk cleanup (`DELETE /discovered-devices`) per probe or tenant
+- **Network Probes**: systemd native setup, least-privilege Docker `cap_add` (`NET_RAW`, `NET_ADMIN`)
+- See [CHANGELOG.md](CHANGELOG.md) for full details
 
 ### [v2.3.0] - July 22, 2026
 - **MFA/TOTP**: two-factor auth for local users, backup codes, tenant policy, admin reset

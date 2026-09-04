@@ -1,49 +1,75 @@
 # API reference
 
-REST API for Industrace 2.x: authenticated application API and external integration API.
+REST API for Industrace 2.x: authenticated application API and optional external integration API.
 
----
-
-
-Industrace provides a comprehensive REST API built with FastAPI and OpenAPI standards for managing industrial control system assets and configurations.
+Industrace provides a REST API built with FastAPI and OpenAPI. **OpenAPI at `/docs` is the source of truth** for request/response schemas; this page is an overview.
 
 ## API Overview
 
 ### Development Environment
 - **Base URL**: `http://localhost:8000`
-- **OpenAPI Documentation**: `http://localhost:8000/docs`
+- **OpenAPI Documentation**: `http://localhost:8000/docs` (on unless `ENVIRONMENT=production`)
 - **ReDoc Documentation**: `http://localhost:8000/redoc`
 - **OpenAPI JSON**: `http://localhost:8000/openapi.json`
 
 ### Production Environment
 - **Base URL**: `https://industrace.local/api`
-- **OpenAPI Documentation**: `https://industrace.local/api/docs`
-- **ReDoc Documentation**: `https://industrace.local/api/redoc`
-- **OpenAPI JSON**: `https://industrace.local/api/openapi.json`
+- **OpenAPI / ReDoc**: off by default (`EXTERNAL_API_DOCS_ENABLED=false` in production). Enable explicitly if you need `/api/docs`.
+- **OpenAPI JSON**: `https://industrace.local/api/openapi.json` (same flag)
 
 ### Custom Certificates Environment
 - **Base URL**: `https://yourdomain.com/api`
-- **OpenAPI Documentation**: `https://yourdomain.com/api/docs`
+- **OpenAPI Documentation**: `https://yourdomain.com/api/docs` (when docs are enabled)
 - **ReDoc Documentation**: `https://yourdomain.com/api/redoc`
 - **OpenAPI JSON**: `https://yourdomain.com/api/openapi.json`
 
-**Version**: 2.0.0 (see [Release Notes](release-notes.md) for full API coverage)
+**Version**: 2.3.3 (see [Release Notes](release-notes.md)). Interactive schema: `/docs`.
+
+Module-specific APIs:
+
+| Area | Doc |
+|------|-----|
+| Print (PDF / kit) | [PRINT.md](PRINT.md) |
+| Network Probes | [probe/NETWORK_PROBE.md](../probe/NETWORK_PROBE.md) |
+| MFA / TOTP | [ADMINISTRATION.md](ADMINISTRATION.md#multi-factor-authentication-mfa--totp) |
+| IEC 62443 | [IEC62443.md](IEC62443.md) |
 
 ## Authentication
 
-The API uses JWT-based authentication with HTTP-only cookies:
+The application API uses JWT in an **HttpOnly cookie** (`access_token_cookie`). Do not send `Authorization: Bearer` from the Vue app.
 
-1. **Login**: `POST /login` with email and password
-2. **Cookie**: JWT token is automatically set as a cookie
-3. **Session**: All subsequent requests use the cookie for authentication
+1. **Login**: `POST /login` with `application/x-www-form-urlencoded` (`email`, `password`)
+2. **Cookie**: access JWT is set automatically on success
+3. **Session**: later requests send the cookie (`credentials: include`)
+
+If the user has TOTP enabled, `POST /login` does **not** set the cookie. It returns `{ "mfa_required": true, "mfa_token": "...", "expires_in": ... }`. Complete login with:
+
+```http
+POST /login/mfa
+Content-Type: application/json
+
+{ "mfa_token": "<from /login>", "code": "123456" }
+```
+
+`code` is a TOTP value or a one-time backup code. Tenant MFA policy can also return `403` with `MFA_SETUP_REQUIRED` and `mfa_setup_token` — see [ADMINISTRATION.md](ADMINISTRATION.md#multi-factor-authentication-mfa--totp).
+
+SSO users authenticate via the OIDC redirect; they receive the same cookie (no TOTP step unless you also enroll local MFA).
 
 ### Login Example
 ```bash
 curl -X POST http://localhost:8000/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "email=admin@example.com&password=password123" \
+  -d "email=admin@example.com&password=Admin@123456!" \
   -c cookies.txt
 ```
+
+## Tenant isolation
+
+Create/update payloads must **not** set `tenant_id`. The server binds every row to `current_user.tenant_id` from the session.
+
+- **v2.3.3:** `POST /asset-types` and `POST /asset-statuses` ignore a body `tenant_id` (field removed from the OpenAPI create schema; extra JSON keys are ignored). Responses still include `tenant_id`.
+- The same rule already applies to manufacturers, suppliers, API keys, and most other creates.
+- `GET`/`PUT`/`DELETE` on `/asset-types/{id}` only see types that belong to the current tenant or global types (`tenant_id` is `null`). Other tenants' types return `404`.
 
 ## Core Endpoints
 
@@ -109,17 +135,54 @@ POST /users
 Content-Type: application/json
 
 {
+  "name": "Jane Doe",
   "email": "user@example.com",
   "password": "securepassword",
-  "role_id": "uuid",
-  "tenant_id": "uuid"
+  "role_id": "uuid"
 }
 ```
+
+`tenant_id` is taken from the authenticated admin, not from the body.
 
 #### Get Current User
 ```http
 GET /users/me
 ```
+
+### Asset types and statuses
+
+Tenant-scoped catalogue used by assets. Create never accepts `tenant_id`.
+
+```http
+GET    /asset-types
+POST   /asset-types
+GET    /asset-types/{asset_type_id}
+PUT    /asset-types/{asset_type_id}
+DELETE /asset-types/{asset_type_id}
+
+GET    /asset-statuses
+POST   /asset-statuses
+GET    /asset-statuses/{status_id}
+PUT    /asset-statuses/{status_id}
+DELETE /asset-statuses/{status_id}
+```
+
+```http
+POST /asset-types
+Content-Type: application/json
+
+{
+  "name": "PLC",
+  "description": "Programmable logic controller",
+  "purdue_level": 1.5
+}
+```
+
+### Print, probes, MFA
+
+- **Print:** `POST /print/generate`, `GET /print/download/{print_id}`, `POST /print/kit`, `GET /print/kit/download/{filename}`, `POST /print/templates/init-defaults` — [PRINT.md](PRINT.md)
+- **Probes:** `/network-probes`, `/discovered-devices` (probe client uses `X-API-Key`) — [NETWORK_PROBE.md](../probe/NETWORK_PROBE.md)
+- **MFA (self):** `GET/POST /users/me/mfa/*` — [ADMINISTRATION.md](ADMINISTRATION.md#multi-factor-authentication-mfa--totp)
 
 ### Search and Filtering
 
@@ -317,8 +380,9 @@ For API support:
 
 # External API (integrations)
 
+The external API is **optional**. Set `EXTERNAL_API_ENABLED=true` to mount `/external/v1/*`. In production, `/docs` is off unless `EXTERNAL_API_DOCS_ENABLED=true`. See [CONFIGURATION.md](CONFIGURATION.md).
 
-Industrace provides secure external APIs for third-party integrations. These APIs are designed with a focus on security and access control.
+Industrace provides a tenant-scoped HTTP API for third-party integrations, authenticated with API keys (not the user cookie).
 
 ## Security Features
 
@@ -350,12 +414,12 @@ Industrace provides secure external APIs for third-party integrations. These API
 
 ### Creating API Keys
 
-To create a new API Key, use the internal endpoint:
+To create a new API Key, use the **session cookie** (same as the rest of the app), not a Bearer token:
 
 ```bash
 POST /api-keys
 Content-Type: application/json
-Authorization: Bearer <your-jwt-token>
+Cookie: access_token_cookie=<jwt>
 
 {
   "name": "External System Integration",
@@ -386,7 +450,7 @@ Always include the `X-API-Key` header in requests:
 
 ```bash
 curl -H "X-API-Key: ind_abc123..." \
-     https://api.industrace.com/external/v1/assets
+     https://industrace.local/api/external/v1/assets
 ```
 
 ### Available Endpoints

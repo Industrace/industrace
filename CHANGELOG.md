@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.3] - 2026-09-04
+
+### Changed
+- **UI language**: default locale is English when no saved preference and the browser is neither `it` nor `en`; `setLanguage()` keeps `localStorage` and `document.documentElement.lang` in sync
+- **Probe image**: `Dockerfile.probe` installs `libpcap-dev` so Scapy packet capture can link against libpcap
+- **API contract**: `AssetTypeCreate` / `AssetStatusCreate` no longer include `tenant_id`; create always uses the session tenant (extra body keys ignored)
+
+### Fixed
+- **Asset types / statuses**: create ignores client-supplied `tenant_id` and binds the record to the authenticated tenant
+- **Asset types**: get/update/delete return `404` for types that belong to another tenant (global `tenant_id=null` types remain visible)
+
+### Security
+- Asset type/status create no longer accepts a body `tenant_id` that could collide with or override the auth tenant
+
+## [2.3.2] - 2026-08-26
+
 ### Changed
 - **Print System**: ReportLab-only PDF path; removed legacy Vue print layouts (`AssetCardPrint`, `PrintLayout`, template dialog)
 - **Print templates**: unique constraint is now `(tenant_id, key)` so each tenant can seed the same default keys

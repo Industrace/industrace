@@ -41,6 +41,7 @@ import { useI18n } from 'vue-i18n'
 import { usePermissions } from '@/composables/usePermissions'
 import { useTenantFeatures } from '@/composables/useTenantFeatures'
 import { useAuthStore } from '@/store/auth'
+import { setLanguage } from '@/locales/loader-final.js'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -151,8 +152,7 @@ const menuSections = computed(() => {
 })
 
 function changeLocale(e) {
-  locale.value = e.target.value
-  localStorage.setItem('user-lang', e.target.value)
+  setLanguage(e.target.value)
 }
 </script>
 

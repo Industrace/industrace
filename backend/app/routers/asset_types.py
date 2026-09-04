@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, status, Request
@@ -14,6 +13,11 @@ from app.schemas import AssetType as AssetTypeSchema, AssetTypeCreate, AssetType
 from app.services.auth import get_current_user
 from app.services.rbac import require_section_access
 from app.crud import asset_types as crud_asset_types
+
+
+def _asset_type_visible(asset_type: AssetType, tenant_id: uuid.UUID) -> bool:
+    """Tenant-owned types plus global types (tenant_id is NULL)."""
+    return asset_type.tenant_id is None or asset_type.tenant_id == tenant_id
 
 
 router = APIRouter(
@@ -50,7 +54,7 @@ def get_asset_type(
     db: Session = Depends(get_db),
 ):
     asset_type = crud_asset_types.get_asset_type(db, asset_type_id)
-    if not asset_type:
+    if not asset_type or not _asset_type_visible(asset_type, current_user.tenant_id):
         raise ErrorCodeException(
             status_code=404, error_code=ErrorCode.ASSET_TYPE_NOT_FOUND
         )
@@ -66,7 +70,7 @@ def update_asset_type(
     db: Session = Depends(get_db),
 ):
     asset_type = crud_asset_types.get_asset_type(db, asset_type_id)
-    if not asset_type:
+    if not asset_type or not _asset_type_visible(asset_type, current_user.tenant_id):
         raise ErrorCodeException(
             status_code=404, error_code=ErrorCode.ASSET_TYPE_NOT_FOUND
         )
@@ -82,7 +86,7 @@ def delete_asset_type(
     db: Session = Depends(get_db),
 ):
     asset_type = crud_asset_types.get_asset_type(db, asset_type_id)
-    if not asset_type:
+    if not asset_type or not _asset_type_visible(asset_type, current_user.tenant_id):
         raise ErrorCodeException(
             status_code=404, error_code=ErrorCode.ASSET_TYPE_NOT_FOUND
         )

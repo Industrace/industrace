@@ -61,7 +61,8 @@ def create_asset_type(
 ) -> AssetType:
     """Create a new asset type"""
     db_asset_type = AssetType(
-        tenant_id=tenant_id, **asset_type.model_dump(exclude_unset=True)
+        tenant_id=tenant_id,
+        **asset_type.model_dump(exclude_unset=True, exclude={"tenant_id"}),
     )
     db.add(db_asset_type)
     db.commit()

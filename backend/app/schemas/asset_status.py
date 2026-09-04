@@ -12,7 +12,7 @@ class AssetStatusBase(BaseModel):
 
 
 class AssetStatusCreate(AssetStatusBase):
-    tenant_id: Optional[uuid.UUID] = None
+    pass
 
 
 class AssetStatusUpdate(AssetStatusBase):

@@ -13,7 +13,6 @@ class AssetTypeBase(BaseModel):
 
 
 class AssetTypeCreate(AssetTypeBase):
-    tenant_id: Optional[uuid.UUID] = None
     purdue_level: Optional[float] = None
 
 

@@ -1,12 +1,12 @@
 import { createI18n } from 'vue-i18n'
 
-// Import delle traduzioni comuni
+// Common translation imports
 import itCommon from './it/common.json'
 import enCommon from './en/common.json'
 import itMenu from './it/menu.json'
 import enMenu from './en/menu.json'
 
-// Import delle traduzioni per sezione
+// Section translation imports
 import itDashboard from './it/dashboard.json'
 import enDashboard from './en/dashboard.json'
 import itAssets from './it/assets.json'
@@ -70,7 +70,7 @@ import enDiscoveredDevices from './en/discoveredDevices.json'
 import itCore from './it/core.json'
 import enCore from './en/core.json'
 
-// Funzione per appiattire gli oggetti annidati
+// Flatten nested objects
 const flattenObject = (obj, prefix = '') => {
   const flattened = {}
   for (const key in obj) {
@@ -86,7 +86,7 @@ const flattenObject = (obj, prefix = '') => {
   return flattened
 }
 
-// Funzione per rilevare la lingua dell'utente
+// Detect the user's language
 const getUserLanguage = () => {
   if (typeof localStorage !== 'undefined') {
     const savedLang = localStorage.getItem('user-lang')
@@ -94,20 +94,26 @@ const getUserLanguage = () => {
       return savedLang
     }
   }
-  
-  // Rileva lingua del browser
+
+  // Detect browser language
   if (typeof navigator !== 'undefined' && navigator.language) {
     const browserLang = navigator.language.split('-')[0]
     if (browserLang === 'it' || browserLang === 'en') {
       return browserLang
     }
   }
-  
-  // Default italiano
-  return 'it'
+
+  // Default to English
+  return 'en'
 }
 
-// Appiattisci tutte le traduzioni
+const applyDocumentLang = (locale) => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = locale
+  }
+}
+
+// Flatten all translations
 const messages = {
   it: flattenObject({
     common: itCommon,
@@ -181,9 +187,12 @@ const messages = {
   })
 }
 
-// Configurazione i18n
+// i18n configuration
+const initialLocale = getUserLanguage()
+applyDocumentLang(initialLocale)
+
 const i18n = createI18n({
-  locale: getUserLanguage(),
+  locale: initialLocale,
   fallbackLocale: 'en',
   messages,
   flatJson: true,
@@ -195,13 +204,14 @@ const i18n = createI18n({
   fallbackWarn: true
 })
 
-// Funzione per cambiare lingua
+// Change language
 export function setLanguage(locale) {
   if (locale === 'it' || locale === 'en') {
     i18n.global.locale.value = locale
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('user-lang', locale)
     }
+    applyDocumentLang(locale)
     return true
   }
   return false

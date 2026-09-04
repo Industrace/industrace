@@ -1,6 +1,6 @@
 {
   "name": "industrace-frontend",
-  "version": "2.3.0",
+  "version": "2.3.3",
   "private": true,
   "scripts": {
     "dev": "vite",

@@ -587,8 +587,6 @@ On **Users → user detail**, admins with `users` write permission can **Reset M
 - Use a one-time recovery code on the MFA verify screen
 - Or ask an admin to reset MFA, then re-enroll
 
-See also [MFA_TOTP_IMPLEMENTATION.md](MFA_TOTP_IMPLEMENTATION.md).
-
 ---
 
 ## 📋 New Password Requirements

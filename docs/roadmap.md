@@ -4,7 +4,7 @@
 
 This roadmap outlines the development path for Industrace, the Configuration Management Database for Industrial Control Systems. The focus is on stability, documentation, and community growth.
 
-**Current version:** v2.3.1 (July 2026) — **pilot recommended**; MFA/TOTP available for local users; not validated for production OT environments without lab testing. Print System hardening is ready for **v2.3.2**.
+**Current version:** v2.3.3 (September 2026) — **pilot recommended**; MFA/TOTP available for local users; Print System is ReportLab-only (v2.3.2); not validated for production OT environments without lab testing.
 
 ## Delivered in v2.0 (June 2026)
 
@@ -44,6 +44,26 @@ See [Release Notes](release-notes.md) and [CHANGELOG](../CHANGELOG.md) for full 
 - **Asset detail**: real relation and critical vulnerability badge counts
 - **IEC 62443 zone compliance**: SR-relevant asset filtering and technical characteristics in UI
 
+## Delivered in v2.3.x
+
+### v2.3.0 — MFA/TOTP
+
+- TOTP second step for local password users, backup codes, tenant MFA policy, admin reset
+
+### v2.3.1 — Probe operations
+
+- Discovered-device bulk cleanup; systemd native probe setup; Docker `cap_add` instead of `--privileged`
+
+### v2.3.2 — Print System
+
+- ReportLab-only PDF path; template keys unique per tenant; tenant-scoped kit download; [PRINT.md](PRINT.md)
+
+### v2.3.3 — Tenant bind, English default, probe capture
+
+- Asset type/status create bound to the authenticated tenant
+- UI default locale English (`setLanguage()` keeps `document.documentElement.lang` in sync)
+- Probe image installs `libpcap-dev` — see [probe/README.md](../probe/README.md)
+
 ## Current Priorities
 
 ### Multi-Deployment Support ✅
@@ -75,7 +95,7 @@ See [Release Notes](release-notes.md) and [CHANGELOG](../CHANGELOG.md) for full 
 - Tenant MFA policy (`optional` / `required_admins` / `required_all`) with grace period
 - Admin MFA reset + security/audit logging
 
-**Design reference:** [MFA_TOTP_IMPLEMENTATION.md](MFA_TOTP_IMPLEMENTATION.md)
+**Admin guide:** [ADMINISTRATION.md](ADMINISTRATION.md#multi-factor-authentication-mfa--totp)
 
 > **Pilot note:** Enable MFA (Industrace TOTP for local users and/or IdP MFA for SSO) when compliance requires it. See [PILOT_DEPLOYMENT_CHECKLIST.md](PILOT_DEPLOYMENT_CHECKLIST.md).
 
@@ -99,9 +119,14 @@ See [Release Notes](release-notes.md) and [CHANGELOG](../CHANGELOG.md) for full 
 - CI coverage gate on critical modules
 - Probe and RBAC hardening
 
-**Done for v2.3.2 (pending release):**
+**Done in v2.3.2:**
 
 - Print System hardening: ReportLab-only path, kit/download tenant isolation, template key uniqueness per tenant, regression tests — see [PRINT.md](PRINT.md)
+
+**Done in v2.3.3:**
+
+- Asset type/status create ignores client-supplied `tenant_id`
+- Probe Docker image includes `libpcap-dev` for Scapy capture
 
 **Open:**
 
@@ -145,7 +170,7 @@ See [Release Notes](release-notes.md) and [CHANGELOG](../CHANGELOG.md) for full 
 
 ## Conclusion
 
-Industrace has delivered the core v2 feature set (CMDB ICS, IEC 62443, CVE intelligence, Network Probes) and entered a **pilot stability** phase with v2.2.0. The next wave targets **MFA/TOTP**, **PWA**, complete user documentation, and incremental hardening — driven by pilot feedback rather than large new feature blocks.
+Industrace has delivered the core v2 feature set (CMDB ICS, IEC 62443, CVE intelligence, Network Probes, MFA/TOTP) and remains in a **pilot stability** phase through v2.3.3. The next wave targets **PWA**, complete user documentation, and incremental hardening — driven by pilot feedback rather than large new feature blocks.
 
 ---
 
@@ -154,4 +179,4 @@ Industrace has delivered the core v2 feature set (CMDB ICS, IEC 62443, CVE intel
 **Website**: https://besafe.it/industrace  
 **Contact**: industrace@besafe.it
 
-*Last Updated: July 2026*
+*Last Updated: September 2026*

@@ -9,6 +9,72 @@
 
 ---
 
+## Version 2.3.3
+
+**Release Date**: September 4, 2026
+
+### Overview
+
+Industrace v2.3.3 is a hardening patch on top of the Print System work in 2.3.2: tenant binding on asset type/status create, English as the UI default language, and `libpcap-dev` in the probe image.
+
+There is **no published `v2.3.2` tag**. Operators on **2.3.1** should treat this release as 2.3.1 → 2.3.3 and apply the 2.3.2 print migration as well.
+
+### Key Features
+
+#### Tenant isolation
+- Asset type and status **create** ignore a client-supplied `tenant_id` and bind the record to the authenticated tenant (field removed from the OpenAPI create schema)
+- `GET`/`PUT`/`DELETE` `/asset-types/{id}` hide types that belong to another tenant (`404`); global types (`tenant_id` null) stay visible
+
+#### UI language
+- Default locale is **English** when there is no saved `user-lang` and the browser is neither `it` nor `en`
+- Saved preference and Italian/English browser language still win
+- `setLanguage()` keeps `localStorage` and `document.documentElement.lang` in sync
+
+#### Network Probes
+- `Dockerfile.probe` installs **`libpcap-dev`** so Scapy can capture packets — see [probe/README.md](../probe/README.md)
+- Native installs should include the same package ([SYSTEMD_NATIVE_SETUP.md](../probe/SYSTEMD_NATIVE_SETUP.md))
+
+### Upgrade notes (2.3.1 → 2.3.3)
+
+1. Pull latest `main` and rebuild **server and probe** images: `docker compose -f docker-compose.prod.yml build && docker compose -f docker-compose.prod.yml up -d`
+2. Run migrations (required if you have not applied 2.3.2): `docker compose -f docker-compose.prod.yml exec backend alembic upgrade heads` — print template unique constraint `(tenant_id, key)`
+3. Rebuild standalone probe images so they pick up `libpcap-dev`
+4. Confirm default print templates still initialize per tenant from Setup → Print Templates
+5. No additional migrations landed in 2.3.3 itself
+
+See [CHANGELOG.md](../CHANGELOG.md) for the full list.
+
+---
+
+## Version 2.3.2
+
+**Release Date**: August 26, 2026
+
+### Overview
+
+Industrace v2.3.2 hardens the Print System: PDFs are generated server-side with ReportLab only, template keys are unique per tenant, and kit downloads are tenant-scoped. This version was merged to `main` but **not tagged**; it ships together with [v2.3.3](#version-233).
+
+### Key Features
+
+#### Print System
+- ReportLab-only path; legacy Vue print layouts (`AssetCardPrint`, `PrintLayout`, template dialog) removed
+- Template unique constraint `(tenant_id, key)` so each tenant can seed the same default keys
+- Printed Kit API accepts snake_case and camelCase option fields; unused `include_photos` / `include_documents` dropped
+- Asset and kit PDFs stored under `uploads/prints/{tenant_id}/` with path-traversal / cross-tenant guards
+- Print history is tenant-filtered in SQL before pagination; global templates are immutable for tenants
+- Protocols row no longer crashes ReportLab; special characters in names escaped; soft-deleted assets excluded
+- Regression tests (`backend/tests/test_print_system.py`) and [PRINT.md](PRINT.md)
+
+### Upgrade notes (2.3.1 → 2.3.2)
+
+Prefer upgrading directly to **2.3.3** (see above). If you apply this changeset on its own:
+
+1. Pull latest `main` and rebuild containers: `docker compose -f docker-compose.prod.yml build && docker compose -f docker-compose.prod.yml up -d`
+2. Run migration: `docker compose -f docker-compose.prod.yml exec backend alembic upgrade heads` (print template unique constraint)
+3. Existing print templates: confirm default keys still initialize per tenant from Setup → Print Templates
+
+---
+
 ## Version 2.3.1
 
 **Release Date**: July 29, 2026

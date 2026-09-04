@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Installa dipendenze di sistema
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     tcpdump \
     iproute2 \
@@ -9,34 +9,35 @@ RUN apt-get update && apt-get install -y \
     gcc \
     build-essential \
     python3-dev \
+    libpcap-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Crea utente non-root per sicurezza
+# Create a non-root user for security
 RUN useradd -m -s /bin/bash probe && \
     mkdir -p /app /logs && \
     chown -R probe:probe /app /logs
 
-# Imposta directory di lavoro
+# Set working directory
 WORKDIR /app
 
-# Copia requirements
+# Copy requirements
 COPY requirements.probe.txt .
 
-# Installa dipendenze Python
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.probe.txt
 
-# Copia tutti i moduli Python della sonda (post-refactor modulare)
+# Copy probe Python modules
 COPY *.py ./
 COPY probe.conf.example .
 
-# Cambia proprietario
+# Change ownership
 RUN chown -R probe:probe /app
 
-# Passa all'utente non-root
+# Switch to the non-root user
 USER probe
 
-# Esponi porta per monitoraggio (opzionale)
+# Expose monitoring port (optional)
 EXPOSE 8080
 
-# Comando di avvio
+# Start command
 CMD ["python", "network_probe_client.py", "-c", "probe.conf"]

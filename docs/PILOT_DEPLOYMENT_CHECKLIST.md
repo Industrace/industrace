@@ -113,7 +113,7 @@ If deploying Network Probes in the pilot:
 
 | Item | Status |
 |------|--------|
-| MFA / TOTP | **Implemented** — enable in Profile; tenant policy on SSO Config. See [ADMINISTRATION.md](ADMINISTRATION.md) and [MFA_TOTP_IMPLEMENTATION.md](MFA_TOTP_IMPLEMENTATION.md). SSO users may rely on IdP MFA (e.g. Azure AD Conditional Access). |
+| MFA / TOTP | **Implemented** — enable in Profile; tenant policy on SSO Config. See [ADMINISTRATION.md](ADMINISTRATION.md#multi-factor-authentication-mfa--totp). SSO users may rely on IdP MFA (e.g. Azure AD Conditional Access). |
 | High availability / Kubernetes | Not supported — Docker Compose only |
 | `make prod-cloud` | BETA — not recommended for pilot |
 | Network Probes | **Pilot-stable** in v2.2.0 — validate in lab before production OT networks; see [probe/RUNBOOK.md](../probe/RUNBOOK.md) |

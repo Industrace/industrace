@@ -93,7 +93,7 @@ pip install -r requirements.probe.txt pytest
 python -m pytest tests/ -q
 ```
 
-Docker packaging smoke check:
+Docker packaging smoke check (`Dockerfile.probe` includes `libpcap-dev` so Scapy can capture):
 
 ```bash
 docker build -f Dockerfile.probe -t industrace-probe .
@@ -103,6 +103,8 @@ docker run --rm industrace-probe python -c "import network_probe_client; print('
 # Network Probe
 
 Distributed passive network discovery for **Industrace 2.1+**. Probes observe industrial traffic on a network segment and report metadata (devices, protocols, connections) to the Industrace backend — without storing full packet payloads.
+
+**v2.3.3:** the Docker image (`Dockerfile.probe`) installs `libpcap-dev` so Scapy can capture packets. Native installs should include the same package — see [SYSTEMD_NATIVE_SETUP.md](SYSTEMD_NATIVE_SETUP.md).
 
 ## Documentation
 
@@ -133,7 +135,7 @@ If capture fails in your environment, temporarily test with `--privileged` and t
 | `network_probe_client.py` | Runtime orchestrator |
 | `probe_cli.py` | CLI and config helpers |
 | `probe.conf` / `probe.conf.example` | Configuration |
-| `Dockerfile.probe` | Container image |
+| `Dockerfile.probe` | Container image (`python:3.11-slim`, `libpcap-dev`, non-root `probe` user) |
 | `docker-compose.probes.yml` | Multi-probe compose example |
 | `SYSTEMD_NATIVE_SETUP.md` | Native systemd deployment quickstart |
 | `industrace-network-probe.service.example` | Example systemd unit |
